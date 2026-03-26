@@ -100,10 +100,11 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion'>('dashboard');
   const [filterType, setFilterType] = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp] = useState('all');
   const [stock, setStock] = useState<any[]>([]);
+  const [stockProd, setStockProd] = useState<any[]>([]);
   const [stockCat, setStockCat] = useState('all');
   const [stockSearch, setStockSearch] = useState('');
   const [stats, setStats] = useState({ ingresos: 0, egresos: 0, operadores: 0, hoy: 0 });
@@ -114,6 +115,8 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
     // Fetch stock
     const { data: stockData } = await supabase.from('stock').select('*').order('categoria').order('nombre');
     setStock(stockData ?? []);
+    const { data: prodData } = await supabase.from('stock_produccion').select('*').order('categoria').order('producto');
+    setStockProd(prodData ?? []);
 
     const { data } = await supabase
       .from('stock_movements')
@@ -223,6 +226,7 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
           { id: 'movements', label: 'Movimientos', icon: <Package size={16} /> },
           { id: 'reports',   label: 'Reportes',   icon: <BarChart3 size={16} /> },
           { id: 'stock',     label: 'Stock',      icon: <Package size={16} /> },
+          { id: 'produccion', label: 'Producción',  icon: <TrendingUp size={16} /> },
         ] as const).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold border-b-2 transition-all
@@ -402,7 +406,68 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
         )}
 
 
-        {/* ── STOCK ── */}
+
+        {/* ── PRODUCCIÓN ── */}
+        {activeTab === 'produccion' && (
+          <div className="max-w-6xl mx-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
+                const catItems = stockProd.filter((s: any) => s.categoria === cat);
+                const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
+                const emoji = cat === 'lomito' ? '🥩' : cat === 'burger' ? '🍔' : '🥪';
+                const color = cat === 'lomito' ? 'text-rose-400' : cat === 'burger' ? 'text-blue-400' : 'text-amber-400';
+                const bg = cat === 'lomito' ? 'bg-rose-500/10 border-rose-500/30' : cat === 'burger' ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30';
+                const unit = cat === 'milanesa' ? 'kg' : 'u';
+                return (
+                  <div key={cat} className={`bg-slate-900 border ${bg} rounded-2xl p-5`}>
+                    <p className="text-xs font-black uppercase text-slate-500 mb-1">{emoji} {cat}</p>
+                    <p className={`text-4xl font-black ${color}`}>{total.toFixed(cat === 'milanesa' ? 2 : 0)} <span className="text-lg font-bold text-slate-500">{unit}</span></p>
+                    <p className="text-xs text-slate-600 mt-1">{catItems.length} productos</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
+              const catItems = stockProd.filter((s: any) => s.categoria === cat);
+              if (catItems.length === 0) return null;
+              const emoji = cat === 'lomito' ? '🥩' : cat === 'burger' ? '🍔' : '🥪';
+              return (
+                <div key={cat} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                    <h2 className="font-bold text-white">{emoji} {cat.charAt(0).toUpperCase() + cat.slice(1)}</h2>
+                    <button onClick={fetchMovements} className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+                      <RefreshCw size={12} /> Actualizar
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                    {catItems.map((item: any) => (
+                      <div key={item.id} className="bg-slate-800 rounded-2xl p-4">
+                        <p className="font-bold text-slate-300 text-sm mb-2">{item.producto}</p>
+                        <p className="text-3xl font-black text-white">{cat === 'milanesa' ? item.cantidad.toFixed(2) : Math.round(item.cantidad)}</p>
+                        <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                        {item.ultima_prod && (
+                          <p className="text-xs text-slate-600 mt-2">
+                            {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {stockProd.length === 0 && (
+              <div className="text-center py-16 text-slate-600">
+                <p className="font-bold text-lg">No hay stock de producción todavía</p>
+                <p className="text-sm mt-1">Aparecerá aquí cuando se confirmen producciones</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── STOCK ── */
         {activeTab === 'stock' && (
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Filtros */}

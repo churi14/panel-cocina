@@ -54,6 +54,7 @@ export type CutConfig = {
 };
 
 export const CUTS: CutConfig[] = [
+  { id: 'lomo',         label: 'Lomo',            emoji: '🥩', stockDestino: 'Stock Lomo',            defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
   { id: 'roast_beef',   label: 'Roast Beef',      emoji: '🥩', stockDestino: 'Stock Roast Beef',      defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_asado',   label: 'Tapa de Asado',   emoji: '🥩', stockDestino: 'Stock Tapa de Asado',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_nalga',   label: 'Tapa de Nalga',   emoji: '🥩', stockDestino: 'Stock Tapa de Nalga',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
@@ -62,6 +63,10 @@ export const CUTS: CutConfig[] = [
   { id: 'picana',       label: 'Picaña',           emoji: '🥩', stockDestino: 'Stock Picaña',          defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'ojo_bife',     label: 'Ojo de Bife',      emoji: '🥩', stockDestino: 'Stock Ojo de Bife',     defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'grasa_pella',  label: 'Grasa de Pella',   emoji: '🫙', stockDestino: 'Stock Grasa de Pella',  defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
+  { id: 'pollo',        label: 'Pollo',           emoji: '🍗', stockDestino: 'Stock Pollo',           defaultUnit: 'kg',   kinds: ['milanesa'] },
+  { id: 'cuadril',      label: 'Cuadril',         emoji: '🥩', stockDestino: 'Stock Cuadril',         defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
+  { id: 'not_burger',   label: 'Not Burger',      emoji: '🌱', stockDestino: 'Stock Not Burger',      defaultUnit: 'unid', kinds: ['burger'] },
+  { id: 'cuadrada',     label: 'Cuadrada',        emoji: '🥩', stockDestino: 'Stock Cuadrada',        defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
 ];
 
 // Filtra cortes por tipo de producción

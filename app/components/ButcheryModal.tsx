@@ -10,12 +10,14 @@ import { NewProductionWizard } from './butchery/NewProductionWizard';
 import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView, BurgerBlendResult } from './butchery/Step2BurgerView';
 import { supabase } from '../supabase';
+import { addToStockProduccion } from './butchery/stockProduccion';
 
 // Descuenta kg de la tabla stock en Supabase buscando por nombre de corte
 async function deductStockByName(nombreCorte: string, kgToDeduct: number) {
   if (!kgToDeduct || kgToDeduct <= 0) return;
   // Mapa: label del corte -> nombre en Supabase
   const CORTE_MAP: Record<string, string> = {
+    'Lomo':            'LOMO',
     'Roast Beef':      'AGUJA',
     'Tapa de Asado':   'TAPA DE ASADO',
     'Tapa de Nalga':   'NALGA',
@@ -24,6 +26,10 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number) {
     'Picaña':          'CUADRIL',
     'Ojo de Bife':     'CUADRADA',
     'Grasa de Pella':  'GRASA',
+    'Pollo':           'POLLO',
+    'Cuadril':         'CUADRIL',
+    'Cuadrada':        'CUADRADA',
+    'Not Burger':      'NOT',
   };
   const nombre = CORTE_MAP[nombreCorte];
   if (!nombre) return;
@@ -122,7 +128,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const handleGoToBatchStep2 = (batch: ButcheryProduction[]) => {
     const now = Date.now();
     // Solo los pendientes, no los ya completados
-    const pendingBatch = batch.filter(p => p.status === 'step2_pending');
+    const pendingBatch = batch.filter(p => p.status === 'step2_pending' || p.status === 'step2_running');
     setButcheryProductions(prev => prev.map(p =>
       pendingBatch.find(b => b.id === p.id)
         ? { ...p, status: 'step2_running' as const, step2StartTime: now }
@@ -136,8 +142,30 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string) => {
     const prod = step2Queue[step2Index];
     if (!prod) return;
-    // Descontar kg del corte en Supabase
+    // Descontar materia prima
     await deductStockByName(prod.typeName, prod.weightKg);
+
+    // Sumar a stock de producción
+    const kindLabel = prod.kind ?? 'lomito';
+    if (kindLabel === 'lomito') {
+      // Lomito: unidades por corte
+      await addToStockProduccion({
+        producto: `Lomito - ${prod.typeName}`,
+        categoria: 'lomito',
+        cantidad: quantity,
+        unidad: 'u',
+      });
+    } else if (kindLabel === 'milanesa') {
+      // Milanesa: kg netos por corte
+      const netKg = prod.weightKg - wasteKg;
+      await addToStockProduccion({
+        producto: `Milanesa - ${prod.typeName}`,
+        categoria: 'milanesa',
+        cantidad: parseFloat(netKg.toFixed(3)),
+        unidad: 'kg',
+      });
+    }
+
     const now = Date.now();
     const netWeight = prod.weightKg - wasteKg;
     const avgGrams  = unit === 'unid' && quantity > 0 ? (netWeight / quantity) * 1000 : 0;
@@ -209,6 +237,14 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
         avgWeightPerUnit: (result.totalBlendKg / result.units) * 1000,
       } : p
     ));
+
+    // Sumar medallones a stock de producción
+    await addToStockProduccion({
+      producto: 'Medallones Burger',
+      categoria: 'burger',
+      cantidad: result.units,
+      unidad: 'u',
+    });
 
     setStep2Queue([]); setStep2Index(0); setView('list');
   };
