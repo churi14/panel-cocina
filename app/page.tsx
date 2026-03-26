@@ -167,14 +167,7 @@ export default function Dashboard() {
             <button onClick={() => setIsRecipeManagerOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
                 <BookOpen size={20} /> <span>Recetario</span>
             </button>
-            <button onClick={() => setIsSuppliersModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
-                <Truck size={20} /> <span>Proveedores</span>
-            </button>
-            <button onClick={() => setIsReportsModalOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
-                <BarChart3 size={20} /> <span>Reportes</span>
-            </button>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mt-8 mb-2">Gestión</p>
-            <NavItem icon={<Settings size={20} />} label="Configuración" />
+
           </nav>
         </div>
         <div className="mt-auto pt-6 border-t border-slate-100">

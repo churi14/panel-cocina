@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
-import { ChevronLeft, CheckCircle2, Package, Trash2, Scale, Flame } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, Scale, Flame, Trash2, Package, ChevronLeft, Clock } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
-import { formatWeight, formatGrams, ALL_STOCKS } from './cuts';
-import { ChevronDown } from 'lucide-react';
+import { formatWeight, formatGrams } from './cuts';
 
-// El paso 2 de burger es especial:
-// Todas las carnes van al blend → se agrega grasa → se producen unidades de burger
+const GRASA_TARGET_PCT = 34; // % objetivo de grasa
 
 export type BurgerBlendResult = {
   stockDestino: string;
@@ -15,285 +13,337 @@ export type BurgerBlendResult = {
   units: number;
   wasteKg: number;
   totalBlendKg: number;
+  carneNetaKg: number;
+  grasaPct: number;
+  paso2DurSeg: number;
 };
 
-export function Step2BurgerView({ productions, onFinish, onBack }: {
-  productions: ButcheryProduction[];
-  onFinish: (result: BurgerBlendResult) => void;
-  onBack: () => void;
-}) {
-  const [grasaKg, setGrasaKg]     = useState('');
-  const [units, setUnits]         = useState('');
-  const [wasteKg, setWasteKg]     = useState('');
-  const [stockDestino, setStockDestino] = useState('Stock Burger');
-  const [showStockPicker, setShowStockPicker] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const totalMeatKg  = productions.reduce((sum, p) => sum + p.weightKg, 0);
-  const grasa        = parseFloat(grasaKg.replace(',', '.')) || 0;
-  const qty          = parseInt(units) || 0;
-  const waste        = parseFloat(wasteKg.replace(',', '.')) || 0;
-  const totalBlend   = totalMeatKg + grasa;
-  const grasaPct     = grasa > 0 ? ((grasa / totalMeatKg) * 100).toFixed(1) : null;
-  const netBlend     = totalBlend - waste;
-  const avgGrams     = qty > 0 ? (netBlend / qty) * 1000 : 0;
-  const canFinish    = qty > 0 && waste >= 0 && waste < totalBlend;
-
-  const handleConfirm = () => {
-    onFinish({ stockDestino, grasaKg: grasa, units: qty, wasteKg: waste, totalBlendKg: totalBlend });
+// ─── Timer hook ───────────────────────────────────────────────────────────────
+function useTimer(running: boolean) {
+  const [elapsed, setElapsed] = useState(0);
+  const [startAt] = useState(Date.now());
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startAt) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60), sec = s % 60;
+    return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
   };
+  return { elapsed, fmt: fmt(elapsed) };
+}
 
-  if (showConfirm) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-        <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 size={32} className="text-blue-600" />
-            </div>
-            <h2 className="text-2xl font-black text-slate-800">🍔 ¿Confirmar Blend?</h2>
-            <p className="text-slate-400 text-sm mt-1">Revisá que todo esté bien</p>
-          </div>
-
-          <div className="space-y-2 mb-6">
-            {/* Carnes del blend */}
-            <div className="bg-slate-50 rounded-xl px-4 py-3">
-              <p className="text-xs font-black text-slate-400 uppercase mb-2">Carnes del blend</p>
-              {productions.map(p => (
-                <div key={p.id} className="flex justify-between items-center py-1">
-                  <span className="text-sm font-bold text-slate-600">{p.typeName}</span>
-                  <span className="text-sm font-black text-slate-800">{formatWeight(p.weightKg)} kg</span>
-                </div>
-              ))}
-              <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
-                <span className="text-sm font-black text-slate-700">Total carne</span>
-                <span className="font-black text-slate-800">{formatWeight(totalMeatKg)} kg</span>
-              </div>
-            </div>
-            {grasa > 0 && (
-              <div className="flex justify-between items-center bg-orange-50 px-4 py-3 rounded-xl border border-orange-200">
-                <span className="text-sm font-bold text-orange-600">Grasa ({grasaPct}%)</span>
-                <span className="font-black text-orange-600">+ {formatWeight(grasa)} kg</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center bg-blue-50 px-4 py-3 rounded-xl border border-blue-200">
-              <span className="text-sm font-black text-blue-700 uppercase">Total blend (bruto)</span>
-              <span className="text-xl font-black text-blue-700">{formatWeight(totalBlend)} kg</span>
-            </div>
-            <div className="flex justify-between items-center bg-green-50 px-4 py-3 rounded-xl border border-green-200">
-              <span className="text-sm font-black text-green-700 uppercase">Peso neto</span>
-              <span className="text-xl font-black text-green-700">{formatWeight(totalBlend - waste)} kg</span>
-            </div>
-            <div className="flex justify-between items-center bg-red-50 px-4 py-3 rounded-xl">
-              <span className="text-sm font-bold text-red-500">Desperdicio</span>
-              <span className="font-black text-red-600">- {formatWeight(waste)} kg</span>
-            </div>
-            <div className="flex justify-between items-center bg-green-50 px-4 py-3 rounded-xl border border-green-200">
-              <span className="text-sm font-black text-green-700">Burgers producidas</span>
-              <span className="text-xl font-black text-green-700">{qty} u</span>
-            </div>
-            <div className="flex justify-between items-center bg-amber-50 px-4 py-3 rounded-xl border border-amber-200">
-              <span className="text-sm font-black text-amber-700 uppercase">Peso prom / burger</span>
-              <span className="text-2xl font-black text-amber-700">{formatGrams(avgGrams)} gr</span>
-            </div>
-            <div className="flex justify-between items-center bg-blue-50 px-4 py-3 rounded-xl border border-blue-200">
-              <span className="text-sm font-black text-blue-700 uppercase">Stock destino</span>
-              <span className="font-black text-blue-700">{stockDestino}</span>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button onClick={() => setShowConfirm(false)} className="flex-1 py-4 rounded-2xl border-2 border-slate-300 text-slate-600 font-bold hover:bg-slate-50 active:scale-95 transition-all">VOLVER</button>
-            <button onClick={handleConfirm} className="flex-1 py-4 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-500 active:scale-95 transition-all shadow-lg">CONFIRMAR TODO</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+// ─── Componente input grande ──────────────────────────────────────────────────
+function BigInput({ label, sublabel, value, onChange, unit, color = 'blue', autoFocus = false, required = false }: {
+  label: string; sublabel?: string; value: string;
+  onChange: (v: string) => void; unit: string;
+  color?: 'blue' | 'orange' | 'red' | 'green'; autoFocus?: boolean; required?: boolean;
+}) {
+  const colors = {
+    blue:   'border-blue-200 bg-blue-50 text-blue-600 focus:border-blue-500',
+    orange: 'border-orange-200 bg-orange-50 text-orange-600 focus:border-orange-500',
+    red:    'border-red-200 bg-red-50 text-red-600 focus:border-red-500',
+    green:  'border-green-200 bg-green-50 text-green-600 focus:border-green-500',
+  };
   return (
-    <div className="max-w-4xl mx-auto w-full">
-      <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold text-lg mb-6 px-2 py-2 rounded-xl hover:bg-slate-100 active:scale-95 transition-all">
-        <ChevronLeft size={24} /> VOLVER
-      </button>
-
-      {/* Título */}
-      <div className="text-center mb-8">
-        <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mb-2">PASO 2 — BURGER</p>
-        <h2 className="text-5xl font-black text-blue-700 mb-3">🍔 Blend</h2>
-        <p className="text-slate-500">Las carnes se combinan en un blend para hacer las burgers</p>
+    <div className="bg-white border-2 border-slate-100 rounded-3xl p-5 shadow-sm">
+      <div className="mb-3">
+        <h4 className="font-black text-slate-800 text-base">{label} {required && <span className="text-red-500">*</span>}</h4>
+        {sublabel && <p className="text-xs text-slate-400">{sublabel}</p>}
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* INPUTS */}
-        <div className="space-y-5">
-
-          {/* Resumen de carnes del blend */}
-          <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-11 h-11 bg-blue-100 rounded-2xl flex items-center justify-center">
-                <Scale size={22} className="text-blue-600" />
-              </div>
-              <div>
-                <h4 className="font-black text-slate-800 text-lg">Carnes del blend</h4>
-                <p className="text-xs text-slate-400">Cortes que entran al blend</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {productions.map(p => (
-                <div key={p.id} className="flex justify-between items-center bg-slate-50 rounded-xl px-4 py-2.5">
-                  <span className="font-bold text-slate-700 text-sm">{p.typeName}</span>
-                  <span className="font-black text-slate-800">{formatWeight(p.weightKg)} kg</span>
-                </div>
-              ))}
-              <div className="flex justify-between items-center bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mt-2">
-                <span className="font-black text-blue-700 text-sm uppercase">Total carne bruto</span>
-                <span className="text-xl font-black text-blue-700">{formatWeight(totalMeatKg)} kg</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Grasa */}
-          <div className="bg-white border-2 border-orange-200 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-orange-100 rounded-2xl flex items-center justify-center">
-                  <Flame size={22} className="text-orange-500" />
-                </div>
-                <div>
-                  <h4 className="font-black text-slate-800 text-lg">Grasa incorporada</h4>
-                  <p className="text-xs text-slate-400">Se agrega al blend</p>
-                </div>
-              </div>
-              {grasaPct && (
-                <span className="bg-orange-100 text-orange-700 font-black text-lg px-3 py-1 rounded-full">{grasaPct}%</span>
-              )}
-            </div>
-            <div className="relative">
-              <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                value={grasaKg} onChange={e => setGrasaKg(e.target.value)} autoFocus
-                className="w-full p-5 text-5xl font-black text-center text-orange-600 bg-orange-50 border-2 border-orange-200 rounded-2xl outline-none focus:border-orange-500 focus:bg-white transition-all"
-              />
-              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-orange-300">KG</span>
-            </div>
-            {grasaPct && (
-              <p className="text-center text-sm font-bold text-orange-500 mt-2">
-                {grasaPct}% de grasa sobre {formatWeight(totalMeatKg)} kg de carne
-              </p>
-            )}
-          </div>
-
-          {/* Total blend (calculado) */}
-          <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl px-6 py-4 flex justify-between items-center">
-            <span className="font-black text-blue-700 uppercase text-sm">Total Blend</span>
-            <span className="text-3xl font-black text-blue-700">{formatWeight(totalBlend)} <span className="text-lg font-bold text-blue-400">kg</span></span>
-          </div>
-
-          {/* Burgers producidas */}
-          <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-11 h-11 bg-green-100 rounded-2xl flex items-center justify-center">
-                <Package size={22} className="text-green-600" />
-              </div>
-              <div>
-                <h4 className="font-black text-slate-800 text-lg">Burgers producidas</h4>
-                <p className="text-xs text-slate-400">Unidades totales del blend</p>
-              </div>
-            </div>
-            <div className="relative">
-              <input type="number" inputMode="numeric" placeholder="0"
-                value={units} onChange={e => setUnits(e.target.value)}
-                className="w-full p-5 text-5xl font-black text-center text-green-600 bg-green-50 border-2 border-green-200 rounded-2xl outline-none focus:border-green-500 focus:bg-white transition-all"
-              />
-              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-green-300">u</span>
-            </div>
-          </div>
-
-          {/* Desperdicio */}
-          <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-11 h-11 bg-red-100 rounded-2xl flex items-center justify-center">
-                <Trash2 size={22} className="text-red-600" />
-              </div>
-              <div>
-                <h4 className="font-black text-slate-800 text-lg">Desperdicio</h4>
-                <p className="text-xs text-slate-400">Merma del proceso</p>
-              </div>
-            </div>
-            <div className="relative">
-              <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                value={wasteKg} onChange={e => setWasteKg(e.target.value)}
-                className="w-full p-5 text-5xl font-black text-center text-red-600 bg-red-50 border-2 border-red-200 rounded-2xl outline-none focus:border-red-500 focus:bg-white transition-all"
-              />
-              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-red-300">KG</span>
-            </div>
-          </div>
-        </div>
-
-        {/* RESUMEN */}
-        <div className="bg-white border-2 border-slate-200 rounded-3xl p-7 shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-11 h-11 bg-blue-100 rounded-2xl flex items-center justify-center">
-              <span className="text-xl">🍔</span>
-            </div>
-            <h4 className="font-black text-slate-800 text-lg">Resumen del blend</h4>
-          </div>
-          <div className="space-y-3 flex-1">
-            <SRow label="Total carne"  value={`${formatWeight(totalMeatKg)} kg`} />
-            {grasa > 0 && <SRow label={`Grasa (${grasaPct}%)`} value={`+ ${formatWeight(grasa)} kg`} color="text-orange-600" bg="bg-orange-50" />}
-            <SRow label="Total blend (bruto)"  value={`${formatWeight(totalBlend)} kg`}  color="text-blue-700 text-xl" bg="bg-blue-50 border border-blue-200" />
-            <SRow label="Desperdicio"  value={waste > 0 ? `- ${formatWeight(waste)} kg` : '—'} color="text-red-600" bg="bg-red-50" />
-            <SRow label="Peso neto"  value={`${formatWeight(totalBlend - waste)} kg`} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
-            <SRow label="Burgers"      value={qty > 0 ? `${qty} u` : '—'}        color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
-            <div className={`p-5 rounded-2xl border-2 text-center transition-all ${qty > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
-              <p className={`text-xs font-black uppercase mb-1 ${qty > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Peso prom / burger</p>
-              <span className={`text-4xl font-black ${qty > 0 ? 'text-amber-700' : 'text-slate-300'}`}>{qty > 0 ? formatGrams(avgGrams) : '—'}</span>
-              {qty > 0 && <span className="text-lg font-bold text-amber-500 ml-1">gr</span>}
-            </div>
-
-            {/* Stock destino editable */}
-            <div className="relative">
-              <button onClick={() => setShowStockPicker(!showStockPicker)}
-                className="w-full flex justify-between items-center bg-blue-50 border border-blue-200 px-4 py-3 rounded-xl hover:bg-blue-100 transition-all">
-                <span className="text-sm font-black text-blue-700 uppercase">Stock destino</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-blue-700 text-sm">{stockDestino}</span>
-                  <ChevronDown size={14} className={`text-blue-400 transition-transform ${showStockPicker ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-              {showStockPicker && (
-                <div className="absolute bottom-full mb-1 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-2xl z-10 max-h-44 overflow-y-auto">
-                  {ALL_STOCKS.map(stock => (
-                    <button key={stock} onClick={() => { setStockDestino(stock); setShowStockPicker(false); }}
-                      className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors hover:bg-blue-50 ${stock === stockDestino ? 'bg-blue-100 text-blue-700' : 'text-slate-700'}`}>
-                      {stock}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <button onClick={() => setShowConfirm(true)} disabled={!canFinish}
-          className={`w-full py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
-            ${canFinish ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-          <CheckCircle2 size={28} /> CONFIRMAR BLEND
-        </button>
+      <div className="relative">
+        <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+          value={value} onChange={e => onChange(e.target.value)} autoFocus={autoFocus}
+          className={`w-full p-4 text-5xl font-black text-center border-2 rounded-2xl outline-none transition-all ${colors[color]}`}
+        />
+        <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-slate-300">{unit}</span>
       </div>
     </div>
   );
 }
 
+// ─── Fila resumen ────────────────────────────────────────────────────────────
 function SRow({ label, value, color = 'text-slate-800', bg = 'bg-slate-50' }: {
   label: string; value: string; color?: string; bg?: string;
 }) {
   return (
-    <div className={`flex justify-between items-center p-4 rounded-xl ${bg}`}>
+    <div className={`flex justify-between items-center p-3 rounded-xl ${bg}`}>
       <span className="text-sm font-bold text-slate-500">{label}</span>
       <span className={`font-black ${color}`}>{value}</span>
     </div>
   );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+export function Step2BurgerView({ productions, onFinish, onBack }: {
+  productions: ButcheryProduction[];
+  onFinish: (result: BurgerBlendResult) => void;
+  onBack: () => void;
+}) {
+  const [subStep, setSubStep] = useState<'peso' | 'medallones' | 'confirm'>('peso');
+
+  // Paso 2 — pesaje
+  const [carneNeta, setCarneNeta] = useState('');
+  const [grasaUtil, setGrasaUtil]  = useState('');
+  const [desperdicio, setDesperdicio] = useState('');
+  const timer2 = useTimer(subStep === 'peso');
+
+  // Paso 3 — medallones
+  const [medallones, setMedallones] = useState('');
+  const [paso2DurSeg, setPaso2DurSeg] = useState(0);
+
+  // Cálculos
+  const carneNetaKg   = parseFloat(carneNeta.replace(',', '.'))   || 0;
+  const grasaKg       = parseFloat(grasaUtil.replace(',', '.'))   || 0;
+  const wasteKg       = parseFloat(desperdicio.replace(',', '.')) || 0;
+  const totalBlendKg  = carneNetaKg + grasaKg;
+  const grasaPct      = carneNetaKg > 0 ? (grasaKg / carneNetaKg) * 100 : 0;
+  const grasaIdeal    = carneNetaKg * (GRASA_TARGET_PCT / 100);
+  const qty           = parseInt(medallones) || 0;
+  const avgGrams      = qty > 0 ? ((totalBlendKg - wasteKg) / qty) * 1000 : 0;
+
+  // Diferencia de grasa vs objetivo
+  const grasaDiff     = grasaKg - grasaIdeal;
+  const grasaOk       = Math.abs(grasaPct - GRASA_TARGET_PCT) <= 2;
+
+  const canAdvance2   = carneNetaKg > 0 && grasaKg > 0;
+  const canFinish     = qty > 0;
+
+  const handleAdvance = () => {
+    setPaso2DurSeg(timer2.elapsed);
+    setSubStep('medallones');
+  };
+
+  const handleConfirm = () => {
+    onFinish({
+      stockDestino: 'Stock Burger',
+      grasaKg,
+      units: qty,
+      wasteKg,
+      totalBlendKg,
+      carneNetaKg,
+      grasaPct,
+      paso2DurSeg,
+    });
+  };
+
+  // ── PASO 2: PESAJE ──────────────────────────────────────────────────────────
+  if (subStep === 'peso') {
+    return (
+      <div className="max-w-5xl mx-auto w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-100 transition-all">
+            <ChevronLeft size={20} /> VOLVER
+          </button>
+          <div className="text-center">
+            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">PASO 2 — BURGER</p>
+            <h2 className="text-2xl font-black text-blue-700">⚖️ Pesaje y Separación</h2>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl">
+            <Clock size={16} className="text-green-400" />
+            <span className="font-mono font-black text-green-400">{timer2.fmt}</span>
+          </div>
+        </div>
+
+        {/* Carnes que entran */}
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
+          <p className="text-xs font-black text-blue-600 uppercase mb-2">Carnes brutas del paso 1</p>
+          <div className="flex flex-wrap gap-3">
+            {productions.map(p => (
+              <div key={p.id} className="bg-white border border-blue-200 rounded-xl px-3 py-2 text-sm">
+                <span className="font-bold text-slate-600">{p.typeName}</span>
+                <span className="font-black text-blue-700 ml-2">{formatWeight(p.weightKg)} kg</span>
+              </div>
+            ))}
+            <div className="bg-blue-600 rounded-xl px-3 py-2 text-sm">
+              <span className="font-bold text-blue-200">TOTAL</span>
+              <span className="font-black text-white ml-2">{formatWeight(productions.reduce((s,p) => s + p.weightKg, 0))} kg</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+          {/* Carne neta limpia */}
+          <BigInput
+            label="🥩 Carne neta limpia"
+            sublabel="Peso real de carne limpia pesada"
+            value={carneNeta} onChange={setCarneNeta}
+            unit="KG" color="blue" autoFocus required
+          />
+
+          {/* Grasa separada - la ingresan */}
+          <div className="bg-white border-2 border-orange-100 rounded-3xl p-5 shadow-sm">
+            <div className="mb-3">
+              <h4 className="font-black text-slate-800 text-base">🫙 Grasa separada <span className="text-red-500">*</span></h4>
+              <p className="text-xs text-slate-400">La que sacaste de los cortes</p>
+            </div>
+            <div className="relative">
+              <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+                value={grasaUtil} onChange={e => setGrasaUtil(e.target.value)}
+                className="w-full p-4 text-5xl font-black text-center border-2 border-orange-200 bg-orange-50 text-orange-600 rounded-2xl outline-none focus:border-orange-500 transition-all"
+              />
+              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-orange-300">KG</span>
+            </div>
+          </div>
+
+          {/* Grasa a agregar - calculada automáticamente */}
+          <div className={`border-2 rounded-3xl p-5 shadow-sm ${carneNetaKg > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="mb-3">
+              <h4 className="font-black text-slate-800 text-base">📐 Grasa a agregar</h4>
+              <p className="text-xs text-slate-400">Calculada para llegar al {GRASA_TARGET_PCT}% sobre carne neta</p>
+            </div>
+            {carneNetaKg > 0 ? (
+              <>
+                <div className="text-center py-3">
+                  <span className="text-6xl font-black text-amber-700">{formatWeight(grasaIdeal)}</span>
+                  <span className="text-2xl font-bold text-amber-500 ml-2">kg</span>
+                </div>
+                {grasaKg > 0 && (
+                  <div className={`mt-3 flex items-center justify-center gap-2 p-2 rounded-xl text-sm font-black
+                    ${grasaOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {grasaOk
+                      ? '✓ Grasa OK'
+                      : `${grasaDiff > 0 ? 'Sobran' : 'Faltan'} ${formatWeight(Math.abs(grasaDiff))} kg`}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4 text-slate-300">
+                <p className="text-2xl font-black">—</p>
+                <p className="text-xs">Ingresá la carne neta primero</p>
+              </div>
+            )}
+          </div>
+
+          {/* Desperdicio */}
+          <BigInput
+            label="🗑️ Desperdicio"
+            sublabel="Hueso, sebo descartado, merma"
+            value={desperdicio} onChange={setDesperdicio}
+            unit="KG" color="red"
+          />
+        </div>
+
+        {/* Resumen previo */}
+        {carneNetaKg > 0 && grasaKg > 0 && (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 grid grid-cols-4 gap-4 text-center">
+            <div>
+              <p className="text-xs text-slate-400 font-bold uppercase">Carne neta</p>
+              <p className="text-2xl font-black text-blue-700">{formatWeight(carneNetaKg)} kg</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-bold uppercase">Grasa ({grasaPct.toFixed(1)}%)</p>
+              <p className="text-2xl font-black text-orange-600">{formatWeight(grasaKg)} kg</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-bold uppercase">Total blend</p>
+              <p className="text-2xl font-black text-slate-800">{formatWeight(totalBlendKg)} kg</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 font-bold uppercase">Desperdicio</p>
+              <p className="text-2xl font-black text-red-500">{wasteKg > 0 ? formatWeight(wasteKg) + ' kg' : '—'}</p>
+            </div>
+          </div>
+        )}
+
+        <button onClick={handleAdvance} disabled={!canAdvance2}
+          className={`w-full py-5 rounded-2xl font-black text-xl transition-all flex items-center justify-center gap-3
+            ${canAdvance2 ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg active:scale-[0.98]' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <CheckCircle2 size={24} /> CONFIRMAR PESAJE → PASO 3
+        </button>
+      </div>
+    );
+  }
+
+  // ── PASO 3: MEDALLONES ──────────────────────────────────────────────────────
+  if (subStep === 'medallones' || subStep === 'confirm') {
+    return (
+      <div className="max-w-4xl mx-auto w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => setSubStep('peso')} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-100 transition-all">
+            <ChevronLeft size={20} /> VOLVER
+          </button>
+          <div className="text-center">
+            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">PASO 3 — BURGER</p>
+            <h2 className="text-2xl font-black text-green-700">🍔 Medallones</h2>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl">
+            <Clock size={16} className="text-green-400" />
+            <span className="font-mono font-black text-green-400 text-sm">Paso 2: {Math.floor(paso2DurSeg/60).toString().padStart(2,'0')}:{(paso2DurSeg%60).toString().padStart(2,'0')}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Cantidad medallones */}
+          <div className="space-y-5">
+            <div className="bg-white border-2 border-green-200 rounded-3xl p-6 shadow-sm">
+              <div className="mb-4">
+                <h4 className="font-black text-slate-800 text-lg">🍔 Cantidad de medallones <span className="text-red-500">*</span></h4>
+                <p className="text-xs text-slate-400">Unidades totales producidas</p>
+                {totalBlendKg > 0 && (
+                  <p className="text-xs font-bold text-green-600 mt-1">
+                    Blend disponible: {formatWeight(totalBlendKg - wasteKg)} kg neto
+                  </p>
+                )}
+              </div>
+              <div className="relative">
+                <input type="number" inputMode="numeric" placeholder="0"
+                  value={medallones} onChange={e => setMedallones(e.target.value)} autoFocus
+                  className="w-full p-5 text-6xl font-black text-center border-2 border-green-200 bg-green-50 text-green-600 rounded-2xl outline-none focus:border-green-500 focus:bg-white transition-all"
+                />
+                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-green-300">u</span>
+              </div>
+              {qty > 0 && (
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+                  <p className="text-xs text-amber-600 font-black uppercase mb-1">Peso promedio por medallón</p>
+                  <p className="text-4xl font-black text-amber-700">{formatGrams(avgGrams)} <span className="text-xl font-bold text-amber-500">gr</span></p>
+                </div>
+              )}
+            </div>
+
+            {/* Stock destino */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl px-5 py-4 flex items-center justify-between">
+              <span className="font-black text-blue-700 text-sm uppercase">Stock destino</span>
+              <span className="font-black text-blue-800">🍔 Stock Burger</span>
+            </div>
+          </div>
+
+          {/* Resumen completo */}
+          <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm">
+            <h4 className="font-black text-slate-800 text-base mb-4">📋 Resumen final</h4>
+            <div className="space-y-2">
+              <SRow label="Carne neta" value={`${formatWeight(carneNetaKg)} kg`} />
+              <SRow label={`Grasa (${grasaPct.toFixed(1)}%)`} value={`+ ${formatWeight(grasaKg)} kg`} color="text-orange-600" bg="bg-orange-50" />
+              <SRow label="Total blend" value={`${formatWeight(totalBlendKg)} kg`} color="text-blue-700 text-lg" bg="bg-blue-50 border border-blue-200" />
+              {wasteKg > 0 && <SRow label="Desperdicio" value={`- ${formatWeight(wasteKg)} kg`} color="text-red-600" bg="bg-red-50" />}
+              <SRow label="Peso neto" value={`${formatWeight(totalBlendKg - wasteKg)} kg`} color="text-green-700 text-lg" bg="bg-green-50 border border-green-200" />
+              <SRow label="Medallones" value={qty > 0 ? `${qty} u` : '—'} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
+              {qty > 0 && <SRow label="Peso prom/u" value={`${formatGrams(avgGrams)} gr`} color="text-amber-700 text-lg" bg="bg-amber-50 border border-amber-200" />}
+              <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-400 text-center">
+                <div className="bg-slate-50 rounded-xl p-2">
+                  <p className="font-bold uppercase">Timer paso 2</p>
+                  <p className="font-black text-slate-600">{Math.floor(paso2DurSeg/60)}:{(paso2DurSeg%60).toString().padStart(2,'0')} min</p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-2">
+                  <p className="font-bold uppercase">% grasa final</p>
+                  <p className={`font-black ${grasaOk ? 'text-green-600' : 'text-amber-600'}`}>{grasaPct.toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button onClick={handleConfirm} disabled={!canFinish}
+          className={`w-full mt-8 py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
+            ${canFinish ? 'bg-green-600 text-white hover:bg-green-500 shadow-xl active:scale-[0.98]' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <CheckCircle2 size={28} /> CONFIRMAR PRODUCCIÓN → STOCK BURGER
+        </button>
+      </div>
+    );
+  }
+
+  return null;
 }

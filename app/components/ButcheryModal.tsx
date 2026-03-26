@@ -177,13 +177,14 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     const now = Date.now();
     const batchKind = step2Queue[0]?.kind ?? 'burger';
 
-    // Descontar kg de cada corte en Supabase
+    // Descontar kg de cada corte en Supabase (basado en carne neta real)
     for (const prod of step2Queue) {
       await deductStockByName(prod.typeName, prod.weightKg);
     }
     // Un registro por corte (consumo de materia prima)
     step2Queue.forEach((prod, i) => {
-      const wasteShare = (prod.weightKg / (result.totalBlendKg - result.grasaKg)) * result.wasteKg;
+      const baseKg = result.carneNetaKg ?? (result.totalBlendKg - result.grasaKg);
+      const wasteShare = baseKg > 0 ? (prod.weightKg / baseKg) * result.wasteKg : 0;
       setButcheryRecords(prev => [...prev, {
         id: now + i, date: prod.date,
         kind: batchKind,
