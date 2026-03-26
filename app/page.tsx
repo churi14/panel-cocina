@@ -27,7 +27,6 @@ export default function Dashboard() {
   const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
   const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
   const [isRecipeManagerOpen, setIsRecipeManagerOpen] = useState(false);
-  const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
 
   // --- DATOS EN MEMORIA (Base de Datos Local) ---
   
@@ -213,7 +212,6 @@ export default function Dashboard() {
       {/* MODALES CONECTADOS A LA DB EN MEMORIA */}
       {isSuppliersModalOpen && <SuppliersModal onClose={() => setIsSuppliersModalOpen(false)} suppliersDB={suppliersDB} setSuppliersDB={setSuppliersDB} />}
       {isRecipeManagerOpen && <RecipeManagerModal onClose={() => setIsRecipeManagerOpen(false)} recipes={recipesDB} setRecipes={setRecipesDB} />}
-      {isReportsModalOpen && <ReportsModal onClose={() => setIsReportsModalOpen(false)} history={productionHistory} />}
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProduction={activeProduction} setActiveProduction={setActiveProduction} recipesDB={recipesDB} setProductionHistory={setProductionHistory} />}
 
     </div>
