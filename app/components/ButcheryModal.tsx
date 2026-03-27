@@ -12,6 +12,18 @@ import { Step2BurgerView, BurgerBlendResult } from './butchery/Step2BurgerView';
 import { supabase } from '../supabase';
 import { addToStockProduccion } from './butchery/stockProduccion';
 
+// Registrar evento de producción para notificaciones admin
+async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string) {
+  try {
+    await supabase.from('produccion_eventos').insert({
+      tipo, kind, corte, peso_kg: pesoKg,
+      detalle: detalle ?? '',
+      fecha: new Date().toISOString(),
+    });
+  } catch (e) { console.error('Error logging evento:', e); }
+}
+
+
 // Descuenta kg de la tabla stock en Supabase buscando por nombre de corte
 async function deductStockByName(nombreCorte: string, kgToDeduct: number) {
   if (!kgToDeduct || kgToDeduct <= 0) return;
@@ -106,6 +118,11 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
       })),
     ]);
     setView('list');
+    // Log inicio de producción
+    entries.forEach(e => {
+      logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
+        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`);
+    });
   };
 
   // Finaliza solo el paso 1 del lote indicado
@@ -144,6 +161,10 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     if (!prod) return;
     // Descontar materia prima
     await deductStockByName(prod.typeName, prod.weightKg);
+
+    // Log fin paso 2
+    await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
+      `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}`);
 
     // Sumar a stock de producción
     const kindLabel = prod.kind ?? 'lomito';
@@ -237,6 +258,10 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
         avgWeightPerUnit: (result.totalBlendKg / result.units) * 1000,
       } : p
     ));
+
+    // Log fin burger
+    await logProduccionEvento('fin_paso2', 'burger', 'Blend', result.totalBlendKg,
+      `Finalizó burger — ${result.units} medallones`);
 
     // Sumar medallones a stock de producción
     await addToStockProduccion({

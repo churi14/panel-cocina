@@ -144,16 +144,12 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
     fetchMovements();
 
     const channel = supabase
-      .channel('stock_movements_admin')
+      .channel('admin_realtime')
       .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'stock_movements',
+        event: 'INSERT', schema: 'public', table: 'stock_movements',
       }, (payload) => {
         const m = payload.new as Movement;
-        // Agregar al listado
         setMovements(prev => [m, ...prev]);
-        // Notificación
         const notif: Notification = {
           id: Date.now(),
           message: `${m.operador ?? 'Alguien'} ${m.tipo === 'ingreso' ? 'cargó' : 'descontó'} ${m.cantidad} ${m.unidad} de ${m.nombre}`,
@@ -167,6 +163,20 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
           egresos: m.tipo === 'egreso' ? prev.egresos + 1 : prev.egresos,
           hoy: prev.hoy + 1,
         }));
+      })
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'produccion_eventos',
+      }, (payload) => {
+        const e = payload.new as any;
+        const emoji = e.kind === 'lomito' ? '🥩' : e.kind === 'burger' ? '🍔' : '🥪';
+        const tipo = e.tipo === 'inicio_paso1' ? 'INICIO' : 'FINALIZADO';
+        const notif: Notification = {
+          id: Date.now(),
+          message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})`,
+          type: e.tipo === 'inicio_paso1' ? 'ingreso' : 'egreso',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setNotifications(prev => [notif, ...prev].slice(0, 20));
       })
       .subscribe();
 
