@@ -105,8 +105,11 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
   const [filterOp, setFilterOp] = useState('all');
   const [stock, setStock] = useState<any[]>([]);
   const [stockProd, setStockProd] = useState<any[]>([]);
+  const [produccionEventos, setProduccionEventos] = useState<any[]>([]);
+  const [selectedProdItem, setSelectedProdItem] = useState<any | null>(null);
   const [stockCat, setStockCat] = useState('all');
   const [stockSearch, setStockSearch] = useState('');
+  const [stockSubTab, setStockSubTab] = useState<'materiales' | 'produccion'>('materiales');
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
   const [stats, setStats] = useState({ ingresos: 0, egresos: 0, operadores: 0, hoy: 0 });
   const audioRef = useRef<boolean>(false);
@@ -118,6 +121,8 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
     setStock(stockData ?? []);
     const { data: prodData } = await supabase.from('stock_produccion').select('*').order('categoria').order('producto');
     setStockProd(prodData ?? []);
+    const { data: eventosData } = await supabase.from('produccion_eventos').select('*').order('fecha', { ascending: false }).limit(200);
+    setProduccionEventos(eventosData ?? []);
 
     const { data } = await supabase
       .from('stock_movements')
@@ -419,118 +424,315 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
 
 
         {/* ── PRODUCCIÓN ── */}
-        {activeTab === 'produccion' && (
-          <div className="max-w-6xl mx-auto space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {activeTab === 'produccion' && (() => {
+          const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
+            lomito:   { emoji: '🥩', color: 'text-rose-400',  bg: 'bg-rose-500/10',  border: 'border-rose-500/30',  headerBg: 'bg-rose-500/20' },
+            burger:   { emoji: '🍔', color: 'text-blue-400',  bg: 'bg-blue-500/10',  border: 'border-blue-500/30',  headerBg: 'bg-blue-500/20' },
+            milanesa: { emoji: '🥪', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', headerBg: 'bg-amber-500/20' },
+          };
+          return (
+            <div className="max-w-6xl mx-auto space-y-6">
+
+              {/* Totales rápidos */}
+              <div className="grid grid-cols-3 gap-4">
+                {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
+                  const cfg = PROD_CFG[cat];
+                  const catItems = stockProd.filter((s: any) => s.categoria === cat);
+                  const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
+                  const unit = cat === 'milanesa' ? 'kg' : 'u';
+                  return (
+                    <div key={cat} className={`rounded-2xl border-2 p-5 ${cfg.bg} ${cfg.border}`}>
+                      <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
+                      <p className={`text-4xl font-black ${cfg.color}`}>
+                        {cat === 'milanesa' ? total.toFixed(2) : Math.round(total)}
+                        <span className="text-lg font-bold opacity-60 ml-1">{unit}</span>
+                      </p>
+                      <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{catItems.length} productos</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Detalle por categoría — cards clickeables */}
               {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
+                const cfg = PROD_CFG[cat];
                 const catItems = stockProd.filter((s: any) => s.categoria === cat);
-                const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
-                const emoji = cat === 'lomito' ? '🥩' : cat === 'burger' ? '🍔' : '🥪';
-                const color = cat === 'lomito' ? 'text-rose-400' : cat === 'burger' ? 'text-blue-400' : 'text-amber-400';
-                const bg = cat === 'lomito' ? 'bg-rose-500/10 border-rose-500/30' : cat === 'burger' ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30';
-                const unit = cat === 'milanesa' ? 'kg' : 'u';
+                if (catItems.length === 0) return null;
                 return (
-                  <div key={cat} className={`bg-slate-900 border ${bg} rounded-2xl p-5`}>
-                    <p className="text-xs font-black uppercase text-slate-500 mb-1">{emoji} {cat}</p>
-                    <p className={`text-4xl font-black ${color}`}>{total.toFixed(cat === 'milanesa' ? 2 : 0)} <span className="text-lg font-bold text-slate-500">{unit}</span></p>
-                    <p className="text-xs text-slate-600 mt-1">{catItems.length} productos</p>
+                  <div key={cat} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
+                      <h2 className={`font-black text-sm uppercase ${cfg.color}`}>{cfg.emoji} {cat}</h2>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500">{catItems.length} items · click para ver historial</span>
+                        <button onClick={fetchMovements} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
+                          <RefreshCw size={12} /> Actualizar
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                      {catItems.map((item: any) => (
+                        <div key={item.id} onClick={() => setSelectedProdItem(item)}
+                          className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
+                          <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
+                          <p className={`text-3xl font-black ${cfg.color}`}>
+                            {cat === 'milanesa' ? item.cantidad.toFixed(2) : Math.round(item.cantidad)}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                          {item.ultima_prod && (
+                            <p className="text-xs text-slate-600 mt-2">
+                              {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-slate-600 mt-2 font-bold uppercase tracking-wide">Ver historial →</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })}
-            </div>
 
-            {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
-              const catItems = stockProd.filter((s: any) => s.categoria === cat);
-              if (catItems.length === 0) return null;
-              const emoji = cat === 'lomito' ? '🥩' : cat === 'burger' ? '🍔' : '🥪';
-              return (
-                <div key={cat} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                  <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                    <h2 className="font-bold text-white">{emoji} {cat.charAt(0).toUpperCase() + cat.slice(1)}</h2>
-                    <button onClick={fetchMovements} className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
-                      <RefreshCw size={12} /> Actualizar
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
-                    {catItems.map((item: any) => (
-                      <div key={item.id} className="bg-slate-800 rounded-2xl p-4">
-                        <p className="font-bold text-slate-300 text-sm mb-2">{item.producto}</p>
-                        <p className="text-3xl font-black text-white">{cat === 'milanesa' ? item.cantidad.toFixed(2) : Math.round(item.cantidad)}</p>
-                        <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
-                        {item.ultima_prod && (
-                          <p className="text-xs text-slate-600 mt-2">
-                            {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}
+              {stockProd.length === 0 && (
+                <div className="text-center py-16 text-slate-600">
+                  <p className="text-4xl mb-4">🍔</p>
+                  <p className="font-bold text-lg">No hay stock de producción todavía</p>
+                  <p className="text-sm mt-1">Aparecerá aquí cuando se confirmen producciones</p>
+                </div>
+              )}
+
+              {/* ── MODAL HISTORIAL DE PRODUCCIÓN ── */}
+              {selectedProdItem && (() => {
+                const keyword = selectedProdItem.producto?.toLowerCase() ?? '';
+                // Match por corte o producto en produccion_eventos
+                const itemEventos = produccionEventos.filter(e => {
+                  const corte = (e.corte ?? '').toLowerCase();
+                  const detalle = (e.detalle ?? '').toLowerCase();
+                  const cat = selectedProdItem.categoria;
+                  // match por kind + corte o detalle
+                  return e.kind === cat || corte.includes(keyword) || detalle.includes(keyword);
+                }).slice(0, 60);
+
+                const formatEvFecha = (f: string) => {
+                  if (!f) return '—';
+                  const d = new Date(f);
+                  return `${d.toLocaleDateString('es-AR')} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+                };
+
+                const TIPO_LABELS: Record<string, { label: string; color: string }> = {
+                  inicio_paso1: { label: '▶ Inicio P1',    color: 'bg-blue-500/20 text-blue-300' },
+                  fin_paso2:    { label: '✓ Fin P2',       color: 'bg-green-500/20 text-green-300' },
+                  inicio_cocina:{ label: '🍳 Inicio',      color: 'bg-amber-500/20 text-amber-300' },
+                  fin_cocina:   { label: '✓ Fin cocina',   color: 'bg-green-500/20 text-green-300' },
+                };
+
+                return (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedProdItem(null)}>
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <div>
+                          <h2 className="font-black text-white text-lg">{selectedProdItem.producto}</h2>
+                          <p className="text-slate-400 text-xs">
+                            Stock actual: <span className="font-black text-white">{selectedProdItem.categoria === 'milanesa' ? selectedProdItem.cantidad.toFixed(2) : Math.round(selectedProdItem.cantidad)} {selectedProdItem.unidad}</span>
+                            {selectedProdItem.ultima_prod && (
+                              <> · Última prod: <span className="font-black text-white">{new Date(selectedProdItem.ultima_prod).toLocaleDateString('es-AR')}</span></>
+                            )}
                           </p>
+                        </div>
+                        <button onClick={() => setSelectedProdItem(null)} className="p-2 hover:bg-slate-800 rounded-xl">
+                          <X size={20} className="text-slate-400" />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        {itemEventos.length === 0 ? (
+                          <div className="py-16 text-center text-slate-600">
+                            <p className="text-3xl mb-3">📋</p>
+                            <p className="font-bold">Sin eventos registrados</p>
+                          </div>
+                        ) : (
+                          <table className="w-full text-sm">
+                            <thead className="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0">
+                              <tr>
+                                <th className="px-5 py-3 text-left">Fecha</th>
+                                <th className="px-5 py-3 text-left">Evento</th>
+                                <th className="px-5 py-3 text-left">Detalle</th>
+                                <th className="px-5 py-3 text-right">Kg</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                              {itemEventos.map((e: any) => {
+                                const tl = TIPO_LABELS[e.tipo] ?? { label: e.tipo, color: 'bg-slate-500/20 text-slate-400' };
+                                return (
+                                  <tr key={e.id} className="hover:bg-slate-800/40 transition-colors">
+                                    <td className="px-5 py-3 text-slate-400 font-mono text-xs whitespace-nowrap">{formatEvFecha(e.fecha)}</td>
+                                    <td className="px-5 py-3">
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-black ${tl.color}`}>{tl.label}</span>
+                                    </td>
+                                    <td className="px-5 py-3 text-slate-300 text-xs max-w-[200px] truncate">{e.detalle ?? e.corte ?? '—'}</td>
+                                    <td className="px-5 py-3 text-right font-black text-white">{e.peso_kg ?? '—'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         )}
                       </div>
+                      <div className="px-6 py-3 border-t border-slate-800 text-xs text-slate-500 shrink-0">
+                        {itemEventos.length} eventos · últimos 60
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+          );
+        })()}
+
+        {/* ── STOCK ── */}
+        {activeTab === 'stock' && (() => {
+          const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
+            lomito:   { emoji: '🥩', color: 'text-rose-400',  bg: 'bg-rose-500/10',  border: 'border-rose-500/30',  headerBg: 'bg-rose-500/20' },
+            burger:   { emoji: '🍔', color: 'text-blue-400',  bg: 'bg-blue-500/10',  border: 'border-blue-500/30',  headerBg: 'bg-blue-500/20' },
+            milanesa: { emoji: '🥪', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', headerBg: 'bg-amber-500/20' },
+          };
+          return (
+          <div className="max-w-6xl mx-auto space-y-6">
+
+            {/* Sub-tabs Materiales / Producción */}
+            <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 w-fit">
+              {([
+                { id: 'materiales', label: '📦 Materiales' },
+                { id: 'produccion', label: '🍔 Producción' },
+              ] as const).map(t => (
+                <button key={t.id} onClick={() => setStockSubTab(t.id)}
+                  className={`px-5 py-2 rounded-xl text-sm font-bold transition-all
+                    ${stockSubTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── SUB-TAB MATERIALES ── */}
+            {stockSubTab === 'materiales' && (
+              <>
+                {/* Filtros */}
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
+                  <div className="relative flex-1 min-w-48">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input type="text" placeholder="Buscar producto..." value={stockSearch}
+                      onChange={e => setStockSearch(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-300 outline-none focus:border-slate-500" />
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {['all', ...new Set(stock.map(s => s.categoria))].map(cat => (
+                      <button key={cat} onClick={() => setStockCat(cat)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${stockCat === cat ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+                        {cat === 'all' ? 'TODOS' : cat}
+                      </button>
                     ))}
                   </div>
                 </div>
-              );
-            })}
 
-            {stockProd.length === 0 && (
-              <div className="text-center py-16 text-slate-600">
-                <p className="font-bold text-lg">No hay stock de producción todavía</p>
-                <p className="text-sm mt-1">Aparecerá aquí cuando se confirmen producciones</p>
-              </div>
+                {/* Grid por categoría */}
+                {[...new Set(stock.filter(s => stockCat === 'all' || s.categoria === stockCat).map(s => s.categoria))].map(cat => {
+                  const catItems = stock.filter(s => s.categoria === cat && (stockCat === 'all' || s.categoria === stockCat) && s.nombre.toLowerCase().includes(stockSearch.toLowerCase()));
+                  if (catItems.length === 0) return null;
+                  const CAT_EMOJI: Record<string,string> = { CARNES:'🥩',VERDURA:'🥗',FIAMBRE:'🧀',SECOS:'🧂',BEBIDAS:'🥤',LIMPIEZA:'🧴',BROLAS:'🍫',DESCARTABLES:'📦' };
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between px-4 py-2.5 rounded-xl mb-3 bg-slate-900 border border-slate-800">
+                        <span className="font-black text-sm uppercase text-slate-300">{CAT_EMOJI[cat] ?? '📦'} {cat}</span>
+                        <span className="text-xs text-slate-500">{catItems.length} items</span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {catItems.map((item: any) => {
+                          const zero = item.cantidad === 0;
+                          const low = !zero && item.cantidad < 5;
+                          return (
+                            <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
+                              <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
+                              <p className={`text-2xl font-black ${zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
+                                {zero ? '—' : `${item.cantidad} ${item.unidad}`}
+                              </p>
+                              {zero && <p className="text-xs text-red-400 font-black mt-1">SIN STOCK</p>}
+                              {item.fecha_vencimiento && <p className="text-xs text-slate-600 mt-1">Vence: {item.fecha_vencimiento}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
             )}
-          </div>
-        )}
 
-        {/* ── STOCK ── */}
-        {activeTab === 'stock' && (
-          <div className="max-w-6xl mx-auto space-y-6">
-            {/* Filtros */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
-              <div className="relative flex-1 min-w-48">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input type="text" placeholder="Buscar producto..." value={stockSearch}
-                  onChange={e => setStockSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-300 outline-none focus:border-slate-500" />
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {['all', ...new Set(stock.map(s => s.categoria))].map(cat => (
-                  <button key={cat} onClick={() => setStockCat(cat)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${stockCat === cat ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
-                    {cat === 'all' ? 'TODOS' : cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Grid por categoría */}
-            {[...new Set(stock.filter(s => stockCat === 'all' || s.categoria === stockCat).map(s => s.categoria))].map(cat => {
-              const catItems = stock.filter(s => s.categoria === cat && (stockCat === 'all' || s.categoria === stockCat) && s.nombre.toLowerCase().includes(stockSearch.toLowerCase()));
-              if (catItems.length === 0) return null;
-              const CAT_EMOJI: Record<string,string> = { CARNES:'🥩',VERDURA:'🥗',FIAMBRE:'🧀',SECOS:'🧂',BEBIDAS:'🥤',LIMPIEZA:'🧴',BROLAS:'🍫',DESCARTABLES:'📦' };
-              return (
-                <div key={cat}>
-                  <div className="flex items-center justify-between px-4 py-2.5 rounded-xl mb-3 bg-slate-900 border border-slate-800">
-                    <span className="font-black text-sm uppercase text-slate-300">{CAT_EMOJI[cat] ?? '📦'} {cat}</span>
-                    <span className="text-xs text-slate-500">{catItems.length} items</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {catItems.map((item: any) => {
-                      const zero = item.cantidad === 0;
-                      const low = !zero && item.cantidad < 5;
-                      return (
-                        <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
-                          <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
-                          <p className={`text-2xl font-black ${zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
-                            {zero ? '—' : `${item.cantidad} ${item.unidad}`}
-                          </p>
-                          {zero && <p className="text-xs text-red-400 font-black mt-1">SIN STOCK</p>}
-                          {item.fecha_vencimiento && <p className="text-xs text-slate-600 mt-1">Vence: {item.fecha_vencimiento}</p>}
-                        </div>
-                      );
-                    })}
-                  </div>
+            {/* ── SUB-TAB PRODUCCIÓN ── */}
+            {stockSubTab === 'produccion' && (
+              <>
+                {/* Totales */}
+                <div className="grid grid-cols-3 gap-4">
+                  {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
+                    const cfg = PROD_CFG[cat];
+                    const catItems = stockProd.filter((s: any) => s.categoria === cat);
+                    const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
+                    const unit = cat === 'milanesa' ? 'kg' : 'u';
+                    return (
+                      <div key={cat} className={`rounded-2xl border-2 p-5 ${cfg.bg} ${cfg.border}`}>
+                        <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
+                        <p className={`text-4xl font-black ${cfg.color}`}>
+                          {cat === 'milanesa' ? total.toFixed(2) : Math.round(total)}
+                          <span className="text-lg font-bold opacity-60 ml-1">{unit}</span>
+                        </p>
+                        <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{catItems.length} productos</p>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+
+                {/* Detalle por categoría */}
+                {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
+                  const cfg = PROD_CFG[cat];
+                  const catItems = stockProd.filter((s: any) => s.categoria === cat);
+                  if (catItems.length === 0) return null;
+                  return (
+                    <div key={cat} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                      <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
+                        <h2 className={`font-black text-sm uppercase ${cfg.color}`}>{cfg.emoji} {cat}</h2>
+                        <span className="text-xs text-slate-500">{catItems.length} items · click para historial</span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                        {catItems.map((item: any) => (
+                          <div key={item.id} onClick={() => setSelectedProdItem(item)}
+                            className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
+                            <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
+                            <p className={`text-3xl font-black ${cfg.color}`}>
+                              {cat === 'milanesa' ? item.cantidad.toFixed(2) : Math.round(item.cantidad)}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                            {item.ultima_prod && (
+                              <p className="text-xs text-slate-600 mt-2">
+                                {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-slate-600 mt-2 font-bold uppercase tracking-wide">Ver historial →</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {stockProd.length === 0 && (
+                  <div className="text-center py-16 text-slate-600">
+                    <p className="text-4xl mb-4">🍔</p>
+                    <p className="font-bold text-lg">No hay stock de producción todavía</p>
+                  </div>
+                )}
+              </>
+            )}
+
           </div>
-        )}
+          );
+        })()}
 
         {/* ── REPORTES ── */}
         {activeTab === 'reports' && (
