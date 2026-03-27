@@ -477,7 +477,7 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
           </div>
         )}
 
-        {/* ── STOCK ── */
+        {/* ── STOCK ── */}
         {activeTab === 'stock' && (
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Filtros */}
