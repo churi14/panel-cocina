@@ -157,7 +157,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     const pendingBatch = batch.filter(p => p.status === 'step2_pending' || p.status === 'step2_running');
     setButcheryProductions(prev => prev.map(p =>
       pendingBatch.find(b => b.id === p.id)
-        ? { ...p, status: 'step2_running' as const, step2StartTime: now }
+        ? { ...p, status: 'step2_running' as const, step2StartTime: p.step2StartTime ?? now }
         : p
     ));
     setStep2Queue(pendingBatch);
@@ -494,6 +494,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
               <Step2BurgerView
                 key={step2Queue.map(p => p.id).join('-')}
                 productions={step2Queue}
+                step2StartTime={step2Queue[0]?.step2StartTime ?? Date.now()}
                 onFinish={handleFinishBurgerBlend}
                 onBack={handleBackFromStep2}
               />

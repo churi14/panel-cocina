@@ -107,6 +107,7 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
   const [stockProd, setStockProd] = useState<any[]>([]);
   const [stockCat, setStockCat] = useState('all');
   const [stockSearch, setStockSearch] = useState('');
+  const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
   const [stats, setStats] = useState({ ingresos: 0, egresos: 0, operadores: 0, hoy: 0 });
   const audioRef = useRef<boolean>(false);
 
@@ -168,18 +169,8 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
         event: 'INSERT', schema: 'public', table: 'produccion_eventos',
       }, (payload) => {
         const e = payload.new as any;
-
-        // ✅ Soporte para eventos de carnicería Y cocina
-        const emoji =
-          e.kind === 'lomito'  ? '🥩' :
-          e.kind === 'burger'  ? '🍔' :
-          e.kind === 'cocina'  ? '🍳' : '🥪';
-
-        const tipo =
-          e.tipo === 'inicio_paso1' ? 'INICIO' :
-          e.tipo === 'inicio_cocina' ? 'INICIO COCINA' :
-          e.tipo === 'fin_cocina'    ? 'FIN COCINA' : 'FINALIZADO';
-
+        const emoji = e.kind === 'lomito' ? '🥩' : e.kind === 'burger' ? '🍔' : e.kind === 'cocina' ? '🍳' : '🥪';
+        const tipo = e.tipo === 'inicio_paso1' ? 'INICIO' : e.tipo === 'inicio_cocina' ? 'INICIO COCINA' : e.tipo === 'fin_cocina' ? 'FIN COCINA' : 'FINALIZADO';
         const notif: Notification = {
           id: Date.now(),
           message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})`,
@@ -524,7 +515,7 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
                       const zero = item.cantidad === 0;
                       const low = !zero && item.cantidad < 5;
                       return (
-                        <div key={item.id} className={`rounded-2xl border-2 p-4 ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
+                        <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
                           <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
                           <p className={`text-2xl font-black ${zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
                             {zero ? '—' : `${item.cantidad} ${item.unidad}`}
@@ -597,6 +588,68 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
             </div>
           </div>
         )}
+
+        {/* ── HISTORIAL DE ITEM ── */}
+        {selectedStockItem && (() => {
+          const itemMovs = movements
+            .filter(m => m.nombre?.toLowerCase() === selectedStockItem.nombre?.toLowerCase())
+            .slice(0, 50);
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedStockItem(null)}>
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                  <div>
+                    <h2 className="font-black text-white text-lg">{selectedStockItem.nombre}</h2>
+                    <p className="text-slate-400 text-xs">{selectedStockItem.categoria} · Stock actual: <span className="font-black text-white">{selectedStockItem.cantidad} {selectedStockItem.unidad}</span></p>
+                  </div>
+                  <button onClick={() => setSelectedStockItem(null)} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+                {/* Movimientos */}
+                <div className="flex-1 overflow-y-auto">
+                  {itemMovs.length === 0 ? (
+                    <div className="py-16 text-center text-slate-600">
+                      <Package size={32} className="mx-auto mb-3 opacity-30" />
+                      <p className="font-bold">Sin movimientos registrados</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0">
+                        <tr>
+                          <th className="px-5 py-3 text-left">Fecha</th>
+                          <th className="px-5 py-3 text-left">Operador</th>
+                          <th className="px-5 py-3 text-left">Tipo</th>
+                          <th className="px-5 py-3 text-left">Motivo</th>
+                          <th className="px-5 py-3 text-right">Cantidad</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {itemMovs.map(m => (
+                          <tr key={m.id} className="hover:bg-slate-800/40 transition-colors">
+                            <td className="px-5 py-3 text-slate-400 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
+                            <td className="px-5 py-3 font-bold text-slate-300">{m.operador ?? '—'}</td>
+                            <td className="px-5 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-black ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {m.tipo === 'ingreso' ? '↑ IN' : '↓ OUT'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-slate-400 text-xs max-w-[180px] truncate">{m.motivo ?? '—'}</td>
+                            <td className="px-5 py-3 text-right font-black text-white">{m.cantidad} {m.unidad}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <div className="px-6 py-3 border-t border-slate-800 text-xs text-slate-500 shrink-0">
+                  {itemMovs.length} movimientos · últimos 50
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </main>
     </div>
   );

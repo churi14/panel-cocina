@@ -1,35 +1,39 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Scale, Flame, Trash2, Package, ChevronLeft, Clock } from 'lucide-react';
+import { CheckCircle2, Scale, Flame, Trash2, Package, ChevronLeft, Clock, AlertTriangle } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
 import { formatWeight, formatGrams } from './cuts';
 
-const GRASA_TARGET_PCT = 34; // % objetivo de grasa
+const GRASA_TARGET_PCT = 34; // % objetivo de grasa sobre carne neta
+const GRASA_TOLERANCE_G = 100; // tolerancia ±100 gramos para considerar OK
 
 export type BurgerBlendResult = {
   stockDestino: string;
-  grasaKg: number;
+  grasaKg: number;       // grasa total usada (ideal = carne * 0.34)
   units: number;
-  wasteKg: number;
-  totalBlendKg: number;
+  wasteKg: number;       // desperdicio auto-calculado
+  totalBlendKg: number;  // carne neta + grasa ideal
   carneNetaKg: number;
   grasaPct: number;
   paso2DurSeg: number;
+  grasaSeparadaKg: number; // la que sacaron de los cortes
+  grasaExtraKg: number;    // la que agregaron del stock
 };
 
-// ─── Timer hook ───────────────────────────────────────────────────────────────
-function useTimer(running: boolean) {
-  const [elapsed, setElapsed] = useState(0);
-  const [startAt] = useState(Date.now());
+// ─── Timer hook — arranca desde step2StartTime real, no remontea ──────────────
+function useTimer(step2StartTime: number) {
+  const [elapsed, setElapsed] = useState(() => Math.floor((Date.now() - step2StartTime) / 1000));
   useEffect(() => {
-    if (!running) return;
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startAt) / 1000)), 1000);
+    const t = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - step2StartTime) / 1000));
+    }, 1000);
     return () => clearInterval(t);
-  }, [running]);
+  }, [step2StartTime]);
+
   const fmt = (s: number) => {
     const m = Math.floor(s / 60), sec = s % 60;
-    return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
   return { elapsed, fmt: fmt(elapsed) };
 }
@@ -53,7 +57,8 @@ function BigInput({ label, sublabel, value, onChange, unit, color = 'blue', auto
         {sublabel && <p className="text-xs text-slate-400">{sublabel}</p>}
       </div>
       <div className="relative">
-        <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+        <input
+          type="number" inputMode="decimal" step="0.001" placeholder="0,000"
           value={value} onChange={e => onChange(e.target.value)} autoFocus={autoFocus}
           className={`w-full p-4 text-5xl font-black text-center border-2 rounded-2xl outline-none transition-all ${colors[color]}`}
         />
@@ -63,7 +68,7 @@ function BigInput({ label, sublabel, value, onChange, unit, color = 'blue', auto
   );
 }
 
-// ─── Fila resumen ────────────────────────────────────────────────────────────
+// ─── Fila resumen ─────────────────────────────────────────────────────────────
 function SRow({ label, value, color = 'text-slate-800', bg = 'bg-slate-50' }: {
   label: string; value: string; color?: string; bg?: string;
 }) {
@@ -76,39 +81,61 @@ function SRow({ label, value, color = 'text-slate-800', bg = 'bg-slate-50' }: {
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export function Step2BurgerView({ productions, onFinish, onBack }: {
+export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack }: {
   productions: ButcheryProduction[];
+  step2StartTime: number;
   onFinish: (result: BurgerBlendResult) => void;
   onBack: () => void;
 }) {
-  const [subStep, setSubStep] = useState<'peso' | 'medallones' | 'confirm'>('peso');
+  const [subStep, setSubStep] = useState<'peso' | 'medallones'>('peso');
 
-  // Paso 2 — pesaje
-  const [carneNeta, setCarneNeta] = useState('');
-  const [grasaUtil, setGrasaUtil]  = useState('');
-  const [desperdicio, setDesperdicio] = useState('');
-  const timer2 = useTimer(subStep === 'peso');
+  // Inputs de paso 2
+  const [carneNeta, setCarneNeta]   = useState('');
+  const [grasaSep,  setGrasaSep]    = useState(''); // grasa separada de los cortes
 
-  // Paso 3 — medallones
+  // Timer continuo desde step2StartTime real
+  const timer2 = useTimer(step2StartTime);
+
+  // Paso 3
   const [medallones, setMedallones] = useState('');
   const [paso2DurSeg, setPaso2DurSeg] = useState(0);
 
-  // Cálculos
-  const carneNetaKg   = parseFloat(carneNeta.replace(',', '.'))   || 0;
-  const grasaKg       = parseFloat(grasaUtil.replace(',', '.'))   || 0;
-  const wasteKg       = parseFloat(desperdicio.replace(',', '.')) || 0;
-  const totalBlendKg  = carneNetaKg + grasaKg;
-  const grasaPct      = carneNetaKg > 0 ? (grasaKg / carneNetaKg) * 100 : 0;
-  const grasaIdeal    = carneNetaKg * (GRASA_TARGET_PCT / 100);
-  const qty           = parseInt(medallones) || 0;
-  const avgGrams      = qty > 0 ? ((totalBlendKg - wasteKg) / qty) * 1000 : 0;
+  // ── Cálculos principales ──────────────────────────────────────────────────
+  const totalBrutoKg    = productions.reduce((s, p) => s + p.weightKg, 0);
+  const carneNetaKg     = parseFloat(carneNeta.replace(',', '.'))  || 0;
+  const grasaSepKg      = parseFloat(grasaSep.replace(',', '.'))   || 0;
 
-  // Diferencia de grasa vs objetivo
-  const grasaDiff     = grasaKg - grasaIdeal;
-  const grasaOk       = Math.abs(grasaPct - GRASA_TARGET_PCT) <= 2;
+  // Objetivo de grasa: 34% sobre carne neta
+  const grasaIdealKg    = carneNetaKg * (GRASA_TARGET_PCT / 100);
 
-  const canAdvance2   = carneNetaKg > 0 && grasaKg > 0;
-  const canFinish     = qty > 0;
+  // Grasa extra que hay que agregar del stock (puede ser 0 si se separó suficiente)
+  const grasaExtraKg    = Math.max(0, grasaIdealKg - grasaSepKg);
+
+  // Grasa total que va al blend (lo que se separó + lo que se agrega = ideal)
+  const grasaTotalKg    = Math.min(grasaSepKg, grasaIdealKg) + grasaExtraKg;
+  // Nota: si grasaSep > grasaIdeal, el exceso va a desperdicio
+
+  // Total blend = carne neta + grasa ideal (proyectado, asumiendo que agregan lo necesario)
+  const totalBlendKg    = carneNetaKg + grasaIdealKg;
+
+  // Desperdicio = lo que sobra del bruto al separar carne y grasa
+  // (bones, sebo descartado, merma). Auto-calculado, no manual.
+  const wasteAutoKg     = Math.max(0, totalBrutoKg - carneNetaKg - grasaSepKg);
+
+  // % de grasa real sobre carne neta
+  const grasaPct        = carneNetaKg > 0 ? (grasaIdealKg / carneNetaKg) * 100 : 0;
+
+  // ¿Falta grasa? Diferencia en gramos
+  const grasaFaltaKg    = grasaIdealKg - grasaSepKg;
+  const grasaFaltaGr    = grasaFaltaKg * 1000;
+  const grasaOk         = grasaFaltaKg <= GRASA_TOLERANCE_G / 1000; // ≤ 100g de diferencia
+
+  // Medallones
+  const qty             = parseInt(medallones) || 0;
+  const avgGrams        = qty > 0 ? (totalBlendKg / qty) * 1000 : 0;
+
+  const canAdvance2     = carneNetaKg > 0 && grasaSepKg >= 0;
+  const canFinish       = qty > 0;
 
   const handleAdvance = () => {
     setPaso2DurSeg(timer2.elapsed);
@@ -117,14 +144,16 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
 
   const handleConfirm = () => {
     onFinish({
-      stockDestino: 'Stock Burger',
-      grasaKg,
-      units: qty,
-      wasteKg,
+      stockDestino:    'Stock Burger',
+      grasaKg:         grasaIdealKg,      // grasa total usada (la ideal)
+      units:           qty,
+      wasteKg:         wasteAutoKg,
       totalBlendKg,
       carneNetaKg,
       grasaPct,
       paso2DurSeg,
+      grasaSeparadaKg: grasaSepKg,
+      grasaExtraKg,
     });
   };
 
@@ -141,13 +170,14 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">PASO 2 — BURGER</p>
             <h2 className="text-2xl font-black text-blue-700">⚖️ Pesaje y Separación</h2>
           </div>
+          {/* Timer continuo — sigue aunque vuelvas para atrás */}
           <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl">
             <Clock size={16} className="text-green-400" />
             <span className="font-mono font-black text-green-400">{timer2.fmt}</span>
           </div>
         </div>
 
-        {/* Carnes que entran */}
+        {/* Carnes que entran (del paso 1) */}
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
           <p className="text-xs font-black text-blue-600 uppercase mb-2">Carnes brutas del paso 1</p>
           <div className="flex flex-wrap gap-3">
@@ -159,13 +189,13 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             ))}
             <div className="bg-blue-600 rounded-xl px-3 py-2 text-sm">
               <span className="font-bold text-blue-200">TOTAL</span>
-              <span className="font-black text-white ml-2">{formatWeight(productions.reduce((s,p) => s + p.weightKg, 0))} kg</span>
+              <span className="font-black text-white ml-2">{formatWeight(totalBrutoKg)} kg</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-          {/* Carne neta limpia */}
+        {/* Inputs: solo carne neta y grasa separada */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
           <BigInput
             label="🥩 Carne neta limpia"
             sublabel="Peso real de carne limpia pesada"
@@ -173,61 +203,63 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             unit="KG" color="blue" autoFocus required
           />
 
-          {/* Grasa separada - la ingresan */}
-          <div className="bg-white border-2 border-orange-100 rounded-3xl p-5 shadow-sm">
-            <div className="mb-3">
-              <h4 className="font-black text-slate-800 text-base">🫙 Grasa separada <span className="text-red-500">*</span></h4>
-              <p className="text-xs text-slate-400">La que sacaste de los cortes</p>
-            </div>
-            <div className="relative">
-              <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                value={grasaUtil} onChange={e => setGrasaUtil(e.target.value)}
-                className="w-full p-4 text-5xl font-black text-center border-2 border-orange-200 bg-orange-50 text-orange-600 rounded-2xl outline-none focus:border-orange-500 transition-all"
-              />
-              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-orange-300">KG</span>
-            </div>
-          </div>
-
-          {/* Grasa a agregar - calculada automáticamente */}
-          <div className={`border-2 rounded-3xl p-5 shadow-sm ${carneNetaKg > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="mb-3">
-              <h4 className="font-black text-slate-800 text-base">📐 Grasa a agregar</h4>
-              <p className="text-xs text-slate-400">Calculada para llegar al {GRASA_TARGET_PCT}% sobre carne neta</p>
-            </div>
-            {carneNetaKg > 0 ? (
-              <>
-                <div className="text-center py-3">
-                  <span className="text-6xl font-black text-amber-700">{formatWeight(grasaIdeal)}</span>
-                  <span className="text-2xl font-bold text-amber-500 ml-2">kg</span>
-                </div>
-                {grasaKg > 0 && (
-                  <div className={`mt-3 flex items-center justify-center gap-2 p-2 rounded-xl text-sm font-black
-                    ${grasaOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {grasaOk
-                      ? '✓ Grasa OK'
-                      : `${grasaDiff > 0 ? 'Sobran' : 'Faltan'} ${formatWeight(Math.abs(grasaDiff))} kg`}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-4 text-slate-300">
-                <p className="text-2xl font-black">—</p>
-                <p className="text-xs">Ingresá la carne neta primero</p>
-              </div>
-            )}
-          </div>
-
-          {/* Desperdicio */}
           <BigInput
-            label="🗑️ Desperdicio"
-            sublabel="Hueso, sebo descartado, merma"
-            value={desperdicio} onChange={setDesperdicio}
-            unit="KG" color="red"
+            label="🫙 Grasa separada de los cortes"
+            sublabel="Solo la que extrajiste durante la limpieza"
+            value={grasaSep} onChange={setGrasaSep}
+            unit="KG" color="orange" required
           />
         </div>
 
-        {/* Resumen previo */}
-        {carneNetaKg > 0 && grasaKg > 0 && (
+        {/* Panel calculado automáticamente */}
+        {carneNetaKg > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+
+            {/* Grasa a agregar del stock */}
+            <div className={`rounded-2xl p-5 border-2 ${grasaOk ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}>
+              <p className="text-xs font-black uppercase text-slate-500 mb-1">📐 Objetivo grasa (34%)</p>
+              <p className="text-3xl font-black text-slate-800">{formatWeight(grasaIdealKg)} <span className="text-lg font-bold text-slate-400">kg</span></p>
+              {grasaSepKg > 0 && (
+                <div className={`mt-3 rounded-xl p-2 text-center text-sm font-black ${grasaOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {grasaOk
+                    ? '✓ Grasa OK'
+                    : grasaFaltaKg > 0
+                      ? `⚠ Agregar ${formatWeight(grasaExtraKg)} kg (${Math.round(grasaFaltaGr)} gr) del stock`
+                      : `Sobran ${formatWeight(Math.abs(grasaFaltaKg))} kg`}
+                </div>
+              )}
+              {grasaSepKg === 0 && (
+                <p className="text-xs text-slate-400 mt-2">Ingresá la grasa separada →</p>
+              )}
+            </div>
+
+            {/* Desperdicio auto-calculado */}
+            <div className="bg-red-50 border-2 border-red-100 rounded-2xl p-5">
+              <p className="text-xs font-black uppercase text-slate-500 mb-1">🗑️ Desperdicio (auto)</p>
+              <p className="text-3xl font-black text-red-600">
+                {carneNetaKg > 0 ? formatWeight(wasteAutoKg) : '—'} <span className="text-lg font-bold text-red-300">kg</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-2">Bruto − Neta − Grasa sep.</p>
+            </div>
+
+            {/* Total blend proyectado */}
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-5">
+              <p className="text-xs font-black uppercase text-slate-500 mb-1">⚡ Total blend</p>
+              <p className="text-3xl font-black text-blue-700">
+                {formatWeight(totalBlendKg)} <span className="text-lg font-bold text-blue-400">kg</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-2">Neta + Grasa ideal (34%)</p>
+              {grasaExtraKg > 0 && (
+                <p className="text-xs font-black text-amber-600 mt-1">
+                  + {formatWeight(grasaExtraKg)} kg del stock de grasa
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Resumen previo completo */}
+        {carneNetaKg > 0 && (
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 grid grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase">Carne neta</p>
@@ -235,7 +267,7 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase">Grasa ({grasaPct.toFixed(1)}%)</p>
-              <p className="text-2xl font-black text-orange-600">{formatWeight(grasaKg)} kg</p>
+              <p className="text-2xl font-black text-orange-600">{formatWeight(grasaIdealKg)} kg</p>
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase">Total blend</p>
@@ -243,7 +275,18 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-bold uppercase">Desperdicio</p>
-              <p className="text-2xl font-black text-red-500">{wasteKg > 0 ? formatWeight(wasteKg) + ' kg' : '—'}</p>
+              <p className="text-2xl font-black text-red-500">{formatWeight(wasteAutoKg)} kg</p>
+            </div>
+          </div>
+        )}
+
+        {/* Warning si hay que agregar grasa del stock */}
+        {grasaExtraKg > 0.001 && carneNetaKg > 0 && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-5 flex items-center gap-3">
+            <AlertTriangle className="text-amber-600 shrink-0" size={22} />
+            <div>
+              <p className="font-black text-amber-800">Agregar {formatWeight(grasaExtraKg)} kg ({Math.round(grasaExtraKg * 1000)} gr) del stock de grasa</p>
+              <p className="text-xs text-amber-600">Tenés {formatWeight(grasaSepKg)} kg separados. El objetivo es {formatWeight(grasaIdealKg)} kg (34%).</p>
             </div>
           </div>
         )}
@@ -258,7 +301,7 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
   }
 
   // ── PASO 3: MEDALLONES ──────────────────────────────────────────────────────
-  if (subStep === 'medallones' || subStep === 'confirm') {
+  if (subStep === 'medallones') {
     return (
       <div className="max-w-4xl mx-auto w-full">
         {/* Header */}
@@ -270,14 +313,17 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">PASO 3 — BURGER</p>
             <h2 className="text-2xl font-black text-green-700">🍔 Medallones</h2>
           </div>
+          {/* Muestra el tiempo total del paso 2 */}
           <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl">
             <Clock size={16} className="text-green-400" />
-            <span className="font-mono font-black text-green-400 text-sm">Paso 2: {Math.floor(paso2DurSeg/60).toString().padStart(2,'0')}:{(paso2DurSeg%60).toString().padStart(2,'0')}</span>
+            <span className="font-mono font-black text-green-400 text-sm">
+              Paso 2: {Math.floor(paso2DurSeg / 60).toString().padStart(2, '0')}:{(paso2DurSeg % 60).toString().padStart(2, '0')}
+            </span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cantidad medallones */}
+          {/* Input cantidad medallones */}
           <div className="space-y-5">
             <div className="bg-white border-2 border-green-200 rounded-3xl p-6 shadow-sm">
               <div className="mb-4">
@@ -285,12 +331,13 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
                 <p className="text-xs text-slate-400">Unidades totales producidas</p>
                 {totalBlendKg > 0 && (
                   <p className="text-xs font-bold text-green-600 mt-1">
-                    Blend disponible: {formatWeight(totalBlendKg - wasteKg)} kg neto
+                    Blend total: {formatWeight(totalBlendKg)} kg
                   </p>
                 )}
               </div>
               <div className="relative">
-                <input type="number" inputMode="numeric" placeholder="0"
+                <input
+                  type="number" inputMode="numeric" placeholder="0"
                   value={medallones} onChange={e => setMedallones(e.target.value)} autoFocus
                   className="w-full p-5 text-6xl font-black text-center border-2 border-green-200 bg-green-50 text-green-600 rounded-2xl outline-none focus:border-green-500 focus:bg-white transition-all"
                 />
@@ -316,16 +363,45 @@ export function Step2BurgerView({ productions, onFinish, onBack }: {
             <h4 className="font-black text-slate-800 text-base mb-4">📋 Resumen final</h4>
             <div className="space-y-2">
               <SRow label="Carne neta" value={`${formatWeight(carneNetaKg)} kg`} />
-              <SRow label={`Grasa (${grasaPct.toFixed(1)}%)`} value={`+ ${formatWeight(grasaKg)} kg`} color="text-orange-600" bg="bg-orange-50" />
-              <SRow label="Total blend" value={`${formatWeight(totalBlendKg)} kg`} color="text-blue-700 text-lg" bg="bg-blue-50 border border-blue-200" />
-              {wasteKg > 0 && <SRow label="Desperdicio" value={`- ${formatWeight(wasteKg)} kg`} color="text-red-600" bg="bg-red-50" />}
-              <SRow label="Peso neto" value={`${formatWeight(totalBlendKg - wasteKg)} kg`} color="text-green-700 text-lg" bg="bg-green-50 border border-green-200" />
+              <SRow
+                label={`Grasa separada`}
+                value={`${formatWeight(grasaSepKg)} kg`}
+                color="text-orange-500" bg="bg-orange-50"
+              />
+              {grasaExtraKg > 0.001 && (
+                <SRow
+                  label={`+ Grasa del stock`}
+                  value={`+ ${formatWeight(grasaExtraKg)} kg`}
+                  color="text-amber-700 font-black"
+                  bg="bg-amber-50 border border-amber-200"
+                />
+              )}
+              <SRow
+                label={`Grasa total (${grasaPct.toFixed(1)}%)`}
+                value={`${formatWeight(grasaIdealKg)} kg`}
+                color="text-orange-600"
+                bg="bg-orange-50"
+              />
+              <SRow
+                label="Total blend"
+                value={`${formatWeight(totalBlendKg)} kg`}
+                color="text-blue-700 text-lg"
+                bg="bg-blue-50 border border-blue-200"
+              />
+              <SRow
+                label="Desperdicio (auto)"
+                value={`- ${formatWeight(wasteAutoKg)} kg`}
+                color="text-red-500"
+                bg="bg-red-50"
+              />
               <SRow label="Medallones" value={qty > 0 ? `${qty} u` : '—'} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
-              {qty > 0 && <SRow label="Peso prom/u" value={`${formatGrams(avgGrams)} gr`} color="text-amber-700 text-lg" bg="bg-amber-50 border border-amber-200" />}
+              {qty > 0 && (
+                <SRow label="Peso prom/u" value={`${formatGrams(avgGrams)} gr`} color="text-amber-700 text-lg" bg="bg-amber-50 border border-amber-200" />
+              )}
               <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-400 text-center">
                 <div className="bg-slate-50 rounded-xl p-2">
                   <p className="font-bold uppercase">Timer paso 2</p>
-                  <p className="font-black text-slate-600">{Math.floor(paso2DurSeg/60)}:{(paso2DurSeg%60).toString().padStart(2,'0')} min</p>
+                  <p className="font-black text-slate-600">{Math.floor(paso2DurSeg / 60)}:{(paso2DurSeg % 60).toString().padStart(2, '0')} min</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-2">
                   <p className="font-bold uppercase">% grasa final</p>
