@@ -11,6 +11,7 @@ import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView, BurgerBlendResult } from './butchery/Step2BurgerView';
 import { supabase } from '../supabase';
 import { addToStockProduccion } from './butchery/stockProduccion';
+import { saveProduccion, saveProduccionesMany, markProduccionDone } from './butchery/produccionPersistence';
 
 // Registrar evento de producción para notificaciones admin
 async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string) {
@@ -118,6 +119,14 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
       })),
     ]);
     setView('list');
+    // Guardar en Supabase
+    const newProds: ButcheryProduction[] = entries.map((e, i) => ({
+      id: now + i, batchId: now, type: e.type, typeName: getCutLabel(e.type),
+      cut: getCutLabel(e.type), weightKg: e.weight, kind,
+      startTime: now, status: 'step1_running' as const, date: new Date().toLocaleDateString(),
+      startTimeFormatted: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }));
+    saveProduccionesMany(newProds);
     // Log inicio de producción
     entries.forEach(e => {
       logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
@@ -154,6 +163,9 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     setStep2Queue(pendingBatch);
     setStep2Index(0);
     setView('step2');
+    // Actualizar en Supabase
+    const now3 = Date.now();
+    pendingBatch.forEach(p => saveProduccion({ ...p, status: 'step2_running', step2StartTime: now3 }));
   };
 
   const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string) => {
@@ -211,6 +223,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
         wasteKg, netWeightKg: netWeight, avgWeightPerUnit: avgGrams,
       }
     ));
+    // Marcar como done en Supabase
+    markProduccionDone(prod.id);
 
     const next = step2Index + 1;
     if (next < step2Queue.length) {
@@ -270,6 +284,9 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
       cantidad: result.units,
       unidad: 'u',
     });
+
+    // Marcar todos como done en Supabase
+    step2Queue.forEach(p => markProduccionDone(p.id));
 
     setStep2Queue([]); setStep2Index(0); setView('list');
   };

@@ -17,6 +17,7 @@ import SuppliersModal from './components/Suppliersmodal';
 import KitchenProductionModal from './components/Kitchenproductionmodal';
 import { NavItem, StationCard, QuickActionCard } from './components/Uicomponents';
 import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, ButcheryProduction, ButcheryRecord } from './types';
+import { loadProduccionesActivas, cleanOldProducciones } from './components/butchery/produccionPersistence';
 
 export default function Dashboard() {
   // --- ESTADOS DE MODALES ---
@@ -121,6 +122,16 @@ export default function Dashboard() {
   ]);
 
   const [activeProduction, setActiveProduction] = useState<ActiveProduction>(null);
+
+  // Cargar producciones activas desde Supabase al iniciar
+  useEffect(() => {
+    loadProduccionesActivas().then(prods => {
+      if (prods.length > 0) {
+        setButcheryProductions(prods);
+      }
+    });
+    cleanOldProducciones();
+  }, []);
 
   // 4. Producciones de Carnicería (multi-producción simultánea)
   const [butcheryProductions, setButcheryProductions] = useState<ButcheryProduction[]>([]);
