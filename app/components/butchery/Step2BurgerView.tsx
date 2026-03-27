@@ -221,11 +221,7 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
               <p className="text-3xl font-black text-slate-800">{formatWeight(grasaIdealKg)} <span className="text-lg font-bold text-slate-400">kg</span></p>
               {grasaSepKg > 0 && (
                 <div className={`mt-3 rounded-xl p-2 text-center text-sm font-black ${grasaOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {grasaOk
-                    ? '✓ Grasa OK'
-                    : grasaFaltaKg > 0
-                      ? `⚠ Agregar ${formatWeight(grasaExtraKg)} kg (${Math.round(grasaFaltaGr)} gr) del stock`
-                      : `Sobran ${formatWeight(Math.abs(grasaFaltaKg))} kg`}
+                  {grasaOk ? '✓ Grasa OK' : grasaFaltaKg > 0 ? '⚠ Ver aviso abajo' : `Sobran ${formatWeight(Math.abs(grasaFaltaKg))} kg`}
                 </div>
               )}
               {grasaSepKg === 0 && (
@@ -280,13 +276,25 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
           </div>
         )}
 
-        {/* Warning si hay que agregar grasa del stock */}
+        {/* ─── AVISO GRASA A AGREGAR — tamaño grande, imposible de ignorar ─── */}
         {grasaExtraKg > 0.001 && carneNetaKg > 0 && (
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-5 flex items-center gap-3">
-            <AlertTriangle className="text-amber-600 shrink-0" size={22} />
-            <div>
-              <p className="font-black text-amber-800">Agregar {formatWeight(grasaExtraKg)} kg ({Math.round(grasaExtraKg * 1000)} gr) del stock de grasa</p>
-              <p className="text-xs text-amber-600">Tenés {formatWeight(grasaSepKg)} kg separados. El objetivo es {formatWeight(grasaIdealKg)} kg (34%).</p>
+          <div className="mb-5 rounded-3xl border-4 border-amber-400 bg-amber-50 shadow-lg overflow-hidden">
+            <div className="bg-amber-400 px-6 py-3 flex items-center gap-3">
+              <AlertTriangle size={24} className="text-white shrink-0" />
+              <span className="text-white font-black text-lg uppercase tracking-wide">Agregar grasa del stock</span>
+            </div>
+            <div className="px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-baseline gap-3">
+                <span className="text-7xl font-black text-amber-700">{formatWeight(grasaExtraKg)}</span>
+                <span className="text-3xl font-black text-amber-500">kg</span>
+                <span className="text-4xl font-black text-amber-400 mx-2">/</span>
+                <span className="text-5xl font-black text-amber-600">{Math.round(grasaExtraKg * 1000)}</span>
+                <span className="text-3xl font-black text-amber-500">gr</span>
+              </div>
+              <div className="text-right text-sm text-amber-700 space-y-1">
+                <p className="font-bold">Separados: <span className="font-black">{formatWeight(grasaSepKg)} kg</span></p>
+                <p className="font-bold">Objetivo (34%): <span className="font-black">{formatWeight(grasaIdealKg)} kg</span></p>
+              </div>
             </div>
           </div>
         )}
