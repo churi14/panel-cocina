@@ -18,6 +18,7 @@ import KitchenProductionModal from './components/Kitchenproductionmodal';
 import { NavItem, StationCard, QuickActionCard } from './components/Uicomponents';
 import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, ButcheryProduction, ButcheryRecord } from './types';
 import { loadProduccionesActivas, cleanOldProducciones } from './components/butchery/produccionPersistence';
+import { supabase } from './supabase';
 
 export default function Dashboard() {
   // --- ESTADOS DE MODALES ---
@@ -125,12 +126,31 @@ export default function Dashboard() {
 
   // Cargar producciones activas desde Supabase al iniciar
   useEffect(() => {
+    // Carnicería
     loadProduccionesActivas().then(prods => {
       if (prods.length > 0) {
         setButcheryProductions(prods);
       }
     });
     cleanOldProducciones();
+
+    // ✅ Cocina: restaurar producción activa si existía al hacer F5
+    supabase
+      .from('cocina_produccion_activa')
+      .select('*')
+      .eq('status', 'running')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setActiveProduction({
+            recipeName: data.recipe_name,
+            targetUnits: parseFloat(data.target_units),
+            unit: data.unit,
+            startTime: data.start_time,
+            status: 'running',
+          });
+        }
+      });
   }, []);
 
   // 4. Producciones de Carnicería (multi-producción simultánea)

@@ -5,6 +5,7 @@ import {
   CheckCircle2, Clock, Calculator, AlertCircle, Wheat, Droplet, ChefHat
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
+import { supabase } from '../supabase';
 
 function formatQty(grams: number): string {
   if (grams >= 1000) {
@@ -20,6 +21,53 @@ const KITCHEN_CATEGORIES = [
   { id: 'Milanesas',   label: 'Milanesas',   border: 'border-rose-200',  hover: 'hover:border-rose-400',  icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
   { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200', hover: 'hover:border-blue-400',  icon: <Clock size={48} className="text-blue-600 mb-4" /> },
 ];
+
+// ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
+
+async function saveCocinaProduccion(recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number) {
+  try {
+    // Borra cualquier producción activa anterior y guarda la nueva
+    await supabase.from('cocina_produccion_activa').delete().neq('id', 0);
+    await supabase.from('cocina_produccion_activa').insert({
+      recipe_name: recipeName,
+      target_units: targetUnits,
+      unit,
+      base_qty_kg: baseQtyKg,
+      start_time: startTime,
+      status: 'running',
+      updated_at: new Date().toISOString(),
+    });
+    // Notificar al panel admin via produccion_eventos
+    await supabase.from('produccion_eventos').insert({
+      tipo: 'inicio_cocina',
+      kind: 'cocina',
+      corte: recipeName,
+      peso_kg: baseQtyKg,
+      detalle: `Inicio cocina — ${recipeName}`,
+      fecha: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('Error guardando producción cocina:', e);
+  }
+}
+
+async function clearCocinaProduccion(recipeName: string, baseQtyKg: number) {
+  try {
+    await supabase.from('cocina_produccion_activa').delete().neq('id', 0);
+    await supabase.from('produccion_eventos').insert({
+      tipo: 'fin_cocina',
+      kind: 'cocina',
+      corte: recipeName,
+      peso_kg: baseQtyKg,
+      detalle: `Fin cocina — ${recipeName}`,
+      fecha: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('Error limpiando producción cocina:', e);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function KitchenProductionModal({ onClose, activeProduction, setActiveProduction, recipesDB, setProductionHistory }: any) {
   const [view, setView] = useState<'category' | 'product' | 'recipe'>(activeProduction ? 'recipe' : 'category');
@@ -46,6 +94,10 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
         setSelectedProduct(found);
         setTargetUnits(activeProduction.targetUnits);
         setCheckedIngredients(new Set(found.ingredients.map((_: any, i: number) => i)));
+        // Restaurar baseQtyKg si la unidad es kg base
+        if (activeProduction.unit === 'kg base') {
+          setBaseQtyKg(String(activeProduction.targetUnits));
+        }
       }
     }
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
@@ -84,19 +136,30 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const allChecked = selectedProduct ? checkedIngredients.size === selectedProduct.ingredients.length : false;
   const canStart = isPercent ? baseQtyGr > 0 && allChecked : targetUnits > 0 && allChecked;
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!canStart || !selectedProduct) return;
+    const now = Date.now();
+    const finalTargetUnits = isPercent ? parseFloat(baseQtyKg) : targetUnits;
+    const finalUnit = isPercent ? 'kg base' : selectedProduct.unit;
+    const finalBaseKg = parseFloat(baseQtyKg || '0');
+
     setActiveProduction({
       recipeName: selectedProduct.name,
-      targetUnits: isPercent ? parseFloat(baseQtyKg) : targetUnits,
-      unit: isPercent ? 'kg base' : selectedProduct.unit,
-      startTime: Date.now(), status: 'running',
+      targetUnits: finalTargetUnits,
+      unit: finalUnit,
+      startTime: now,
+      status: 'running',
     });
+
+    // Persistir en Supabase y notificar al admin
+    await saveCocinaProduccion(selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     const endTime = Date.now();
     const dur = (endTime - activeProduction.startTime) / 1000;
+    const baseKg = parseFloat(baseQtyKg || String(activeProduction.targetUnits) || '0');
+
     setProductionHistory((prev: ProductionRecord[]) => [...prev, {
       id: Date.now(), date: new Date().toLocaleDateString(), timestamp: endTime,
       recipeName: activeProduction.recipeName,
@@ -105,6 +168,10 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
       startTime: new Date(activeProduction.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
+
+    // Limpiar Supabase y notificar al admin
+    await clearCocinaProduccion(activeProduction.recipeName, baseKg);
+
     setActiveProduction(null);
     onClose();
   };

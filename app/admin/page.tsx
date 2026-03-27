@@ -168,12 +168,22 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
         event: 'INSERT', schema: 'public', table: 'produccion_eventos',
       }, (payload) => {
         const e = payload.new as any;
-        const emoji = e.kind === 'lomito' ? '🥩' : e.kind === 'burger' ? '🍔' : '🥪';
-        const tipo = e.tipo === 'inicio_paso1' ? 'INICIO' : 'FINALIZADO';
+
+        // ✅ Soporte para eventos de carnicería Y cocina
+        const emoji =
+          e.kind === 'lomito'  ? '🥩' :
+          e.kind === 'burger'  ? '🍔' :
+          e.kind === 'cocina'  ? '🍳' : '🥪';
+
+        const tipo =
+          e.tipo === 'inicio_paso1' ? 'INICIO' :
+          e.tipo === 'inicio_cocina' ? 'INICIO COCINA' :
+          e.tipo === 'fin_cocina'    ? 'FIN COCINA' : 'FINALIZADO';
+
         const notif: Notification = {
           id: Date.now(),
           message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})`,
-          type: e.tipo === 'inicio_paso1' ? 'ingreso' : 'egreso',
+          type: (e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setNotifications(prev => [notif, ...prev].slice(0, 20));
