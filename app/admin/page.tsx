@@ -505,84 +505,181 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
                 </div>
               )}
 
-              {/* ── MODAL HISTORIAL DE PRODUCCIÓN ── */}
+              {/* ── DASHBOARD DE PRODUCCIÓN POR ITEM ── */}
               {selectedProdItem && (() => {
-                const keyword = selectedProdItem.producto?.toLowerCase() ?? '';
-                // Match por corte o producto en produccion_eventos
-                const itemEventos = produccionEventos.filter(e => {
-                  const corte = (e.corte ?? '').toLowerCase();
-                  const detalle = (e.detalle ?? '').toLowerCase();
-                  const cat = selectedProdItem.categoria;
-                  // match por kind + corte o detalle
-                  return e.kind === cat || corte.includes(keyword) || detalle.includes(keyword);
-                }).slice(0, 60);
+                const cat = selectedProdItem.categoria as string;
+                const TIPO_LABELS: Record<string, { label: string; color: string }> = {
+                  inicio_paso1:  { label: '▶ Inicio P1',   color: 'bg-blue-500/20 text-blue-300' },
+                  fin_paso2:     { label: '✓ Fin P2',      color: 'bg-green-500/20 text-green-300' },
+                  inicio_cocina: { label: '🍳 Inicio',     color: 'bg-amber-500/20 text-amber-300' },
+                  fin_cocina:    { label: '✓ Fin cocina',  color: 'bg-green-500/20 text-green-300' },
+                };
+                const PROD_CFG: Record<string, { emoji: string; color: string; bar: string }> = {
+                  lomito:   { emoji: '🥩', color: 'text-rose-400',  bar: 'bg-rose-500' },
+                  burger:   { emoji: '🍔', color: 'text-blue-400',  bar: 'bg-blue-500' },
+                  milanesa: { emoji: '🥪', color: 'text-amber-400', bar: 'bg-amber-500' },
+                };
+                const cfg = PROD_CFG[cat] ?? { emoji: '🏭', color: 'text-slate-400', bar: 'bg-slate-500' };
+                const isKg = selectedProdItem.unidad === 'kg';
 
-                const formatEvFecha = (f: string) => {
+                // Eventos de fin_paso2 de esta categoría = cada producción completada
+                const finales = produccionEventos
+                  .filter(e => e.tipo === 'fin_paso2' && e.kind === cat)
+                  .slice(0, 60);
+
+                // Agrupar por día para el gráfico
+                const porDia: Record<string, number> = {};
+                finales.forEach(e => {
+                  const dia = e.fecha?.slice(0, 10) ?? '';
+                  if (!dia) return;
+                  porDia[dia] = (porDia[dia] ?? 0) + (e.peso_kg ?? 0);
+                });
+                const diasOrdenados = Object.entries(porDia).sort((a, b) => a[0].localeCompare(b[0]));
+                const maxKg = Math.max(...diasOrdenados.map(([, v]) => v), 1);
+
+                // KPIs
+                const totalKg      = finales.reduce((s, e) => s + (e.peso_kg ?? 0), 0);
+                const totalProdsMes = finales.length;
+                const promDiario   = diasOrdenados.length > 0 ? (totalKg / diasOrdenados.length).toFixed(1) : '—';
+                const ultimaFecha  = finales[0]?.fecha ? new Date(finales[0].fecha).toLocaleDateString('es-AR') : '—';
+
+                // Tendencia: últimos 3 días vs 3 anteriores
+                const dias = diasOrdenados;
+                const mitad = Math.floor(dias.length / 2);
+                const recientes  = dias.slice(-Math.max(1, mitad)).reduce((s, [, v]) => s + v, 0);
+                const anteriores = dias.slice(0, mitad).reduce((s, [, v]) => s + v, 0);
+                const tendencia  = anteriores > 0 ? ((recientes - anteriores) / anteriores * 100).toFixed(0) : null;
+
+                const formatFechaCorta = (f: string) => {
+                  const d = new Date(f + 'T12:00:00');
+                  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+                };
+                const formatFechaLarga = (f: string) => {
                   if (!f) return '—';
                   const d = new Date(f);
                   return `${d.toLocaleDateString('es-AR')} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
                 };
 
-                const TIPO_LABELS: Record<string, { label: string; color: string }> = {
-                  inicio_paso1: { label: '▶ Inicio P1',    color: 'bg-blue-500/20 text-blue-300' },
-                  fin_paso2:    { label: '✓ Fin P2',       color: 'bg-green-500/20 text-green-300' },
-                  inicio_cocina:{ label: '🍳 Inicio',      color: 'bg-amber-500/20 text-amber-300' },
-                  fin_cocina:   { label: '✓ Fin cocina',   color: 'bg-green-500/20 text-green-300' },
-                };
-
                 return (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setSelectedProdItem(null)}>
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                    onClick={() => setSelectedProdItem(null)}>
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[88vh] flex flex-col shadow-2xl"
+                      onClick={e => e.stopPropagation()}>
+
+                      {/* Header */}
                       <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-                        <div>
-                          <h2 className="font-black text-white text-lg">{selectedProdItem.producto}</h2>
-                          <p className="text-slate-400 text-xs">
-                            Stock actual: <span className="font-black text-white">{selectedProdItem.categoria === 'milanesa' ? selectedProdItem.cantidad.toFixed(2) : Math.round(selectedProdItem.cantidad)} {selectedProdItem.unidad}</span>
-                            {selectedProdItem.ultima_prod && (
-                              <> · Última prod: <span className="font-black text-white">{new Date(selectedProdItem.ultima_prod).toLocaleDateString('es-AR')}</span></>
-                            )}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{cfg.emoji}</span>
+                          <div>
+                            <h2 className={`font-black text-xl ${cfg.color}`}>{selectedProdItem.producto}</h2>
+                            <p className="text-slate-400 text-xs">
+                              Stock actual: <span className="font-black text-white">
+                                {isKg ? selectedProdItem.cantidad.toFixed(2) : Math.round(selectedProdItem.cantidad)} {selectedProdItem.unidad}
+                              </span>
+                              {selectedProdItem.ultima_prod && (
+                                <> · Última: <span className="text-white font-bold">{new Date(selectedProdItem.ultima_prod).toLocaleDateString('es-AR')}</span></>
+                              )}
+                            </p>
+                          </div>
                         </div>
                         <button onClick={() => setSelectedProdItem(null)} className="p-2 hover:bg-slate-800 rounded-xl">
                           <X size={20} className="text-slate-400" />
                         </button>
                       </div>
-                      <div className="flex-1 overflow-y-auto">
-                        {itemEventos.length === 0 ? (
-                          <div className="py-16 text-center text-slate-600">
-                            <p className="text-3xl mb-3">📋</p>
-                            <p className="font-bold">Sin eventos registrados</p>
+
+                      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                        {/* KPIs */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {[
+                            { label: 'Total kg procesados', value: `${totalKg.toFixed(1)} kg` },
+                            { label: 'Producciones',        value: `${totalProdsMes}` },
+                            { label: 'Promedio/día',        value: `${promDiario} kg` },
+                            { label: 'Última producción',   value: ultimaFecha },
+                          ].map((k, i) => (
+                            <div key={i} className="bg-slate-800 rounded-xl p-3 text-center">
+                              <p className={`text-xl font-black ${cfg.color}`}>{k.value}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{k.label}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Tendencia */}
+                        {tendencia !== null && (
+                          <div className={`rounded-xl px-4 py-3 flex items-center gap-3 ${
+                            Number(tendencia) >= 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'
+                          }`}>
+                            <span className="text-2xl">{Number(tendencia) >= 0 ? '📈' : '📉'}</span>
+                            <div>
+                              <p className={`font-black text-sm ${Number(tendencia) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {Number(tendencia) >= 0 ? '+' : ''}{tendencia}% vs período anterior
+                              </p>
+                              <p className="text-xs text-slate-500">Comparando primera y segunda mitad del historial</p>
+                            </div>
                           </div>
-                        ) : (
-                          <table className="w-full text-sm">
-                            <thead className="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0">
-                              <tr>
-                                <th className="px-5 py-3 text-left">Fecha</th>
-                                <th className="px-5 py-3 text-left">Evento</th>
-                                <th className="px-5 py-3 text-left">Detalle</th>
-                                <th className="px-5 py-3 text-right">Kg</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800">
-                              {itemEventos.map((e: any) => {
-                                const tl = TIPO_LABELS[e.tipo] ?? { label: e.tipo, color: 'bg-slate-500/20 text-slate-400' };
-                                return (
-                                  <tr key={e.id} className="hover:bg-slate-800/40 transition-colors">
-                                    <td className="px-5 py-3 text-slate-400 font-mono text-xs whitespace-nowrap">{formatEvFecha(e.fecha)}</td>
-                                    <td className="px-5 py-3">
-                                      <span className={`px-2 py-0.5 rounded-full text-xs font-black ${tl.color}`}>{tl.label}</span>
-                                    </td>
-                                    <td className="px-5 py-3 text-slate-300 text-xs max-w-[200px] truncate">{e.detalle ?? e.corte ?? '—'}</td>
-                                    <td className="px-5 py-3 text-right font-black text-white">{e.peso_kg ?? '—'}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
                         )}
-                      </div>
-                      <div className="px-6 py-3 border-t border-slate-800 text-xs text-slate-500 shrink-0">
-                        {itemEventos.length} eventos · últimos 60
+
+                        {/* Gráfico por día */}
+                        {diasOrdenados.length > 0 && (
+                          <div className="bg-slate-800 rounded-xl p-4">
+                            <p className="text-xs font-black text-slate-400 uppercase mb-3">Kg procesados por día</p>
+                            <div className="flex items-end gap-1.5 h-24">
+                              {diasOrdenados.map(([dia, kg]) => (
+                                <div key={dia} className="flex-1 flex flex-col items-center gap-1 group relative min-w-0">
+                                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-700 text-white text-[10px] font-black px-2 py-0.5 rounded
+                                    opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">
+                                    {kg.toFixed(1)} kg
+                                  </div>
+                                  <div className={`w-full ${cfg.bar} rounded-t transition-all hover:opacity-80`}
+                                    style={{ height: `${Math.max(4, (kg / maxKg) * 88)}px` }} />
+                                  <span className="text-[9px] text-slate-600 whitespace-nowrap overflow-hidden w-full text-center">
+                                    {formatFechaCorta(dia)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Historial de eventos */}
+                        <div>
+                          <p className="text-xs font-black text-slate-400 uppercase mb-2">
+                            Historial de producciones — {finales.length} registros
+                          </p>
+                          {finales.length === 0 ? (
+                            <div className="py-10 text-center text-slate-600">
+                              <p className="text-2xl mb-2">📋</p>
+                              <p className="font-bold text-sm">Sin producciones registradas</p>
+                            </div>
+                          ) : (
+                            <table className="w-full text-sm">
+                              <thead className="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0">
+                                <tr>
+                                  <th className="px-4 py-2.5 text-left">Fecha</th>
+                                  <th className="px-4 py-2.5 text-left">Evento</th>
+                                  <th className="px-4 py-2.5 text-left">Detalle</th>
+                                  <th className="px-4 py-2.5 text-right">Kg</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800">
+                                {finales.map((e: any) => {
+                                  const tl = TIPO_LABELS[e.tipo] ?? { label: e.tipo, color: 'bg-slate-500/20 text-slate-400' };
+                                  return (
+                                    <tr key={e.id} className="hover:bg-slate-800/40 transition-colors">
+                                      <td className="px-4 py-2.5 text-slate-400 font-mono text-xs whitespace-nowrap">{formatFechaLarga(e.fecha)}</td>
+                                      <td className="px-4 py-2.5">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-black ${tl.color}`}>{tl.label}</span>
+                                      </td>
+                                      <td className="px-4 py-2.5 text-slate-300 text-xs max-w-[180px] truncate">{e.detalle ?? e.corte ?? '—'}</td>
+                                      <td className="px-4 py-2.5 text-right font-black text-white">{e.peso_kg ?? '—'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+
                       </div>
                     </div>
                   </div>

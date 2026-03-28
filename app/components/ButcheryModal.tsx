@@ -26,9 +26,8 @@ async function logProduccionEvento(tipo: string, kind: string, corte: string, pe
 
 
 // Descuenta kg de la tabla stock en Supabase buscando por nombre de corte
-async function deductStockByName(nombreCorte: string, kgToDeduct: number) {
+async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string) {
   if (!kgToDeduct || kgToDeduct <= 0) return;
-  // Mapa: label del corte -> nombre en Supabase
   const CORTE_MAP: Record<string, string> = {
     'Lomo':            'LOMO',
     'Roast Beef':      'AGUJA',
@@ -58,6 +57,18 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number) {
     cantidad: newQty,
     fecha_actualizacion: new Date().toISOString().slice(0, 10),
   }).eq('id', data.id);
+  // Registrar en stock_movements para que aparezca en Movimientos del admin
+  await supabase.from('stock_movements').insert({
+    stock_id:  data.id,
+    nombre,
+    categoria: 'CARNES',
+    tipo:      'egreso',
+    cantidad:  kgToDeduct,
+    unidad:    'kg',
+    motivo:    `Producción${kind ? ' - ' + kind : ''} (${nombreCorte})`,
+    operador:  'Sistema',
+    fecha:     new Date().toISOString(),
+  });
 }
 
 
@@ -157,7 +168,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     const pendingBatch = batch.filter(p => p.status === 'step2_pending' || p.status === 'step2_running');
     setButcheryProductions(prev => prev.map(p =>
       pendingBatch.find(b => b.id === p.id)
-        ? { ...p, status: 'step2_running' as const, step2StartTime: p.step2StartTime ?? now }
+        ? { ...p, status: 'step2_running' as const, step2StartTime: now }
         : p
     ));
     setStep2Queue(pendingBatch);
@@ -172,7 +183,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     const prod = step2Queue[step2Index];
     if (!prod) return;
     // Descontar materia prima
-    await deductStockByName(prod.typeName, prod.weightKg);
+    await deductStockByName(prod.typeName, prod.weightKg, prod.kind ?? 'lomito');
 
     // Log fin paso 2
     await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
@@ -242,7 +253,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
     // Descontar kg de cada corte en Supabase (basado en carne neta real)
     for (const prod of step2Queue) {
-      await deductStockByName(prod.typeName, prod.weightKg);
+      await deductStockByName(prod.typeName, prod.weightKg, batchKind);
     }
     // Un registro por corte (consumo de materia prima)
     step2Queue.forEach((prod, i) => {
@@ -494,7 +505,6 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
               <Step2BurgerView
                 key={step2Queue.map(p => p.id).join('-')}
                 productions={step2Queue}
-                step2StartTime={step2Queue[0]?.step2StartTime ?? Date.now()}
                 onFinish={handleFinishBurgerBlend}
                 onBack={handleBackFromStep2}
               />
