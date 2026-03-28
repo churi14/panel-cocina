@@ -44,7 +44,7 @@ export default function Dashboard() {
           <ChefHat size={32} className="text-white" />
         </div>
         <div className="flex gap-1 justify-center mt-4">
-          {[0,1,2].map(i => <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: \`\${i * 0.15}s\` }} />)}
+          {[0,1,2].map(i => <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
         </div>
       </div>
     </div>
