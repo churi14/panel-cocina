@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import LoginPage from './auth/LoginPage';
+import { ChefHat } from 'lucide-react';
+
 import { 
   ChefHat, Truck, BookOpen, Droplet, LogOut, Scale, Beef, 
   UtensilsCrossed, LayoutDashboard, Settings, ChevronRight,
@@ -20,7 +24,34 @@ import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, 
 import { loadProduccionesActivas, cleanOldProducciones } from './components/butchery/produccionPersistence';
 import { supabase } from './supabase';
 
+// ── PWA: registrar service worker ────────────────────────────────────────────
+function usePWA() {
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+}
+
 export default function Dashboard() {
+  usePWA();
+  const { user, perfil, loading, signOut } = useAuth();
+
+  if (loading) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <ChefHat size={32} className="text-white" />
+        </div>
+        <div className="flex gap-1 justify-center mt-4">
+          {[0,1,2].map(i => <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: \`\${i * 0.15}s\` }} />)}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!user || !perfil) return <LoginPage />;
+
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
@@ -201,7 +232,7 @@ export default function Dashboard() {
           </nav>
         </div>
         <div className="mt-auto pt-6 border-t border-slate-100">
-           <button className="flex items-center gap-3 text-slate-500 hover:text-red-500 transition-colors w-full px-3 py-2 rounded-lg hover:bg-red-50"><LogOut size={20} /> <span className="font-medium text-sm">Cerrar Sesión</span></button>
+           <button onClick={signOut} className="flex items-center gap-3 text-slate-500 hover:text-red-500 transition-colors w-full px-3 py-2 rounded-lg hover:bg-red-50"><LogOut size={20} /> <span className="font-medium text-sm">Cerrar Sesión</span></button>
         </div>
       </aside>
 
