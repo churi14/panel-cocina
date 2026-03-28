@@ -31,9 +31,11 @@ function usePWA() {
   }, []);
 }
 
-export default function Dashboard() {
+
+// ── Auth gate — NO hooks after conditional returns ────────────────────────────
+export default function Page() {
   usePWA();
-  const { user, perfil, loading, signOut } = useAuth();
+  const { user, perfil, loading } = useAuth();
 
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -42,7 +44,10 @@ export default function Dashboard() {
           <ChefHat size={32} className="text-white" />
         </div>
         <div className="flex gap-1 justify-center mt-4">
-          {[0,1,2].map(i => <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
         </div>
       </div>
     </div>
@@ -50,6 +55,12 @@ export default function Dashboard() {
 
   if (!user || !perfil) return <LoginPage />;
 
+  return <Dashboard />;
+}
+
+// ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
+function Dashboard() {
+  const { signOut } = useAuth();
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
@@ -276,4 +287,5 @@ export default function Dashboard() {
 
     </div>
   );
+
 }
