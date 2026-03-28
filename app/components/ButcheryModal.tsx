@@ -505,6 +505,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
               <Step2BurgerView
                 key={step2Queue.map(p => p.id).join('-')}
                 productions={step2Queue}
+                step2StartTime={step2Queue[0]?.step2StartTime ?? Date.now()}
                 onFinish={handleFinishBurgerBlend}
                 onBack={handleBackFromStep2}
               />
