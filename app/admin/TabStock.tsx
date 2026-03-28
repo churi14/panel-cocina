@@ -15,6 +15,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [stockSearch, setStockSearch]     = useState('');
   const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion'>('materiales');
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
+  const [selectedProdItem, setSelectedProdItem]   = useState<any | null>(null);
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
               lomito:   { emoji: '🥩', color: 'text-rose-400',  bg: 'bg-rose-500/10',  border: 'border-rose-500/30',  headerBg: 'bg-rose-500/20' },
               burger:   { emoji: '🍔', color: 'text-blue-400',  bg: 'bg-blue-500/10',  border: 'border-blue-500/30',  headerBg: 'bg-blue-500/20' },
