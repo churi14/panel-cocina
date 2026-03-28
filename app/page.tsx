@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import LoginPage from './auth/LoginPage';
-import { ChefHat } from 'lucide-react';
-
 import { 
   ChefHat, Truck, BookOpen, Droplet, LogOut, Scale, Beef, 
   UtensilsCrossed, LayoutDashboard, Settings, ChevronRight,
