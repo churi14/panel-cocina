@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
+import TabVentas from './TabVentas';
 import {
   Lock, LogOut, Bell, Package, TrendingDown, TrendingUp,
   RefreshCw, Clock, ChevronRight, AlertTriangle, CheckCircle2,
@@ -100,7 +101,7 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'ventas'>('dashboard');
   const [filterType, setFilterType] = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp] = useState('all');
   const [stock, setStock] = useState<any[]>([]);
@@ -247,6 +248,7 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
           { id: 'stock',     label: 'Stock',      icon: <Package size={16} /> },
           { id: 'produccion', label: 'Producción',  icon: <TrendingUp size={16} /> },
           { id: 'analytics',  label: 'Analytics',   icon: <BarChart3 size={16} /> },
+          { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
         ] as const).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold border-b-2 transition-all
@@ -1056,6 +1058,9 @@ function AdminDashboard({ onLock }: { onLock: () => void }) {
             </div>
           );
         })()}
+
+        {/* ── VENTAS ── */}
+        {activeTab === 'ventas' && <TabVentas />}
 
         {/* ── HISTORIAL DE ITEM ── */}
         {selectedStockItem && (() => {
