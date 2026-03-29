@@ -84,7 +84,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         setNotifications(prev => [{
           id: Date.now(),
           message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})`,
-          type: (e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso',
+          type: ((e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso') as 'ingreso' | 'egreso' | 'alert',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }, ...prev].slice(0, 20));
       })
