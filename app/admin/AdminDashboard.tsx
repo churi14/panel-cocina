@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
-import { useAuth } from '../AuthContext';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, User
+  RefreshCw, BarChart3, Activity
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -16,6 +15,7 @@ import TabReportes    from './TabReportes';
 import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
 import PushButton     from '../components/PushButton';
+import { useAuth }    from '../AuthContext';
 
 export default function AdminDashboard({ onLock }: { onLock: () => void }) {
   const { perfil } = useAuth();
@@ -67,7 +67,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         setNotifications(prev => [{
           id: Date.now(),
           message: `${m.operador ?? 'Alguien'} ${m.tipo === 'ingreso' ? 'cargó' : 'descontó'} ${m.cantidad} ${m.unidad} de ${m.nombre}`,
-          type: m.tipo as 'ingreso' | 'egreso' | 'alert',
+          type: m.tipo,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }, ...prev].slice(0, 20));
         setStats(prev => ({
@@ -84,7 +84,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         setNotifications(prev => [{
           id: Date.now(),
           message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})`,
-          type: ((e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso') as 'ingreso' | 'egreso' | 'alert',
+          type: (e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }, ...prev].slice(0, 20));
       })
@@ -106,7 +106,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
 
       {/* TOP BAR */}
-      <header className="bg-slate-900 border-b border-slate-800 px-8 py-4 flex items-center justify-between shrink-0">
+      <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
             <span className="text-slate-900 font-black text-sm">K</span>
@@ -127,25 +127,24 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
             <RefreshCw size={18} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {perfil && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl">
+            <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl">
               <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black text-white">
                 {perfil.nombre.slice(0,1).toUpperCase()}
               </div>
-              <span className="text-slate-300 text-sm font-bold hidden md:block">{perfil.nombre}</span>
-              <span className="text-xs text-slate-500 hidden md:block">· {perfil.rol}</span>
+              <span className="text-slate-300 text-sm font-bold">{perfil.nombre}</span>
             </div>
           )}
-          <button onClick={onLock} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
-            <LogOut size={16} /> Salir
+          <button onClick={onLock} className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
+            <LogOut size={16} /> <span className="hidden md:inline">Salir</span>
           </button>
         </div>
       </header>
 
       {/* NAV */}
-      <nav className="bg-slate-900 border-b border-slate-800 px-8 flex gap-1">
+      <nav className="bg-slate-900 border-b border-slate-800 flex gap-1 overflow-x-auto scrollbar-hide px-2 md:px-8">
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold border-b-2 transition-all
+            className={`flex items-center gap-2 px-3 md:px-5 py-3 text-xs md:text-sm font-bold border-b-2 transition-all whitespace-nowrap shrink-0
               ${activeTab === tab.id ? 'border-white text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
             {tab.icon} {tab.label}
           </button>
@@ -153,7 +152,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
       </nav>
 
       {/* CONTENT */}
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8">
         {activeTab === 'dashboard'  && <TabDashboard   movements={movements} notifications={notifications} stats={stats} setNotifications={setNotifications} setActiveTab={setActiveTab} />}
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp} />}
         {activeTab === 'reports'    && <TabReportes    movements={movements} />}
