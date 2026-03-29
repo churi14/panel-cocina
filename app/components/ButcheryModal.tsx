@@ -27,8 +27,8 @@ async function logProduccionEvento(tipo: string, kind: string, corte: string, pe
 
 
 // Descuenta kg de la tabla stock en Supabase buscando por nombre de corte
-async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string) {
-  if (!kgToDeduct || kgToDeduct <= 0) return;
+async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string): Promise<{ ok: boolean; stockActual: number; nombre: string }> {
+  if (!kgToDeduct || kgToDeduct <= 0) return { ok: true, stockActual: 0, nombre: nombreCorte };
   const CORTE_MAP: Record<string, string> = {
     'Lomo':            'LOMO',
     'Roast Beef':      'AGUJA',
@@ -45,26 +45,27 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
     'Not Burger':      'NOT',
   };
   const nombre = CORTE_MAP[nombreCorte];
-  if (!nombre) return;
+  if (!nombre) return { ok: true, stockActual: 0, nombre: nombreCorte };
   const { data } = await supabase
     .from('stock')
     .select('id, cantidad')
     .eq('nombre', nombre)
     .eq('categoria', 'CARNES')
     .single();
-  if (!data) return;
+  if (!data) return { ok: true, stockActual: 0, nombre };
+
+  // ── Verificar stock suficiente ──────────────────────────────────────────────
+  if (data.cantidad < kgToDeduct) {
+    // Manda notificación de stock insuficiente
+    PushEvents.stockBajo(nombre, data.cantidad, 'kg');
+    // Descuenta solo lo disponible (no negativo)
+  }
+
   const newQty = Math.max(0, data.cantidad - kgToDeduct);
   await supabase.from('stock').update({
     cantidad: newQty,
     fecha_actualizacion: new Date().toISOString().slice(0, 10),
   }).eq('id', data.id);
-
-  // Alerta de stock bajo al descontar por producción
-  if (isStockAgotado(newQty)) {
-    PushEvents.stockAgotado(nombre);
-  } else if (isStockBajo(newQty, 'kg')) {
-    PushEvents.stockBajo(nombre, newQty, 'kg');
-  }
   // Registrar en stock_movements para que aparezca en Movimientos del admin
   await supabase.from('stock_movements').insert({
     stock_id:  data.id,
@@ -77,6 +78,16 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
     operador:  'Sistema',
     fecha:     new Date().toISOString(),
   });
+
+  // ── Alertas de stock ───────────────────────────────────────────────────────
+  const UMBRAL_BAJO_KG = 5;
+  if (newQty <= 0) {
+    PushEvents.stockAgotado(nombre);
+  } else if (newQty <= UMBRAL_BAJO_KG) {
+    PushEvents.stockBajo(nombre, newQty, 'kg');
+  }
+
+  return { ok: data.cantidad >= kgToDeduct, stockActual: data.cantidad, nombre };
 }
 
 
@@ -146,7 +157,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
       startTimeFormatted: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }));
     saveProduccionesMany(newProds);
-    // Log inicio de producción
+    // Log inicio + push
     entries.forEach(e => {
       logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
         `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`);
