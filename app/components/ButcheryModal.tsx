@@ -10,6 +10,7 @@ import { NewProductionWizard } from './butchery/NewProductionWizard';
 import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView, BurgerBlendResult } from './butchery/Step2BurgerView';
 import { supabase } from '../supabase';
+import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
 import { addToStockProduccion } from './butchery/stockProduccion';
 import { saveProduccion, saveProduccionesMany, markProduccionDone } from './butchery/produccionPersistence';
 
@@ -57,6 +58,13 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
     cantidad: newQty,
     fecha_actualizacion: new Date().toISOString().slice(0, 10),
   }).eq('id', data.id);
+
+  // Alerta de stock bajo al descontar por producción
+  if (isStockAgotado(newQty)) {
+    PushEvents.stockAgotado(nombre);
+  } else if (isStockBajo(newQty, 'kg')) {
+    PushEvents.stockBajo(nombre, newQty, 'kg');
+  }
   // Registrar en stock_movements para que aparezca en Movimientos del admin
   await supabase.from('stock_movements').insert({
     stock_id:  data.id,
@@ -142,6 +150,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     entries.forEach(e => {
       logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
         `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`);
+      PushEvents.inicioProduccion(kind, getCutLabel(e.type), e.weight);
     });
   };
 
@@ -188,6 +197,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     // Log fin paso 2
     await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
       `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}`);
+    await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit);
 
     // Sumar a stock de producción
     const kindLabel = prod.kind ?? 'lomito';
@@ -287,6 +297,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     // Log fin burger
     await logProduccionEvento('fin_paso2', 'burger', 'Blend', result.totalBlendKg,
       `Finalizó burger — ${result.units} medallones`);
+    await PushEvents.finProduccion('burger', 'Medallones', result.units, 'u');
 
     // Sumar medallones a stock de producción
     await addToStockProduccion({

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, PackageMinus, ChevronLeft, Search, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
+import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
 
@@ -79,6 +80,14 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
     }
     setSaving(true);
     const newQty = Math.max(0, selectedProduct.cantidad - qty);
+
+    // Push notifications de stock
+    if (isStockAgotado(newQty)) {
+      PushEvents.stockAgotado(selectedProduct.nombre);
+    } else if (isStockBajo(newQty, selectedProduct.unidad)) {
+      PushEvents.stockBajo(selectedProduct.nombre, newQty, selectedProduct.unidad);
+    }
+
     await supabase.from('stock').update({
       cantidad: newQty,
       fecha_actualizacion: new Date().toISOString().slice(0, 10),
