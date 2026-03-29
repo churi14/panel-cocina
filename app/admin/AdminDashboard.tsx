@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { useAuth } from '../AuthContext';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity
+  RefreshCw, BarChart3, Activity, User
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -14,8 +15,10 @@ import TabStock       from './TabStock';
 import TabReportes    from './TabReportes';
 import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
+import PushButton     from '../components/PushButton';
 
 export default function AdminDashboard({ onLock }: { onLock: () => void }) {
+  const { perfil } = useAuth();
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
@@ -119,9 +122,19 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
               </span>
             </div>
           )}
+          <PushButton />
           <button onClick={fetchMovements} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
             <RefreshCw size={18} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          {perfil && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl">
+              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black text-white">
+                {perfil.nombre.slice(0,1).toUpperCase()}
+              </div>
+              <span className="text-slate-300 text-sm font-bold hidden md:block">{perfil.nombre}</span>
+              <span className="text-xs text-slate-500 hidden md:block">· {perfil.rol}</span>
+            </div>
+          )}
           <button onClick={onLock} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
             <LogOut size={16} /> Salir
           </button>
