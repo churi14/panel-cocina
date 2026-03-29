@@ -55,6 +55,16 @@ export default function Page() {
 
   if (!user || !perfil) return <LoginPage />;
 
+  // ── Redirigir por rol ──────────────────────────────────────────────────────
+  // Admin y administrativa → panel de admin
+  if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin')) {
+      window.location.href = '/admin';
+      return null;
+    }
+  }
+
+  // Operador → panel de cocina (ya está acá)
   return <Dashboard />;
 }
 
