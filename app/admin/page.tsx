@@ -7,6 +7,13 @@ import AdminDashboard from './AdminDashboard';
 export default function AdminPage() {
   const { perfil, loading, signOut } = useAuth();
 
+  useEffect(() => {
+    if (loading) return;
+    if (!perfil || perfil.rol === 'operador') {
+      window.location.replace('/');
+    }
+  }, [perfil, loading]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -14,13 +21,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (loading) return;
-    if (!perfil || perfil.rol === 'operador') {
-      window.location.replace('/');
-    }
-  }, [perfil, loading]);
 
   if (!perfil || perfil.rol === 'operador') return null;
 

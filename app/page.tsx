@@ -37,6 +37,15 @@ export default function Page() {
   usePWA();
   const { user, perfil, loading } = useAuth();
 
+  // ── TODOS los hooks ANTES de cualquier return ──────────────────────────────
+  useEffect(() => {
+    if (loading || !user || !perfil) return;
+    if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
+      window.location.replace('/admin');
+    }
+  }, [user, perfil, loading]);
+
+  // ── Returns condicionales DESPUÉS de todos los hooks ──────────────────────
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center">
@@ -53,21 +62,9 @@ export default function Page() {
     </div>
   );
 
-  // ── Redirigir por rol ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user || !perfil || loading) return;
-    if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
-      window.location.replace('/admin');
-    }
-  }, [user, perfil, loading]);
-
-  if (loading) return null; // ya está el spinner arriba
   if (!user || !perfil) return <LoginPage />;
-
-  // Mientras redirige al admin, no mostrar nada
   if (perfil.rol === 'admin' || perfil.rol === 'administrativa') return null;
 
-  // Operador → panel de cocina
   return <Dashboard />;
 }
 
