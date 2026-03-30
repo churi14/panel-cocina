@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity
+  RefreshCw, BarChart3, Activity, ChefHat
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -134,6 +134,9 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
               <span className="text-slate-300 text-sm font-bold">{perfil.nombre}</span>
             </div>
           )}
+          <a href="/" className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
+            <ChefHat size={16} /> <span className="hidden md:inline">Cocina</span>
+          </a>
           <button onClick={onLock} className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
             <LogOut size={16} /> <span className="hidden md:inline">Salir</span>
           </button>
