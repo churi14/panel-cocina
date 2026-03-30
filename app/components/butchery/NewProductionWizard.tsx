@@ -59,20 +59,20 @@ export function NewProductionWizard({ onStart, onCancel }: {
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col justify-center">
           <div className="text-center mb-12">
-            <h3 className="text-3xl font-black text-slate-800 mb-2">¿Qué vas a producir?</h3>
-            <p className="text-slate-400 text-lg">Elegí el tipo de producción</p>
+            <h3 className="text-xl md:text-3xl font-black text-slate-800 mb-2">¿Qué vas a producir?</h3>
+            <p className="text-slate-400 text-sm md:text-lg">Elegí el tipo de producción</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto w-full">
+          <div className="grid grid-cols-3 gap-3 md:gap-6 max-w-3xl mx-auto w-full px-2">
             {PRODUCTION_KINDS.map(kind => (
               <button
                 key={kind.id}
                 onClick={() => handleSelectKind(kind.id)}
-                className={`bg-white border-2 border-slate-200 hover:${kind.borderColor} rounded-3xl p-10 flex flex-col items-center gap-5 transition-all active:scale-95 hover:shadow-xl group`}
+                className={`bg-white border-2 border-slate-200 hover:${kind.borderColor} rounded-2xl p-4 md:p-10 flex flex-col items-center gap-2 md:gap-5 transition-all active:scale-95 hover:shadow-xl group`}
               >
-                <span className="text-7xl group-hover:scale-110 transition-transform">{kind.emoji}</span>
-                <span className={`text-3xl font-black ${kind.textColor}`}>{kind.label}</span>
-                <span className="text-xs text-slate-400 font-medium text-center">{kind.description}</span>
+                <span className="text-4xl md:text-7xl group-hover:scale-110 transition-transform">{kind.emoji}</span>
+                <span className={`text-sm md:text-3xl font-black ${kind.textColor} text-center leading-tight`}>{kind.label}</span>
+                <span className="text-[10px] md:text-xs text-slate-400 font-medium text-center hidden md:block">{kind.description}</span>
               </button>
             ))}
           </div>

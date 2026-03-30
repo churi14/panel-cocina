@@ -215,14 +215,14 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
           )}
 
           {view === 'product' && !activeProduction && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {(groupedRecipes[selectedCategory] ?? []).map((r: Recipe) => (
                 <button key={r.id} onClick={() => handleProductSelect(r)}
-                  className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-500 hover:shadow-md transition-all text-left group">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-bold text-lg text-slate-800 group-hover:text-amber-600">{r.name}</h3>
-                    {r.recipeType === 'percent' && <span className="text-[10px] bg-amber-100 text-amber-700 font-black px-2 py-0.5 rounded-full">%</span>}
-                  </div>
+                  className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-amber-500 hover:shadow-md transition-all text-left group relative">
+                  {r.recipeType === 'percent' && (
+                    <span className="absolute top-3 right-3 text-[10px] bg-amber-100 text-amber-700 font-black px-2 py-0.5 rounded-full">%</span>
+                  )}
+                  <h3 className="font-bold text-base text-slate-800 group-hover:text-amber-600 pr-8 mb-1">{r.name}</h3>
                   <p className="text-xs text-slate-500">{r.recipeType === 'percent' ? 'Receta porcentual' : `Rinde: ${r.baseYield} ${r.unit}`}</p>
                   {r.warning && <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded">{r.warning}</span>}
                 </button>

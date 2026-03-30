@@ -197,7 +197,7 @@ function Dashboard() {
       .then(({ data }) => {
         if (data) {
           setActiveProduction({
-            recipeName: data.recipe_name,
+            recipeName: data.recipe_name ?? 'Producción en curso',
             targetUnits: parseFloat(data.target_units),
             unit: data.unit,
             startTime: data.start_time,
@@ -276,7 +276,7 @@ function Dashboard() {
                 </div>
                 <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${activeProduction ? 'bg-slate-900 border-green-500' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
                     <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${activeProduction ? 'bg-green-600 text-white' : 'bg-amber-100 text-amber-600'}`}><UtensilsCrossed size={28}/></div>{activeProduction && <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">EN CURSO</span>}</div>
-                    <h3 className={`text-xl font-bold mb-1 ${activeProduction ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProduction ? 'text-slate-400' : 'text-slate-400'}`}>{activeProduction ? `Produciendo: ${activeProduction.recipeName}` : 'Salsas, Panes y Prep'}</p>
+                    <h3 className={`text-xl font-bold mb-1 ${activeProduction ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProduction ? 'text-slate-400' : 'text-slate-400'}`}>{activeProduction ? `Produciendo: ${activeProduction.recipeName ?? '...'}` : 'Salsas, Panes y Prep'}</p>
                     <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProduction ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{activeProduction ? 'VER TIMER' : 'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
