@@ -53,18 +53,21 @@ export default function Page() {
     </div>
   );
 
+  // ── Redirigir por rol ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || !perfil || loading) return;
+    if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
+      window.location.replace('/admin');
+    }
+  }, [user, perfil, loading]);
+
+  if (loading) return null; // ya está el spinner arriba
   if (!user || !perfil) return <LoginPage />;
 
-  // ── Redirigir por rol ──────────────────────────────────────────────────────
-  // Admin y administrativa → panel de admin
-  if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin')) {
-      window.location.href = '/admin';
-      return null;
-    }
-  }
+  // Mientras redirige al admin, no mostrar nada
+  if (perfil.rol === 'admin' || perfil.rol === 'administrativa') return null;
 
-  // Operador → panel de cocina (ya está acá)
+  // Operador → panel de cocina
   return <Dashboard />;
 }
 

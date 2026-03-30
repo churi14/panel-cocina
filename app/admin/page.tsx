@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import AdminDashboard from './AdminDashboard';
 
@@ -15,17 +15,14 @@ export default function AdminPage() {
     );
   }
 
-  // Sin sesión → login (vuelven a /)
-  if (!perfil) {
-    if (typeof window !== 'undefined') window.location.href = '/';
-    return null;
-  }
+  useEffect(() => {
+    if (loading) return;
+    if (!perfil || perfil.rol === 'operador') {
+      window.location.replace('/');
+    }
+  }, [perfil, loading]);
 
-  // Operador → redirigir al panel de cocina
-  if (perfil.rol === 'operador') {
-    if (typeof window !== 'undefined') window.location.href = '/';
-    return null;
-  }
+  if (!perfil || perfil.rol === 'operador') return null;
 
   return <AdminDashboard onLock={signOut} />;
 }
