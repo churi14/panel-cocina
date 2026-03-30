@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import LoginPage from './auth/LoginPage';
+import AdminDashboard from './admin/AdminDashboard';
 import { 
   ChefHat, Truck, BookOpen, Droplet, LogOut, Scale, Beef, 
   UtensilsCrossed, LayoutDashboard, Settings, ChevronRight,
@@ -33,19 +34,17 @@ function usePWA() {
 
 
 // ── Auth gate — NO hooks after conditional returns ────────────────────────────
+// Wrapper para AdminDashboard que provee signOut
+function AdminDashboardWrapper() {
+  const { signOut } = useAuth();
+  return <AdminDashboard onLock={signOut} />;
+}
+
 export default function Page() {
   usePWA();
   const { user, perfil, loading } = useAuth();
 
-  // ── TODOS los hooks ANTES de cualquier return ──────────────────────────────
-  useEffect(() => {
-    if (loading || !user || !perfil) return;
-    if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
-      window.location.replace('/admin');
-    }
-  }, [user, perfil, loading]);
-
-  // ── Returns condicionales DESPUÉS de todos los hooks ──────────────────────
+  // ── Spinner mientras carga la sesión ──────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <div className="text-center">
@@ -62,8 +61,13 @@ export default function Page() {
     </div>
   );
 
+  // ── Sin sesión → login ────────────────────────────────────────────────────
   if (!user || !perfil) return <LoginPage />;
-  if (perfil.rol === 'admin' || perfil.rol === 'administrativa') return null;
+
+  // ── Renderizar según rol — sin navegación, sin reload ─────────────────────
+  if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
+    return <AdminDashboardWrapper />;
+  }
 
   return <Dashboard />;
 }
