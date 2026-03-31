@@ -73,7 +73,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
                     </span>
                   </td>
                   <td className="px-6 py-3 text-slate-400 text-xs max-w-xs truncate">{m.motivo ?? '—'}</td>
-                  <td className="px-6 py-3 text-right font-black text-white">{m.cantidad} {m.unidad}</td>
+                  <td className="px-6 py-3 text-right font-black text-white">{m.unidad === 'kg' || m.unidad === 'lt' ? m.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : m.cantidad} {m.unidad}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (

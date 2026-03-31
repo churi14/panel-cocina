@@ -338,8 +338,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     if (!butcheryRecords.length) return;
     const headers = ["Fecha","Corte","Peso Bruto (kg)","Cantidad","Desperdicio (kg)","Peso Neto (kg)","Peso Prom/u (gr)","Stock Destino","P1 Inicio","P1 Fin","P1 Dur (min)","P2 Inicio","P2 Fin"];
     const rows = butcheryRecords.map(r => [
-      r.date, r.typeName, r.brutoPesoKg.toFixed(2), r.quantityProduced,
-      r.wasteKg.toFixed(2), r.netWeightKg.toFixed(2), r.avgWeightPerUnitGr,
+      r.date, r.typeName, r.brutoPesoKg.toFixed(3), r.quantityProduced,
+      r.wasteKg.toFixed(3), r.netWeightKg.toFixed(3), r.avgWeightPerUnitGr,
       CUTS.find(c => c.id === r.type)?.stockDestino ?? '',
       r.step1Start, r.step1End, r.step1DurationMin, r.step2Start, r.step2End,
     ]);
@@ -501,8 +501,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                             </td>
                             <td className="p-3 font-bold text-slate-800">{r.typeName}</td>
                             <td className="p-3 text-center"><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">{r.quantityProduced} u</span></td>
-                            <td className="p-3 text-center font-mono text-slate-600">{r.brutoPesoKg.toFixed(2)} kg</td>
-                            <td className="p-3 text-center font-mono text-red-600">{r.wasteKg.toFixed(2)} kg</td>
+                            <td className="p-3 text-center font-mono text-slate-600">{r.brutoPesoKg.toFixed(3)} kg</td>
+                            <td className="p-3 text-center font-mono text-red-600">{r.wasteKg.toFixed(3)} kg</td>
                             <td className="p-3 text-center font-black text-amber-700">{r.avgWeightPerUnitGr} gr</td>
                           </tr>
                         ))}

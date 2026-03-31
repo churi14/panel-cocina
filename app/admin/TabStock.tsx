@@ -78,7 +78,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
                               <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
                               <p className={`text-2xl font-black ${zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
-                                {zero ? '—' : `${item.cantidad} ${item.unidad}`}
+                                {zero ? '—' : `${item.unidad === 'kg' || item.unidad === 'lt' ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : Number.isInteger(item.cantidad) ? item.cantidad : item.cantidad.toFixed(1)} ${item.unidad}`}
                               </p>
                               {zero && <p className="text-xs text-red-400 font-black mt-1">SIN STOCK</p>}
                               {item.fecha_vencimiento && <p className="text-xs text-slate-600 mt-1">Vence: {item.fecha_vencimiento}</p>}
@@ -106,7 +106,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       <div key={cat} className={`rounded-2xl border-2 p-5 ${cfg.bg} ${cfg.border}`}>
                         <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
                         <p className={`text-4xl font-black ${cfg.color}`}>
-                          {cat === 'milanesa' ? total.toFixed(2) : Math.round(total)}
+                          {total % 1 === 0 ? total : total.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')}
                           <span className="text-lg font-bold opacity-60 ml-1">{unit}</span>
                         </p>
                         <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{catItems.length} productos</p>
@@ -132,7 +132,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                             <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
                             <p className={`text-3xl font-black ${cfg.color}`}>
-                              {cat === 'milanesa' ? item.cantidad.toFixed(2) : Math.round(item.cantidad)}
+                              {item.unidad === 'kg' || item.unidad === 'lt' ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : item.cantidad}
                             </p>
                             <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
                             {item.ultima_prod && (

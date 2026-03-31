@@ -103,5 +103,5 @@ export function formatTimer(ms: number): string {
   if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
-export function formatWeight(kg: number): string { return kg.toFixed(2).replace('.', ','); }
+export function formatWeight(kg: number): string { return kg.toFixed(3).replace(/\.?0+$/, '').replace('.', ','); }
 export function formatGrams(gr: number): string   { return gr.toFixed(0); }

@@ -190,7 +190,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                       <p className="font-black text-slate-800 text-sm leading-tight mb-1 group-hover:text-blue-700">{product.nombre}</p>
                       <p className="text-xs text-slate-400 font-medium">
                         Stock actual: <span className="font-bold text-slate-600">
-                          {product.cantidad > 0 ? `${product.cantidad} ${product.unidad}` : 'Sin stock'}
+                          {product.cantidad > 0 ? `${product.unidad === 'kg' || product.unidad === 'lt' ? product.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : product.cantidad} ${product.unidad}` : 'Sin stock'}
                         </span>
                       </p>
                     </button>
@@ -213,7 +213,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                   <p className="text-xs font-black uppercase mb-1 opacity-70">Stock actual</p>
                   <p className="text-3xl font-black">
                     {selectedProduct.cantidad > 0
-                      ? `${selectedProduct.cantidad} ${selectedProduct.unidad}`
+                      ? `${selectedProduct.unidad === 'kg' || selectedProduct.unidad === 'lt' ? selectedProduct.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : selectedProduct.cantidad} ${selectedProduct.unidad}`
                       : 'Sin stock'}
                   </p>
                 </div>

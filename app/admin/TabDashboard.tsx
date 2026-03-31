@@ -99,7 +99,7 @@ export default function TabDashboard({ movements, notifications, stats, setNotif
                     {m.tipo === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'}
                   </span>
                 </td>
-                <td className="px-6 py-3 text-right font-bold text-white">{m.cantidad} {m.unidad}</td>
+                <td className="px-6 py-3 text-right font-bold text-white">{m.unidad === 'kg' || m.unidad === 'lt' ? m.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : m.cantidad} {m.unidad}</td>
               </tr>
             ))}
           </tbody>
