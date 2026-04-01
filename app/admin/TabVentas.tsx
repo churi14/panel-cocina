@@ -246,7 +246,7 @@ export default function TabVentas() {
         const allFechas = [...prods.map(p => p.fecha), ...ords.map(o => o.fecha ?? '')].filter(Boolean).sort();
         const descuentos = calcularDescuentos(prods);
         setStockDescuentos(descuentos);
-        setShowStockPreview(false);
+        setShowStockPreview(true);
         setDescuentoEjecutado(false);
         setParsed({ productos: prods, ordenes: ords,
           fechaDesde: allFechas[0] ?? '', fechaHasta: allFechas[allFechas.length - 1] ?? '',
@@ -272,10 +272,9 @@ export default function TabVentas() {
         );
         if (error) throw new Error('Órdenes: ' + error.message);
       }
-      setImportDone(true); setShowUpload(false);
-      setFileProductos(null); setFileOrdenes(null); setParsed(null);
+      setImportDone(true);
       await fetchVentas();
-      setTimeout(() => setImportDone(false), 3000);
+      // NO cerramos el panel - el usuario todavía necesita descontar stock
     } catch (e: any) { setImportError(e.message); }
     setImporting(false);
   };
@@ -506,11 +505,17 @@ export default function TabVentas() {
               </div>
               {importError && <p className="text-red-400 text-sm flex items-center gap-2"><AlertTriangle size={16} /> {importError}</p>}
               <div className="flex gap-3">
-                <button onClick={handleImport} disabled={importing}
-                  className="flex-1 py-3 bg-green-600 text-white font-black rounded-xl hover:bg-green-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                  {importing ? <><RefreshCw size={16} className="animate-spin" /> Importando...</> : <><CheckCircle2 size={16} /> Guardar ventas</>}
-                </button>
-                <button onClick={() => { setFileProductos(null); setFileOrdenes(null); setParsed(null); setShowUpload(false); }}
+                {importDone ? (
+                  <div className="flex-1 flex items-center gap-2 py-3 bg-green-500/20 border border-green-500/40 rounded-xl text-green-400 font-black text-sm justify-center">
+                    <CheckCircle2 size={16} /> Ventas guardadas ✓
+                  </div>
+                ) : (
+                  <button onClick={handleImport} disabled={importing}
+                    className="flex-1 py-3 bg-green-600 text-white font-black rounded-xl hover:bg-green-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                    {importing ? <><RefreshCw size={16} className="animate-spin" /> Importando...</> : <><CheckCircle2 size={16} /> Paso 1: Guardar ventas</>}
+                  </button>
+                )}
+                <button onClick={() => { setFileProductos(null); setFileOrdenes(null); setParsed(null); setShowUpload(false); setImportDone(false); setDescuentoEjecutado(false); setStockDescuentos([]); }}
                   className="px-4 py-3 bg-slate-700 text-slate-300 font-bold rounded-xl hover:bg-slate-600 transition-colors">
                   <X size={16} />
                 </button>
@@ -589,11 +594,21 @@ export default function TabVentas() {
                       ) : (
                         <button
                           onClick={handleDescuentoStock}
-                          disabled={descuentando}
-                          className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-black text-sm rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                          disabled={descuentando || !importDone}
+                          className={`w-full py-2.5 text-white font-black text-sm rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50
+                            ${!importDone ? 'bg-slate-700 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-500'}`}>
                           {descuentando
                             ? <><RefreshCw size={14} className="animate-spin" /> Descontando...</>
-                            : <><Package size={14} /> Confirmar descuento de stock</>}
+                            : !importDone
+                              ? <><Package size={14} /> Primero guardá las ventas (Paso 1)</>
+                              : <><Package size={14} /> Paso 2: Confirmar descuento de stock</>}
+                        </button>
+                      )}
+                      {descuentoEjecutado && (
+                        <button
+                          onClick={() => { setFileProductos(null); setFileOrdenes(null); setParsed(null); setShowUpload(false); setImportDone(false); setDescuentoEjecutado(false); setStockDescuentos([]); }}
+                          className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold text-sm rounded-xl transition-colors">
+                          ✓ Listo — Cerrar
                         </button>
                       )}
                     </div>
