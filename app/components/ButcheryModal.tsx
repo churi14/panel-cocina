@@ -10,7 +10,7 @@ import { NewProductionWizard } from './butchery/NewProductionWizard';
 import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView, BurgerBlendResult } from './butchery/Step2BurgerView';
 import { supabase } from '../supabase';
-import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
+import { PushEvents, checkAndNotifyStock } from './pushEvents';
 import { addToStockProduccion } from './butchery/stockProduccion';
 import { saveProduccion, saveProduccionesMany, markProduccionDone } from './butchery/produccionPersistence';
 
@@ -48,18 +48,14 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
   if (!nombre) return { ok: true, stockActual: 0, nombre: nombreCorte };
   const { data } = await supabase
     .from('stock')
-    .select('id, cantidad')
+    .select('id, cantidad, stock_critico, stock_medio, stock_minimo')
     .eq('nombre', nombre)
     .eq('categoria', 'CARNES')
     .single();
   if (!data) return { ok: true, stockActual: 0, nombre };
 
   // ── Verificar stock suficiente ──────────────────────────────────────────────
-  if (data.cantidad < kgToDeduct) {
-    // Manda notificación de stock insuficiente
-    PushEvents.stockBajo(nombre, data.cantidad, 'kg');
-    // Descuenta solo lo disponible (no negativo)
-  }
+  // Si no hay suficiente, descuenta lo que hay (no negativo)
 
   const newQty = Math.max(0, data.cantidad - kgToDeduct);
   await supabase.from('stock').update({
@@ -79,13 +75,8 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
     fecha:     new Date().toISOString(),
   });
 
-  // ── Alertas de stock ───────────────────────────────────────────────────────
-  const UMBRAL_BAJO_KG = 5;
-  if (newQty <= 0) {
-    PushEvents.stockAgotado(nombre);
-  } else if (newQty <= UMBRAL_BAJO_KG) {
-    PushEvents.stockBajo(nombre, newQty, 'kg');
-  }
+  // ── Alertas dinámicas según umbrales configurados ─────────────────────────
+  await checkAndNotifyStock(nombre, newQty, 'kg', data);
 
   return { ok: data.cantidad >= kgToDeduct, stockActual: data.cantidad, nombre };
 }
@@ -199,7 +190,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     pendingBatch.forEach(p => saveProduccion({ ...p, status: 'step2_running', step2StartTime: now3 }));
   };
 
-  const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string, observacion?: string) => {
+  const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string) => {
     const prod = step2Queue[step2Index];
     if (!prod) return;
     // Descontar materia prima
@@ -207,7 +198,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
     // Log fin paso 2
     await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
-      `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}${observacion ? ' | ' + observacion : ''}`);
+      `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}`);
     await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit);
 
     // Sumar a stock de producción
@@ -538,7 +529,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                 totalInBatch={step2Queue.length}
                 currentIndex={step2Index}
                 kindLabel={currentStep2Prod.kind}
-                onFinish={(q, u, w, g, s, obs) => handleFinishStep2(q, u, w, g, s, obs)}
+                onFinish={handleFinishStep2}
                 onBack={handleBackFromStep2}
               />
             ) : null

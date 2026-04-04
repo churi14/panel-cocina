@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
 import { supabase } from '../supabase';
+import { checkAndNotifyStock } from './pushEvents';
 
 function formatQty(grams: number): string {
   if (grams >= 1000) {
@@ -148,6 +149,7 @@ async function deductStockForSalsa(recipeId: string, baseKgUsado: number, potesP
       await supabase.from('stock')
         .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
         .eq('id', data.id);
+      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
       await supabase.from('stock_movements').insert({
         nombre: stockNombre, categoria: 'SECOS',
         tipo: 'egreso', cantidad: parseFloat(baseKgUsado.toFixed(3)), unidad: 'kg',
@@ -212,6 +214,7 @@ async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desp
       await supabase.from('stock')
         .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
         .eq('id', data.id);
+      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
       await supabase.from('stock_movements').insert({
         nombre: stockNombre, categoria: 'VERDURA',
         tipo: 'egreso', cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',

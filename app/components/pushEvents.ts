@@ -50,15 +50,52 @@ export const PushEvents = {
     ),
 };
 
-// Umbrales por unidad
-const UMBRAL_KG = 5;
-const UMBRAL_U  = 20;
+// ─── Umbrales dinámicos desde Supabase ───────────────────────────────────────
+// Fallbacks si el item no tiene umbrales configurados
+const FALLBACK_CRITICO_KG = 5;
+const FALLBACK_MEDIO_KG   = 15;
+const FALLBACK_CRITICO_U  = 10;
+const FALLBACK_MEDIO_U    = 30;
 
 export function isStockBajo(cantidad: number, unidad: string): boolean {
-  const umbral = (unidad === 'kg' || unidad === 'lt') ? UMBRAL_KG : UMBRAL_U;
+  const umbral = (unidad === 'kg' || unidad === 'lt') ? FALLBACK_CRITICO_KG : FALLBACK_CRITICO_U;
   return cantidad > 0 && cantidad <= umbral;
 }
 
 export function isStockAgotado(cantidad: number): boolean {
   return cantidad <= 0;
+}
+
+/**
+ * Chequea umbrales dinámicos de un item y dispara la push correspondiente.
+ * stockItem puede tener stock_critico, stock_medio, stock_minimo.
+ */
+export async function checkAndNotifyStock(
+  nombre: string,
+  newQty: number,
+  unidad: string,
+  stockItem?: { stock_critico?: number | null; stock_medio?: number | null; stock_minimo?: number | null }
+): Promise<void> {
+  const critico = stockItem?.stock_critico ?? ((unidad === 'kg' || unidad === 'lt') ? FALLBACK_CRITICO_KG : FALLBACK_CRITICO_U);
+  const medio   = stockItem?.stock_medio   ?? ((unidad === 'kg' || unidad === 'lt') ? FALLBACK_MEDIO_KG   : FALLBACK_MEDIO_U);
+
+  const fmt = (n: number) => (unidad === 'kg' || unidad === 'lt')
+    ? n.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
+    : Math.round(n).toString();
+
+  if (newQty <= 0) {
+    await PushEvents.stockAgotado(nombre);
+  } else if (newQty <= critico) {
+    await sendPushNotification(
+      `🚨 Stock CRÍTICO: \${nombre}`,
+      `Solo quedan \${fmt(newQty)} \${unidad} — comprá YA`,
+      'stock-critico', '/admin'
+    );
+  } else if (newQty <= medio) {
+    await sendPushNotification(
+      `⚠️ Stock bajo: \${nombre}`,
+      `Quedan \${fmt(newQty)} \${unidad} — reponé pronto`,
+      'stock-bajo', '/admin'
+    );
+  }
 }
