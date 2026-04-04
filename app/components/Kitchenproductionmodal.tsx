@@ -244,7 +244,8 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const [targetUnits, setTargetUnits] = useState(0);
   const [baseQtyKg, setBaseQtyKg] = useState('');
 
-  const isPercent = selectedProduct?.recipeType === 'percent';
+  const isPercent  = selectedProduct?.recipeType === 'percent';
+  const isVerdura  = selectedProduct?.recipeType === 'verdura';
   const baseQtyGr = parseFloat(baseQtyKg || '0') * 1000;
 
   const groupedRecipes = recipesDB.reduce((acc: any, r: Recipe) => {
@@ -300,14 +301,14 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   };
 
   const allChecked = selectedProduct ? checkedIngredients.size === selectedProduct.ingredients.length : false;
-  const canStart = isPercent ? baseQtyGr > 0 && allChecked : targetUnits > 0 && allChecked;
+  const canStart = isVerdura ? parseFloat(verduraBrutoKg) > 0 : isPercent ? baseQtyGr > 0 && allChecked : targetUnits > 0 && allChecked;
 
   const handleStart = async () => {
     if (!canStart || !selectedProduct) return;
     const now = Date.now();
-    const finalTargetUnits = isPercent ? parseFloat(baseQtyKg) : targetUnits;
-    const finalUnit = isPercent ? 'kg base' : selectedProduct.unit;
-    const finalBaseKg = parseFloat(baseQtyKg || '0');
+    const finalTargetUnits = isVerdura ? parseFloat(verduraBrutoKg) : isPercent ? parseFloat(baseQtyKg) : targetUnits;
+    const finalUnit = isVerdura ? 'kg bruto' : isPercent ? 'kg base' : selectedProduct.unit;
+    const finalBaseKg = isVerdura ? parseFloat(verduraBrutoKg) : parseFloat(baseQtyKg || '0');
 
     setActiveProduction({
       recipeName: selectedProduct.name,
@@ -464,7 +465,18 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
               <div className="w-1/3 bg-white p-6 rounded-2xl border border-slate-200 flex flex-col shadow-sm">
                 <h3 className="font-bold text-slate-400 uppercase text-xs mb-6 tracking-wider">{activeProduction ? 'Estado Actual' : 'Planificación'}</h3>
 
-                {isPercent ? (
+                {isVerdura ? (
+                  <div className="mb-6">
+                    <label className="block text-sm font-bold text-slate-600 mb-1">Peso bruto a trabajar</label>
+                    <p className="text-xs text-slate-400 mb-3">Ingresá los kg que vas a preparar</p>
+                    <div className="relative">
+                      <input type="number" inputMode="decimal" step="0.1" value={verduraBrutoKg} disabled={!!activeProduction}
+                        onChange={e => setVerduraBrutoKg(e.target.value)} placeholder="0"
+                        className={`w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all ${activeProduction ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-slate-50 border-green-200 text-green-600 focus:border-green-500 focus:bg-white'}`} />
+                      <span className="absolute right-4 top-6 text-sm font-bold text-slate-300">KG</span>
+                    </div>
+                  </div>
+                ) : isPercent ? (
                   <div className="mb-6">
                     <label className="block text-sm font-bold text-slate-600 mb-1">
                       {selectedProduct.ingredients.find(i => i.isBase)?.name ?? 'Ingrediente base'}
@@ -523,7 +535,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {selectedProduct.ingredients.map((ing, idx) => {
+                        {!isVerdura && selectedProduct.ingredients.map((ing, idx) => {
                           const isChecked = checkedIngredients.has(idx);
                           return (
                             <tr key={idx} onClick={() => toggleCheck(idx)}
@@ -546,34 +558,28 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                     {!activeProduction ? (
                       <button onClick={handleStart} disabled={!canStart}
                         className={`w-full py-4 font-bold rounded-xl text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${canStart ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                        {allChecked ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : `FALTAN ${selectedProduct.ingredients.length - checkedIngredients.size} CHECKS`}
+                        {isVerdura ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : allChecked ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : `FALTAN ${selectedProduct.ingredients.length - checkedIngredients.size} CHECKS`}
                       </button>
                     ) : (
                       <>
                       {isVerduraRecipe && (
-                        <div className="bg-green-950/40 border border-green-500/30 rounded-2xl p-5 space-y-3 mb-4">
-                          <p className="text-green-300 font-black text-sm uppercase">🥬 Registrar producción</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Peso bruto (kg)</label>
-                              <input type="number" value={verduraBrutoKg}
-                                onChange={e => setVerduraBrutoKg(e.target.value)}
-                                placeholder="ej: 5.000"
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
-                            </div>
-                            <div>
+                        <div className="bg-green-950/40 border border-green-500/30 rounded-2xl p-4 space-y-3 mb-4">
+                          <p className="text-green-300 font-black text-sm uppercase">🥬 ¿Cuánto desperdicio?</p>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
                               <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Desperdicio (kg)</label>
                               <input type="number" value={verduraDesperdicioKg}
                                 onChange={e => setVerduraDesperdicioKg(e.target.value)}
-                                placeholder="ej: 0.500"
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                                placeholder="0.000"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-3 text-2xl font-black text-center outline-none focus:border-green-500" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-slate-500 mb-1">Neto</p>
+                              <p className="text-2xl font-black text-green-400">
+                                {Math.max(0, parseFloat(verduraBrutoKg || '0') - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
+                              </p>
                             </div>
                           </div>
-                          {verduraBrutoKg && (
-                            <p className="text-xs text-green-400 font-bold">
-                              Neto a producción: {Math.max(0, parseFloat(verduraBrutoKg) - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
-                            </p>
-                          )}
                         </div>
                       )}
                       {showMenjunjeModal && (
@@ -609,6 +615,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       </>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
             </div>
