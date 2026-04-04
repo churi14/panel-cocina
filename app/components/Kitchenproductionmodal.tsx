@@ -244,6 +244,9 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const [targetUnits, setTargetUnits] = useState(0);
   const [baseQtyKg, setBaseQtyKg] = useState('');
 
+  const [verduraDesperdicioKg, setVerduraDesperdicioKg] = useState('');
+  const [verduraBrutoKg, setVerduraBrutoKg]             = useState('');
+
   const isPercent  = selectedProduct?.recipeType === 'percent';
   const isVerdura  = selectedProduct?.recipeType === 'verdura';
   const baseQtyGr = parseFloat(baseQtyKg || '0') * 1000;
@@ -328,9 +331,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const [menjunjeKg, setMenjunjeKg]               = useState('');
 
   const isSalsaPotes    = selectedProduct?.id?.startsWith('potes_')    ?? false;
-  const isVerduraRecipe = selectedProduct?.id?.startsWith('verdura_')  ?? false;
-  const [verduraDesperdicioKg, setVerduraDesperdicioKg] = useState('');
-  const [verduraBrutoKg, setVerduraBrutoKg]             = useState('');
+  const isVerduraRecipe = selectedProduct?.id?.startsWith('verdura_') ?? false;
   const isMilanesaRecipe = selectedProduct?.category === 'Milanesas' ||
     activeProduction?.recipeName?.toLowerCase().includes('menjunje');
 
