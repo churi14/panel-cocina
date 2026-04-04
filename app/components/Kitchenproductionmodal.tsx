@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   UtensilsCrossed, X, ArrowLeft, Play, CheckSquare, Square,
-  CheckCircle2, Clock, Calculator, AlertCircle, Wheat, Droplet, ChefHat
+  CheckCircle2, Clock, Calculator, AlertCircle, Wheat, Droplet, ChefHat, Carrot
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
 import { supabase } from '../supabase';
@@ -16,10 +16,11 @@ function formatQty(grams: number): string {
 }
 
 const KITCHEN_CATEGORIES = [
-  { id: 'Panificados', label: 'Panificados', border: 'border-amber-200', hover: 'hover:border-amber-400', icon: <Wheat size={48} className="text-amber-600 mb-4" /> },
-  { id: 'Salsas',      label: 'Salsas',      border: 'border-red-200',   hover: 'hover:border-red-400',   icon: <Droplet size={48} className="text-red-600 mb-4" /> },
-  { id: 'Milanesas',   label: 'Milanesas',   border: 'border-rose-200',  hover: 'hover:border-rose-400',  icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
-  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200', hover: 'hover:border-blue-400',  icon: <Clock size={48} className="text-blue-600 mb-4" /> },
+  { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200', hover: 'hover:border-amber-400', icon: <Wheat   size={48} className="text-amber-600 mb-4" /> },
+  { id: 'Salsas',      label: 'Salsas',       border: 'border-red-200',   hover: 'hover:border-red-400',   icon: <Droplet size={48} className="text-red-600 mb-4" /> },
+  { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',  hover: 'hover:border-rose-400',  icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
+  { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200', hover: 'hover:border-green-400', icon: <Carrot  size={48} className="text-green-600 mb-4" /> },
+  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',  hover: 'hover:border-blue-400',  icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
 ];
 
 // ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
@@ -178,6 +179,62 @@ async function deductStockForSalsa(recipeId: string, baseKgUsado: number, potesP
   }
 }
 
+
+// ─── Stock map verduras: nombre en stock ──────────────────────────────────────
+const VERDURA_STOCK_MAP: Record<string, string> = {
+  'verdura_tomate_rodajas': 'TOMATE',
+  'verdura_lechuga':        'LECHUGA',
+  'verdura_cebolla_brunoise': 'CEBOLLA',
+  'verdura_cebolla_rodajas':  'CEBOLLA',
+  'verdura_morron':           'MORRON',
+};
+const VERDURA_PROD_MAP: Record<string, string> = {
+  'verdura_tomate_rodajas':   'Tomate cortado',
+  'verdura_lechuga':          'Lechuga preparada',
+  'verdura_cebolla_brunoise': 'Cebolla brunoise',
+  'verdura_cebolla_rodajas':  'Cebolla rodajas',
+  'verdura_morron':           'Morrón preparado',
+};
+
+async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desperdicioKg: number) {
+  const stockNombre = VERDURA_STOCK_MAP[recipeId];
+  const prodNombre  = VERDURA_PROD_MAP[recipeId];
+  if (!stockNombre || brutoPesoKg <= 0) return;
+
+  const netoKg = Math.max(0, brutoPesoKg - desperdicioKg);
+
+  try {
+    // 1. Descontar bruto del stock
+    const { data } = await supabase.from('stock')
+      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
+    if (data) {
+      const newQty = Math.max(0, Number(data.cantidad) - brutoPesoKg);
+      await supabase.from('stock')
+        .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
+        .eq('id', data.id);
+      await supabase.from('stock_movements').insert({
+        nombre: stockNombre, categoria: 'VERDURA',
+        tipo: 'egreso', cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',
+        motivo: `Producción ${prodNombre}`, operador: 'Cocina', fecha: new Date().toISOString(),
+      });
+    }
+
+    // 2. Sumar neto a stock_produccion
+    if (netoKg > 0) {
+      const { data: prodData } = await supabase.from('stock_produccion')
+        .select('id, cantidad').eq('producto', prodNombre).maybeSingle();
+      if (prodData) {
+        await supabase.from('stock_produccion')
+          .update({ cantidad: parseFloat((Number(prodData.cantidad) + netoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
+          .eq('id', prodData.id);
+      } else {
+        await supabase.from('stock_produccion')
+          .insert({ producto: prodNombre, categoria: 'verduras', cantidad: parseFloat(netoKg.toFixed(3)), unidad: 'kg', ultima_prod: new Date().toISOString() });
+      }
+    }
+  } catch (e) { console.error('Error deductStockForVerdura:', e); }
+}
+
 export default function KitchenProductionModal({ onClose, activeProduction, setActiveProduction, recipesDB, setProductionHistory }: any) {
   const [view, setView] = useState<'category' | 'product' | 'recipe'>(activeProduction ? 'recipe' : 'category');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -269,7 +326,10 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const [menjunjeCorte, setMenjunjeCorte]         = useState('');
   const [menjunjeKg, setMenjunjeKg]               = useState('');
 
-  const isSalsaPotes = selectedProduct?.id?.startsWith('potes_') ?? false;
+  const isSalsaPotes    = selectedProduct?.id?.startsWith('potes_')    ?? false;
+  const isVerduraRecipe = selectedProduct?.id?.startsWith('verdura_')  ?? false;
+  const [verduraDesperdicioKg, setVerduraDesperdicioKg] = useState('');
+  const [verduraBrutoKg, setVerduraBrutoKg]             = useState('');
   const isMilanesaRecipe = selectedProduct?.category === 'Milanesas' ||
     activeProduction?.recipeName?.toLowerCase().includes('menjunje');
 
@@ -312,6 +372,15 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
       // corte viene del input, tipo (carne/pollo) viene de la receta seleccionada
       const corteKey = menjunjeCorte || menjunjeTipo;
       await deductStockForMilanesa(corteKey, kg, ingredientes);
+    }
+
+    // Descuento stock verduras producidas
+    if (isVerduraRecipe && selectedProduct) {
+      const bruto = parseFloat(verduraBrutoKg) || baseKg;
+      const desperdicio = parseFloat(verduraDesperdicioKg) || 0;
+      await deductStockForVerdura(selectedProduct.id, bruto, desperdicio);
+      setVerduraBrutoKg('');
+      setVerduraDesperdicioKg('');
     }
 
     // Descuento stock salsas en potes — siempre: potes * 0.5 kg
@@ -481,6 +550,32 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       </button>
                     ) : (
                       <>
+                      {isVerduraRecipe && (
+                        <div className="bg-green-950/40 border border-green-500/30 rounded-2xl p-5 space-y-3 mb-4">
+                          <p className="text-green-300 font-black text-sm uppercase">🥬 Registrar producción</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Peso bruto (kg)</label>
+                              <input type="number" value={verduraBrutoKg}
+                                onChange={e => setVerduraBrutoKg(e.target.value)}
+                                placeholder="ej: 5.000"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Desperdicio (kg)</label>
+                              <input type="number" value={verduraDesperdicioKg}
+                                onChange={e => setVerduraDesperdicioKg(e.target.value)}
+                                placeholder="ej: 0.500"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                            </div>
+                          </div>
+                          {verduraBrutoKg && (
+                            <p className="text-xs text-green-400 font-bold">
+                              Neto a producción: {Math.max(0, parseFloat(verduraBrutoKg) - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {showMenjunjeModal && (
                         <div className="bg-rose-950/50 border border-rose-500/30 rounded-2xl p-5 space-y-4 mb-4">
                           <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — Ingresá los kg usados</p>

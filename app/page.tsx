@@ -194,6 +194,43 @@ function Dashboard() {
         { name: 'Bicarbonato',       qty: 0.07, unit: '%' },
       ]
     },
+    // ── VERDURAS PRODUCIDAS ───────────────────────────────────────────────────
+    {
+      id: 'verdura_tomate_rodajas', name: 'Tomate cortado', category: 'Verduras',
+      baseYield: 5, unit: 'kg',
+      ingredients: [
+        { name: 'TOMATE', qty: 1, unit: 'kg' },
+      ]
+    },
+    {
+      id: 'verdura_lechuga', name: 'Lechuga preparada', category: 'Verduras',
+      baseYield: 5, unit: 'kg',
+      ingredients: [
+        { name: 'LECHUGA', qty: 1, unit: 'kg' },
+      ]
+    },
+    {
+      id: 'verdura_cebolla_brunoise', name: 'Cebolla brunoise', category: 'Verduras',
+      baseYield: 5, unit: 'kg',
+      ingredients: [
+        { name: 'CEBOLLA', qty: 1, unit: 'kg' },
+      ]
+    },
+    {
+      id: 'verdura_cebolla_rodajas', name: 'Cebolla en rodajas', category: 'Verduras',
+      baseYield: 5, unit: 'kg',
+      ingredients: [
+        { name: 'CEBOLLA', qty: 1, unit: 'kg' },
+      ]
+    },
+    {
+      id: 'verdura_morron', name: 'Morrón preparado', category: 'Verduras',
+      baseYield: 5, unit: 'kg',
+      ingredients: [
+        { name: 'MORRON', qty: 1, unit: 'kg' },
+      ]
+    },
+
     // ── MILANESAS ─────────────────────────────────────────────────────────────
     {
       id: 'menjunje_carne', name: 'Menjunje Milanesa Carne', category: 'Milanesas',
