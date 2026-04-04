@@ -240,9 +240,13 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     if (isMilanesaRecipe && menjunjeCorte && menjunjeKg) {
       const kg = parseFloat(menjunjeKg);
       // Ingredientes menjunje por kg de milanesa (proporcional)
+      // Proporciones reales del menjunje: base 10kg carne
       const ingredientes = [
-        { nombre: 'HUEVO',      cantidad: Math.ceil(kg / 0.18),         unidad: 'u' },
-        { nombre: 'PAN RALLADO', cantidad: parseFloat((kg * 0.15).toFixed(3)), unidad: 'kg' },
+        { nombre: 'HUEVO',    cantidad: Math.ceil(kg * 4.2),                      unidad: 'u'  },
+        { nombre: 'AJO',      cantidad: parseFloat((kg * 0.0125).toFixed(3)),     unidad: 'kg' },
+        { nombre: 'LIMÓN',    cantidad: parseFloat((kg * 0.0175).toFixed(3)),     unidad: 'u'  },
+        { nombre: 'SAL',      cantidad: parseFloat((kg * 0.0195).toFixed(3)),     unidad: 'kg' },
+        { nombre: 'PEREJIL',  cantidad: parseFloat((kg * 0.015).toFixed(3)),      unidad: 'kg' },
       ];
       await deductStockForMilanesa(menjunjeCorte, kg, ingredientes);
     }
