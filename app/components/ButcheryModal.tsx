@@ -171,8 +171,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     // Log inicio + push
     entries.forEach(e => {
       logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
-        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`);
-      PushEvents.inicioProduccion(kind, getCutLabel(e.type), e.weight);
+        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg · ${operador}`, operador);
+      PushEvents.inicioProduccion(kind, getCutLabel(e.type), e.weight, operador);
     });
   };
 
@@ -219,7 +219,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     // Log fin paso 2
     await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
       `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}`);
-    await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit);
+    await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit, operador);
 
     // Sumar a stock de producción
     const kindLabel = prod.kind ?? 'lomito';
@@ -318,8 +318,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
     // Log fin burger
     await logProduccionEvento('fin_paso2', 'burger', 'Blend', result.totalBlendKg,
-      `Finalizó burger — ${result.units} medallones`);
-    await PushEvents.finProduccion('burger', 'Medallones', result.units, 'u');
+      `Finalizó burger — ${result.units} medallones · ${operador}`, operador);
+    await PushEvents.finProduccion('burger', 'Medallones', result.units, 'u', operador);
 
     // Sumar medallones a stock de producción
     await addToStockProduccion({
