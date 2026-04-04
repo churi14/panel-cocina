@@ -124,33 +124,34 @@ function Dashboard() {
       ]
     },
     // ── SALSAS ───────────────────────────────────────────────────────────────
-    // Salsas producidas (aderezo en potes de 500ml)
+    // Salsas producidas — ingresás cuántos potes hiciste, descuenta kg automático
+    // 1 pote 500ml = 0.5 kg de aderezo
     {
       id: 'potes_ketchup', name: 'Ketchup en Potes', category: 'Salsas',
-      baseYield: 6, unit: 'potes', recipeType: 'percent',
+      baseYield: 6, unit: 'potes',
       ingredients: [
-        { name: 'KETCHUP (bolsa)', qty: 100, unit: '%', isBase: true },
+        { name: 'KETCHUP', qty: 0.5, unit: 'kg' },
       ]
     },
     {
       id: 'potes_barbacoa', name: 'Barbacoa en Potes', category: 'Salsas',
-      baseYield: 6, unit: 'potes', recipeType: 'percent',
+      baseYield: 6, unit: 'potes',
       ingredients: [
-        { name: 'BARBACOA (bolsa)', qty: 100, unit: '%', isBase: true },
+        { name: 'BARBACOA', qty: 0.5, unit: 'kg' },
       ]
     },
     {
       id: 'potes_mayonesa', name: 'Mayonesa en Potes', category: 'Salsas',
-      baseYield: 5, unit: 'potes', recipeType: 'percent',
+      baseYield: 5, unit: 'potes',
       ingredients: [
-        { name: 'MAYONESA (bolsa)', qty: 100, unit: '%', isBase: true },
+        { name: 'MAYONESA', qty: 0.5, unit: 'kg' },
       ]
     },
     {
       id: 'potes_savora', name: 'Savora en Potes', category: 'Salsas',
-      baseYield: 6, unit: 'potes', recipeType: 'percent',
+      baseYield: 6, unit: 'potes',
       ingredients: [
-        { name: 'SAVORA (bolsa)', qty: 100, unit: '%', isBase: true },
+        { name: 'SAVORA', qty: 0.5, unit: 'kg' },
       ]
     },
     {

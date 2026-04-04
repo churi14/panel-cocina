@@ -314,10 +314,10 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
       await deductStockForMilanesa(corteKey, kg, ingredientes);
     }
 
-    // Descuento stock salsas en potes
+    // Descuento stock salsas en potes — siempre: potes * 0.5 kg
     if (isSalsaPotes && selectedProduct) {
       const potesProducidos = Math.round(activeProduction.targetUnits);
-      const kgUsados = baseKg > 0 ? baseKg : potesProducidos * 0.5;
+      const kgUsados = potesProducidos * 0.5;
       await deductStockForSalsa(selectedProduct.id, kgUsados, potesProducidos);
     }
 
