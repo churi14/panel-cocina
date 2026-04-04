@@ -120,6 +120,64 @@ async function deductStockForMilanesa(
   }
 }
 
+
+// ─── Descuento de stock para salsas en potes ──────────────────────────────────
+const POTES_MAP: Record<string, string> = {
+  'potes_ketchup':  'KETCHUP',
+  'potes_barbacoa': 'BARBACOA',
+  'potes_mayonesa': 'MAYONESA',
+  'potes_savora':   'SAVORA',
+};
+const POTE_ML = 500; // ml por pote
+
+async function deductStockForSalsa(recipeId: string, baseKgUsado: number, potesProducidos: number) {
+  try {
+    const stockNombre = POTES_MAP[recipeId];
+    if (!stockNombre || baseKgUsado <= 0) return;
+
+    // 1. Descontar kg de stock directo
+    const { data } = await supabase
+      .from('stock')
+      .select('id, cantidad')
+      .eq('nombre', stockNombre)
+      .maybeSingle();
+
+    if (data) {
+      const newQty = Math.max(0, Number(data.cantidad) - baseKgUsado);
+      await supabase.from('stock')
+        .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
+        .eq('id', data.id);
+      await supabase.from('stock_movements').insert({
+        nombre: stockNombre, categoria: 'SECOS',
+        tipo: 'egreso', cantidad: parseFloat(baseKgUsado.toFixed(3)), unidad: 'kg',
+        motivo: `Producción potes ${stockNombre}`,
+        operador: 'Cocina', fecha: new Date().toISOString(),
+      });
+    }
+
+    // 2. Sumar potes a stock_produccion
+    if (potesProducidos > 0) {
+      const prodNombre = `Potes ${stockNombre.charAt(0) + stockNombre.slice(1).toLowerCase()} 500ml`;
+      const { data: prodData } = await supabase
+        .from('stock_produccion')
+        .select('id, cantidad')
+        .eq('producto', prodNombre)
+        .maybeSingle();
+
+      if (prodData) {
+        await supabase.from('stock_produccion')
+          .update({ cantidad: Number(prodData.cantidad) + potesProducidos, ultima_prod: new Date().toISOString() })
+          .eq('id', prodData.id);
+      } else {
+        await supabase.from('stock_produccion')
+          .insert({ producto: prodNombre, categoria: 'salsas', cantidad: potesProducidos, unidad: 'u', ultima_prod: new Date().toISOString() });
+      }
+    }
+  } catch (e) {
+    console.error('Error descontando stock salsa:', e);
+  }
+}
+
 export default function KitchenProductionModal({ onClose, activeProduction, setActiveProduction, recipesDB, setProductionHistory }: any) {
   const [view, setView] = useState<'category' | 'product' | 'recipe'>(activeProduction ? 'recipe' : 'category');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -211,6 +269,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const [menjunjeCorte, setMenjunjeCorte]         = useState('');
   const [menjunjeKg, setMenjunjeKg]               = useState('');
 
+  const isSalsaPotes = selectedProduct?.id?.startsWith('potes_') ?? false;
   const isMilanesaRecipe = selectedProduct?.category === 'Milanesas' ||
     activeProduction?.recipeName?.toLowerCase().includes('menjunje');
 
@@ -253,6 +312,13 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
       // corte viene del input, tipo (carne/pollo) viene de la receta seleccionada
       const corteKey = menjunjeCorte || menjunjeTipo;
       await deductStockForMilanesa(corteKey, kg, ingredientes);
+    }
+
+    // Descuento stock salsas en potes
+    if (isSalsaPotes && selectedProduct) {
+      const potesProducidos = Math.round(activeProduction.targetUnits);
+      const kgUsados = baseKg > 0 ? baseKg : potesProducidos * 0.5;
+      await deductStockForSalsa(selectedProduct.id, kgUsados, potesProducidos);
     }
 
     // Limpiar Supabase y notificar al admin

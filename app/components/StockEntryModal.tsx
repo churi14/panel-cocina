@@ -19,6 +19,38 @@ const CATEGORIES = [
 
 const OPERADORES = ['Eri', 'Mati', 'Javi', 'Otro'];
 
+// ─── Configuración de aderezos ────────────────────────────────────────────────
+const ADEREZOS = ['KETCHUP', 'BARBACOA', 'MAYONESA', 'SAVORA'];
+
+const ADEREZO_FORMATOS: Record<string, { label: string; kg: number }[]> = {
+  MAYONESA: [
+    { label: '237g',   kg: 0.237 },
+    { label: '475g',   kg: 0.475 },
+    { label: '950g',   kg: 0.950 },
+    { label: '2.9 kg', kg: 2.900 },
+  ],
+  KETCHUP:  [
+    { label: '237g',  kg: 0.237 },
+    { label: '475g',  kg: 0.475 },
+    { label: '950g',  kg: 0.950 },
+    { label: '3 kg',  kg: 3.000 },
+  ],
+  BARBACOA: [
+    { label: '237g',  kg: 0.237 },
+    { label: '475g',  kg: 0.475 },
+    { label: '950g',  kg: 0.950 },
+    { label: '3 kg',  kg: 3.000 },
+  ],
+  SAVORA:   [
+    { label: '237g',  kg: 0.237 },
+    { label: '475g',  kg: 0.475 },
+    { label: '950g',  kg: 0.950 },
+    { label: '3 kg',  kg: 3.000 },
+  ],
+};
+
+
+
 export default function StockEntryModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<'cat' | 'product' | 'form' | 'operador'>('operador');
   const [operador, setOperador] = useState('');
@@ -31,7 +63,9 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
   const [saved, setSaved] = useState(false);
 
   // Form fields
-  const [cantidad, setCantidad] = useState('');        // peso real (va al stock)
+  const [cantidad, setCantidad] = useState('');
+  // Estado para conteo de formatos de aderezos
+  const [aderezoCounts, setAderezoCounts] = useState<Record<string, number>>({});        // peso real (va al stock)
   const [pesoFactura, setPesoFactura] = useState('');   // solo informativo
   const [comentario, setComentario] = useState('');     // diferencia / faltante
   const [unidad, setUnidad] = useState<'kg' | 'u' | 'lt'>('kg');
@@ -60,13 +94,18 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
   const handleSelectProduct = (product: StockItem) => {
     setSelectedProduct(product);
     setUnidad(product.unidad as 'kg' | 'u' | 'lt');
+    setAderezoCounts({});
     setStep('form');
   };
 
   const handleConfirm = async () => {
-    if (!selectedProduct || !cantidad) return;
+    if (!selectedProduct) return;
+    // Para aderezos, validar que hayan ingresado algo
+    if (isAderezo && totalKgAderezo <= 0) return;
+    if (!isAderezo && !cantidad) return;
+    const cantidadFinal = isAderezo ? totalKgAderezo : parseFloat(cantidad.replace(',', '.'));
     setSaving(true);
-    const newQty = selectedProduct.cantidad + parseFloat(cantidad.replace(',', '.'));
+    const newQty = selectedProduct.cantidad + cantidadFinal;
     const update: any = {
       cantidad: newQty,
       fecha_actualizacion: new Date().toISOString().slice(0, 10),
@@ -80,7 +119,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
       nombre: selectedProduct.nombre,
       categoria: selectedProduct.categoria,
       tipo: 'ingreso',
-      cantidad: parseFloat(cantidad.replace(',', '.')),
+      cantidad: cantidadFinal,
       unidad,
       motivo: lote ? `Remito/Lote: ${lote}` : 'Ingreso de mercadería',
       lote,
@@ -96,6 +135,11 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
       onClose();
     }, 1200);
   };
+
+  // Aderezo helpers
+  const isAderezo = selectedProduct ? ADEREZOS.includes(selectedProduct.nombre) : false;
+  const formatos  = selectedProduct ? (ADEREZO_FORMATOS[selectedProduct.nombre] ?? []) : [];
+  const totalKgAderezo = formatos.reduce((sum, f) => sum + f.kg * (aderezoCounts[f.label] ?? 0), 0);
 
   const filteredProducts = products.filter(p =>
     p.nombre.toLowerCase().includes(search.toLowerCase())
@@ -218,8 +262,44 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                   </p>
                 </div>
 
+                {/* SELECTOR ESPECIAL PARA ADEREZOS */}
+                {isAderezo && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-black text-slate-500 uppercase">¿Cuántas unidades de cada formato?</p>
+                    {formatos.map(f => (
+                      <div key={f.label} className="flex items-center gap-4 bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3">
+                        <span className="font-black text-slate-700 w-20 shrink-0">{f.label}</span>
+                        <span className="text-xs text-slate-400 flex-1">{f.kg} kg c/u</span>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setAderezoCounts(prev => ({ ...prev, [f.label]: Math.max(0, (prev[f.label] ?? 0) - 1) }))}
+                            className="w-9 h-9 rounded-xl bg-slate-200 hover:bg-red-100 text-slate-600 hover:text-red-600 font-black text-lg transition-colors">−</button>
+                          <span className="w-10 text-center font-black text-xl text-slate-800">{aderezoCounts[f.label] ?? 0}</span>
+                          <button onClick={() => setAderezoCounts(prev => ({ ...prev, [f.label]: (prev[f.label] ?? 0) + 1 }))}
+                            className="w-9 h-9 rounded-xl bg-slate-200 hover:bg-green-100 text-slate-600 hover:text-green-600 font-black text-lg transition-colors">+</button>
+                        </div>
+                        <span className="text-xs text-slate-400 w-16 text-right font-bold">
+                          {((aderezoCounts[f.label] ?? 0) * f.kg).toFixed(3).replace(/\.?0+$/, '')} kg
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Total */}
+                    <div className={`px-5 py-4 rounded-2xl border-2 text-center transition-all ${totalKgAderezo > 0 ? 'border-blue-300 bg-blue-50' : 'border-slate-200'}`}>
+                      <p className="text-xs font-black uppercase text-slate-500 mb-1">Total a ingresar</p>
+                      <p className={`text-4xl font-black ${totalKgAderezo > 0 ? 'text-blue-600' : 'text-slate-300'}`}>
+                        {totalKgAderezo > 0 ? totalKgAderezo.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : '0'} kg
+                      </p>
+                      {totalKgAderezo > 0 && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          Stock final: {(selectedProduct.cantidad + totalKgAderezo).toFixed(3).replace(/\.?0+$/, '').replace('.', ',')} kg
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Peso Factura - solo informativo, solo para kg */}
-                {(unidad === 'kg' || unidad === 'lt') && (
+                {!isAderezo && (unidad === 'kg' || unidad === 'lt') && (
                   <div>
                     <label className="block text-xs font-black text-slate-400 uppercase mb-2">
                       Peso según factura <span className="text-slate-300 font-normal normal-case">(informativo)</span>
@@ -238,7 +318,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                 )}
 
                 {/* Peso Real - OBLIGATORIO para kg/lt */}
-                <div>
+                {!isAderezo && <div>
                   <label className="block text-xs font-black text-slate-500 uppercase mb-2">
                     {(unidad === 'kg' || unidad === 'lt') ? (
                       <span className="flex items-center gap-2">
@@ -262,10 +342,10 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                   {(unidad === 'kg' || unidad === 'lt') && !cantidad && (
                     <p className="text-red-500 text-xs font-bold mt-1">⚠️ Obligatorio — pesá antes de confirmar</p>
                   )}
-                </div>
+                </div>}
 
                 {/* Diferencia automática */}
-                {(unidad === 'kg' || unidad === 'lt') && pesoFactura && cantidad && (
+                {!isAderezo && (unidad === 'kg' || unidad === 'lt') && pesoFactura && cantidad && (
                   <div className={`px-4 py-3 rounded-xl border-2 text-center ${
                     Math.abs(parseFloat(cantidad) - parseFloat(pesoFactura)) > 0.1
                       ? 'border-amber-300 bg-amber-50'
@@ -279,7 +359,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                 )}
 
                 {/* Unidad */}
-                <div>
+                {!isAderezo && <div>
                   <label className="block text-xs font-black text-slate-500 uppercase mb-2">Unidad</label>
                   <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                     {(['kg', 'u', 'lt'] as const).map(u => (
@@ -290,7 +370,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                       </button>
                     ))}
                   </div>
-                </div>
+                </div>}
               </div>
 
               {/* Derecha: trazabilidad */}
@@ -356,10 +436,10 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!cantidad || parseFloat(cantidad) <= 0 || saving || saved}
+              disabled={(isAderezo ? totalKgAderezo <= 0 : !cantidad || parseFloat(cantidad) <= 0) || saving || saved}
               className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all min-w-36 justify-center
                 ${saved ? 'bg-green-500 text-white' :
-                  !cantidad || parseFloat(cantidad) <= 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' :
+                  (isAderezo ? totalKgAderezo <= 0 : !cantidad || parseFloat(cantidad) <= 0) ? 'bg-slate-200 text-slate-400 cursor-not-allowed' :
                   'bg-blue-600 text-white hover:bg-blue-700 shadow-lg active:scale-95'}`}
             >
               {saved ? <><Check size={18} /> GUARDADO</> :
