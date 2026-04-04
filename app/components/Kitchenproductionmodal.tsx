@@ -518,6 +518,33 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
               </div>
 
               <div className="w-2/3 flex flex-col">
+                {isVerdura ? (
+                  <div className="bg-white rounded-2xl border border-green-200 flex-1 flex flex-col overflow-hidden shadow-sm p-6 space-y-4">
+                    <h3 className="font-bold text-green-700 text-sm uppercase">🥬 {selectedProduct.name}</h3>
+                    {activeProduction ? (
+                      <div className="space-y-4">
+                        <p className="text-xs text-slate-500">Bruto: <strong>{verduraBrutoKg} kg</strong> — ingresá el desperdicio al terminar.</p>
+                        <div>
+                          <label className="text-xs font-black text-slate-500 uppercase mb-1 block">Desperdicio (kg)</label>
+                          <input type="number" value={verduraDesperdicioKg}
+                            onChange={e => setVerduraDesperdicioKg(e.target.value)}
+                            placeholder="0.000"
+                            className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-3xl font-black text-center outline-none focus:border-green-400" />
+                        </div>
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                          <p className="text-xs text-slate-500 mb-1">Neto estimado</p>
+                          <p className="text-3xl font-black text-green-700">
+                            {Math.max(0, parseFloat(verduraBrutoKg || '0') - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm text-center">
+                        <p>Ingresá el peso bruto e iniciá la producción</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                 <div className="bg-white rounded-2xl border border-slate-200 flex-1 flex flex-col overflow-hidden shadow-sm">
                   <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
                     <h3 className="font-bold text-slate-700 flex items-center gap-2"><Calculator size={18} /> Checklist de Insumos</h3>
@@ -615,8 +642,8 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       </>
                     )}
                   </div>
-                  )}
                 </div>
+                )}
               </div>
             </div>
           )}
