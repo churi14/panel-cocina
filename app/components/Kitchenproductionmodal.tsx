@@ -26,7 +26,7 @@ const KITCHEN_CATEGORIES = [
 
 // ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
 
-async function saveCocinaProduccion(recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number) {
+async function saveCocinaProduccion(recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number, operadorCocina: string) {
   try {
     // Borra cualquier producción activa anterior y guarda la nueva
     await supabase.from('cocina_produccion_activa').delete().neq('id', 0);
@@ -44,6 +44,7 @@ async function saveCocinaProduccion(recipeName: string, targetUnits: number, uni
       tipo: 'inicio_cocina',
       kind: 'cocina',
       corte: recipeName,
+      operador: operadorCocina,
       peso_kg: baseQtyKg,
       detalle: `Inicio cocina — ${recipeName}`,
       fecha: new Date().toISOString(),
@@ -53,13 +54,14 @@ async function saveCocinaProduccion(recipeName: string, targetUnits: number, uni
   }
 }
 
-async function clearCocinaProduccion(recipeName: string, baseQtyKg: number) {
+async function clearCocinaProduccion(recipeName: string, baseQtyKg: number, operadorCocina: string) {
   try {
     await supabase.from('cocina_produccion_activa').delete().neq('id', 0);
     await supabase.from('produccion_eventos').insert({
       tipo: 'fin_cocina',
       kind: 'cocina',
       corte: recipeName,
+      operador: operadorCocina,
       peso_kg: baseQtyKg,
       detalle: `Fin cocina — ${recipeName}`,
       fecha: new Date().toISOString(),
@@ -238,7 +240,10 @@ async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desp
   } catch (e) { console.error('Error deductStockForVerdura:', e); }
 }
 
+const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+
 export default function KitchenProductionModal({ onClose, activeProduction, setActiveProduction, recipesDB, setProductionHistory }: any) {
+  const [operador, setOperador] = useState('');
   const [view, setView] = useState<'category' | 'product' | 'recipe'>(activeProduction ? 'recipe' : 'category');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Recipe | null>(null);
@@ -325,7 +330,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     });
 
     // Persistir en Supabase y notificar al admin
-    await saveCocinaProduccion(selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now);
+    await saveCocinaProduccion(selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador);
   };
 
   // ── Estado para menjunje milanesa ─────────────────────────────────────────
@@ -396,7 +401,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     }
 
     // Limpiar Supabase y notificar al admin
-    await clearCocinaProduccion(activeProduction.recipeName, baseKg);
+    await clearCocinaProduccion(activeProduction.recipeName, baseKg, operador);
 
     setActiveProduction(null);
     setMenjunjeCorte('');
@@ -430,6 +435,26 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
         </div>
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
+          {/* SELECTOR OPERADOR */}
+          {!operador && !activeProduction && (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+              <div className="text-center">
+                <div className="text-4xl mb-3">👤</div>
+                <h3 className="text-xl font-black text-slate-800">¿Quién sos?</h3>
+                <p className="text-slate-400 text-sm mt-1">Seleccioná tu nombre para registrar la producción</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+                {OPERADORES.map(op => (
+                  <button key={op} onClick={() => setOperador(op)}
+                    className="py-4 rounded-2xl border-2 border-slate-200 hover:border-amber-400 hover:bg-amber-50 transition-all font-black text-slate-700 hover:text-amber-700 active:scale-95">
+                    {op}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(!!operador || !!activeProduction) && <>
           {view === 'category' && !activeProduction && (
             <div className="grid grid-cols-2 gap-6 max-w-lg mx-auto w-full content-center h-full">
               {KITCHEN_CATEGORIES.map(cat => (
@@ -651,6 +676,8 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
               </div>
             </div>
           )}
+        </>
+        }
         </div>
       </div>
     </div>

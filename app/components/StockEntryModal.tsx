@@ -17,7 +17,7 @@ const CATEGORIES = [
   { id: 'DESCARTABLES', label: 'Descartables', emoji: '📦', color: 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' },
 ];
 
-const OPERADORES = ['Eri', 'Mati', 'Javi', 'Otro'];
+const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
 
 // ─── Configuración de aderezos ────────────────────────────────────────────────
 const ADEREZOS = ['KETCHUP', 'BARBACOA', 'MAYONESA', 'SAVORA'];

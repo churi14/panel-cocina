@@ -15,10 +15,10 @@ import { addToStockProduccion } from './butchery/stockProduccion';
 import { saveProduccion, saveProduccionesMany, markProduccionDone } from './butchery/produccionPersistence';
 
 // Registrar evento de producción para notificaciones admin
-async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string) {
+async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string, operador?: string) {
   try {
     await supabase.from('produccion_eventos').insert({
-      tipo, kind, corte, peso_kg: pesoKg,
+      tipo, kind, corte, peso_kg: pesoKg, operador: operador ?? 'Sistema',
       detalle: detalle ?? '',
       fecha: new Date().toISOString(),
     });
@@ -71,6 +71,7 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
     cantidad:  kgToDeduct,
     unidad:    'kg',
     motivo:    `Producción${kind ? ' - ' + kind : ''} (${nombreCorte})`,
+    operador:  operadorGlobal ?? 'Sistema',
     operador:  'Sistema',
     fecha:     new Date().toISOString(),
   });
@@ -92,6 +93,8 @@ function groupByBatch(productions: ButcheryProduction[]): Map<number, ButcheryPr
   return map;
 }
 
+const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+
 export default function ButcheryModal({ onClose, butcheryProductions, setButcheryProductions, butcheryRecords, setButcheryRecords }: {
   onClose: () => void;
   butcheryProductions: ButcheryProduction[];
@@ -99,6 +102,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   butcheryRecords: ButcheryRecord[];
   setButcheryRecords: React.Dispatch<React.SetStateAction<ButcheryRecord[]>>;
 }) {
+  const [operador, setOperador] = useState('');
   const [view, setView] = useState<'list' | 'new' | 'step2'>('list');
   // batchId del lote que está siendo finalizado en paso 1
   const [finishingBatchId, setFinishingBatchId] = useState<number | null>(null);
@@ -106,6 +110,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const [step2Index, setStep2Index] = useState(0);
 
   const activeProductions = butcheryProductions.filter(p => p.status !== 'step2_done');
+  // Guardamos operador en variable para usar en funciones async
+  const operadorGlobal = operador;
   const activeBatches     = groupByBatch(activeProductions);
   const currentStep2Prod  = step2Queue[step2Index];
 
@@ -151,7 +157,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     // Log inicio + push
     entries.forEach(e => {
       logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
-        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`);
+        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`, operador);
       PushEvents.inicioProduccion(kind, getCutLabel(e.type), e.weight);
     });
   };
@@ -345,6 +351,26 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-white rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden">
 
+        {/* SELECTOR OPERADOR */}
+        {!operador && (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+            <div className="text-center">
+              <div className="text-4xl mb-3">👤</div>
+              <h3 className="text-xl font-black text-slate-800">¿Quién sos?</h3>
+              <p className="text-slate-400 text-sm mt-1">Seleccioná tu nombre para registrar la producción</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+              {OPERADORES.map(op => (
+                <button key={op} onClick={() => setOperador(op)}
+                  className="py-4 rounded-2xl border-2 border-slate-200 hover:border-rose-400 hover:bg-rose-50 transition-all font-black text-slate-700 hover:text-rose-700 active:scale-95">
+                  {op}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!!operador && <>
         {/* HEADER */}
         <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
@@ -545,6 +571,10 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           onCancel={() => setFinishingBatchId(null)}
         />
       )}
+    </>
+    }
+    </>
+    }
     </div>
   );
 }
