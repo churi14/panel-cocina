@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import { Users, Plus, X, Check, RefreshCw, Eye, EyeOff, ShieldCheck, Edit2, Trash2 } from 'lucide-react';
+import { Users, Plus, X, Check, RefreshCw, Eye, EyeOff, ShieldCheck, Edit2, Bell, Send } from 'lucide-react';
 
 type Rol = 'admin' | 'operador' | 'administrativa';
 
@@ -30,6 +30,12 @@ export default function TabUsuarios() {
   const [showForm, setShowForm]     = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   const [saving, setSaving]         = useState(false);
+  const [showNotif, setShowNotif]   = useState(false);
+  const [notifTarget, setNotifTarget] = useState<Usuario | null>(null); // null = todos
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifBody, setNotifBody]   = useState('');
+  const [sendingNotif, setSendingNotif] = useState(false);
+  const [notifSent, setNotifSent]   = useState(false);
   const [error, setError]           = useState('');
   const [success, setSuccess]       = useState('');
 
@@ -41,6 +47,33 @@ export default function TabUsuarios() {
   const [rol, setRol]               = useState<Rol>('operador');
   const [local, setLocal]           = useState('todos');
   const [activo, setActivo]         = useState(true);
+
+  const handleSendNotif = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) return;
+    setSendingNotif(true);
+    try {
+      await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: notifTitle,
+          body: notifBody,
+          tag: 'mensaje-admin',
+          url: '/',
+          userId: notifTarget?.id ?? undefined,
+        }),
+      });
+      setNotifSent(true);
+      setTimeout(() => {
+        setNotifSent(false);
+        setShowNotif(false);
+        setNotifTitle('');
+        setNotifBody('');
+        setNotifTarget(null);
+      }, 1500);
+    } catch (e) { console.error(e); }
+    setSendingNotif(false);
+  };
 
   const fetchUsuarios = async () => {
     setLoading(true);
@@ -128,10 +161,16 @@ export default function TabUsuarios() {
           </h2>
           <p className="text-slate-400 text-sm mt-1">{usuarios.length} usuarios registrados</p>
         </div>
-        <button onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-colors">
-          <Plus size={16} /> Nuevo usuario
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => { setNotifTarget(null); setShowNotif(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-black text-sm rounded-xl transition-colors">
+            <Bell size={16} /> Notificar
+          </button>
+          <button onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-colors">
+            <Plus size={16} /> Nuevo usuario
+          </button>
+        </div>
       </div>
 
       {/* Lista de usuarios */}
@@ -167,6 +206,10 @@ export default function TabUsuarios() {
 
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => { setNotifTarget(u); setShowNotif(true); }}
+                  className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-amber-400 transition-colors" title="Notificar">
+                  <Bell size={16} />
+                </button>
                 <button onClick={() => openEdit(u)}
                   className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-blue-400 transition-colors">
                   <Edit2 size={16} />
@@ -285,6 +328,76 @@ export default function TabUsuarios() {
               <button onClick={handleSave} disabled={saving}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <><RefreshCw size={16} className="animate-spin" /> Guardando...</> : <><Check size={16} /> {editingUser ? 'Guardar cambios' : 'Crear usuario'}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Notificación */}
+      {showNotif && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowNotif(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="font-black text-white flex items-center gap-2">
+                <Bell size={18} className="text-amber-400" />
+                {notifTarget ? `Notificar a ${notifTarget.nombre}` : 'Notificar a todos'}
+              </h3>
+              <button onClick={() => setShowNotif(false)} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Destinatario */}
+              <div>
+                <label className="text-xs font-black text-slate-400 uppercase mb-2 block">Para</label>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setNotifTarget(null)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all
+                      ${!notifTarget ? 'border-amber-500 bg-amber-500/20 text-amber-400' : 'border-slate-700 text-slate-500'}`}>
+                    👥 Todos
+                  </button>
+                  {usuarios.filter(u => u.activo).map(u => (
+                    <button key={u.id} onClick={() => setNotifTarget(u)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all
+                        ${notifTarget?.id === u.id ? 'border-amber-500 bg-amber-500/20 text-amber-400' : 'border-slate-700 text-slate-500'}`}>
+                      {u.nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Título */}
+              <div>
+                <label className="text-xs font-black text-slate-400 uppercase mb-1 block">Título</label>
+                <input value={notifTitle} onChange={e => setNotifTitle(e.target.value)}
+                  placeholder="Ej: Acordate del stock"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-500" />
+              </div>
+
+              {/* Mensaje */}
+              <div>
+                <label className="text-xs font-black text-slate-400 uppercase mb-1 block">Mensaje</label>
+                <textarea value={notifBody} onChange={e => setNotifBody(e.target.value)}
+                  placeholder="Ej: Hay que pedir tomate hoy"
+                  rows={3}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-amber-500 resize-none" />
+              </div>
+
+              {notifSent && (
+                <p className="text-green-400 text-xs font-bold flex items-center gap-1">
+                  <Check size={12} /> Notificación enviada
+                </p>
+              )}
+
+              <button onClick={handleSendNotif}
+                disabled={sendingNotif || !notifTitle.trim() || !notifBody.trim()}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-black rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {sendingNotif
+                  ? <><RefreshCw size={16} className="animate-spin" /> Enviando...</>
+                  : <><Send size={16} /> Enviar notificación</>}
               </button>
             </div>
           </div>

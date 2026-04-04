@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users
+  RefreshCw, BarChart3, Activity, ChefHat, Users, Award
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -15,6 +15,7 @@ import TabReportes    from './TabReportes';
 import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
 import TabUsuarios    from './TabUsuarios';
+import TabOperadores  from './TabOperadores';
 import PushButton     from '../components/PushButton';
 import { useAuth }    from '../AuthContext';
 
@@ -23,7 +24,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
-  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios'>('dashboard');
+  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -102,6 +103,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
     { id: 'analytics',  label: 'Analytics',   icon: <BarChart3 size={16} /> },
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
     { id: 'usuarios',   label: 'Usuarios',    icon: <Users size={16} /> },
+    { id: 'operadores', label: 'Operadores',  icon: <Award size={16} /> },
   ] as const;
 
   return (
@@ -166,6 +168,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         {activeTab === 'analytics'  && <TabAnalytics   movements={movements} produccionEventos={produccionEventos} prodHistorial={prodHistorial} />}
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'usuarios'   && <TabUsuarios />}
+        {activeTab === 'operadores' && <TabOperadores />}
       </main>
 
     </div>
