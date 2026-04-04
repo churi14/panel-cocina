@@ -164,16 +164,32 @@ function Dashboard() {
         { name: 'Bicarbonato',       qty: 0.07, unit: '%' },
       ]
     },
-    // ── PREP ─────────────────────────────────────────────────────────────────
+    // ── MILANESAS ─────────────────────────────────────────────────────────────
     {
-      id: 'menjunje', name: 'Menjunje Milanesa', category: 'Prep',
-      baseYield: 5, unit: 'lt', warning: 'Requiere 24hs Frío',
+      id: 'menjunje_carne', name: 'Menjunje Milanesa Carne', category: 'Milanesas',
+      baseYield: 10, unit: 'kg base', warning: 'Requiere 24hs Frío',
       ingredients: [
-        { name: 'Huevo', qty: 30, unit: 'u' },
-        { name: 'Ajo y Perejil', qty: 0.5, unit: 'kg' },
-        { name: 'Mostaza', qty: 0.2, unit: 'kg' },
+        { name: 'Milanesa - Carne (stock prod.)', qty: 10, unit: 'kg' },
+        { name: 'Huevo',    qty: 42,    unit: 'u'  },
+        { name: 'Ajo',      qty: 0.125, unit: 'kg' },
+        { name: 'Limón',    qty: 0.175, unit: 'u'  },
+        { name: 'Sal',      qty: 0.195, unit: 'kg' },
+        { name: 'Perejil',  qty: 0.150, unit: 'kg' },
       ]
     },
+    {
+      id: 'menjunje_pollo', name: 'Menjunje Milanesa Pollo', category: 'Milanesas',
+      baseYield: 10, unit: 'kg base', warning: 'Requiere 24hs Frío',
+      ingredients: [
+        { name: 'Milanesa - Pollo (stock prod.)', qty: 10, unit: 'kg' },
+        { name: 'Huevo',    qty: 42,    unit: 'u'  },
+        { name: 'Ajo',      qty: 0.125, unit: 'kg' },
+        { name: 'Limón',    qty: 0.175, unit: 'u'  },
+        { name: 'Sal',      qty: 0.195, unit: 'kg' },
+        { name: 'Perejil',  qty: 0.150, unit: 'kg' },
+      ]
+    },
+    // ── PREP ─────────────────────────────────────────────────────────────────
   ]);
 
   const [activeProduction, setActiveProduction] = useState<ActiveProduction>(null);

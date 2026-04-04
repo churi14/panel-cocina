@@ -212,8 +212,10 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   const [menjunjeKg, setMenjunjeKg]               = useState('');
 
   const isMilanesaRecipe = selectedProduct?.category === 'Milanesas' ||
-    activeProduction?.recipeName?.toLowerCase().includes('menjunje') ||
-    activeProduction?.recipeName?.toLowerCase().includes('milanesa');
+    activeProduction?.recipeName?.toLowerCase().includes('menjunje');
+
+  // Detectar si es carne o pollo para descuento correcto
+  const menjunjeTipo = activeProduction?.recipeName?.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
 
   const handleFinish = async () => {
     // Si es receta de milanesa, mostrar modal de menjunje primero
@@ -248,7 +250,9 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
         { nombre: 'SAL',      cantidad: parseFloat((kg * 0.0195).toFixed(3)),     unidad: 'kg' },
         { nombre: 'PEREJIL',  cantidad: parseFloat((kg * 0.015).toFixed(3)),      unidad: 'kg' },
       ];
-      await deductStockForMilanesa(menjunjeCorte, kg, ingredientes);
+      // corte viene del input, tipo (carne/pollo) viene de la receta seleccionada
+      const corteKey = menjunjeCorte || menjunjeTipo;
+      await deductStockForMilanesa(corteKey, kg, ingredientes);
     }
 
     // Limpiar Supabase y notificar al admin
@@ -413,14 +417,14 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       <>
                       {showMenjunjeModal && (
                         <div className="bg-rose-950/50 border border-rose-500/30 rounded-2xl p-5 space-y-4 mb-4">
-                          <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje — ¿Qué milanesa usaste?</p>
+                          <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — Ingresá los kg usados</p>
                           <div className="space-y-3">
                             <div>
                               <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Corte (ej: Cuadrada, Nalga)</label>
                               <input
                                 value={menjunjeCorte}
                                 onChange={e => setMenjunjeCorte(e.target.value)}
-                                placeholder="Cuadrada"
+                                placeholder={menjunjeTipo === 'Pollo' ? 'Pollo' : 'Cuadrada / Nalga / etc.'}
                                 className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-rose-500"
                               />
                             </div>
