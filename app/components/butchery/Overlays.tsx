@@ -85,12 +85,13 @@ export type Step2ConfirmData = {
 
 export function FinishStep2Overlay({ data, onConfirm, onCancel }: {
   data: Step2ConfirmData;
-  onConfirm: (stockDestino: string) => void;
+  onConfirm: (stockDestino: string, observacion?: string) => void;
   onCancel: () => void;
 }) {
   const { production, quantity, unit, wasteKg, grasaKg, stockDestino: defaultStock } = data;
   const [selectedStock, setSelectedStock] = useState(defaultStock);
   const [showStockPicker, setShowStockPicker] = useState(false);
+  const [observacion, setObservacion] = useState('');
 
   const netWeight = production.weightKg - wasteKg;
   const avgGrams  = unit === 'unid' && quantity > 0 ? (netWeight / quantity) * 1000 : 0;
@@ -148,11 +149,23 @@ export function FinishStep2Overlay({ data, onConfirm, onCancel }: {
           </div>
         </div>
 
-        <div className="flex gap-3">
+                  <div className="mb-4">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-wide block mb-1">
+              Observaciones (opcional)
+            </label>
+            <textarea
+              value={observacion}
+              onChange={e => setObservacion(e.target.value)}
+              placeholder="Ej: demoró más por temperatura de cámara, corte difícil..."
+              className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-400 resize-none"
+              rows={2}
+            />
+          </div>
+          <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 py-4 rounded-2xl border-2 border-slate-300 text-slate-600 font-bold hover:bg-slate-50 active:scale-95 transition-all">
             VOLVER
           </button>
-          <button onClick={() => onConfirm(selectedStock)} className="flex-1 py-4 rounded-2xl bg-green-600 text-white font-bold hover:bg-green-500 active:scale-95 transition-all shadow-lg">
+          <button onClick={() => onConfirm(selectedStock, observacion || undefined)} className="flex-1 py-4 rounded-2xl bg-green-600 text-white font-bold hover:bg-green-500 active:scale-95 transition-all shadow-lg">
             CONFIRMAR TODO
           </button>
         </div>

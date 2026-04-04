@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
 import { Movement, formatFecha } from './types';
+import { supabase } from '../supabase';
 
 type Props = {
   stock: any[];
@@ -15,6 +16,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [stockSearch, setStockSearch]     = useState('');
   const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion'>('materiales');
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
+  const [editingUmbrales, setEditingUmbrales]       = useState(false);
+  const [umbralMinimo, setUmbralMinimo]             = useState('');
+  const [umbralMedio, setUmbralMedio]               = useState('');
+  const [umbralCritico, setUmbralCritico]           = useState('');
+  const [savingUmbrales, setSavingUmbrales]         = useState(false);
   const [selectedProdItem, setSelectedProdItem]   = useState<any | null>(null);
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
               lomito:   { emoji: '🥩', color: 'text-rose-400',  bg: 'bg-rose-500/10',  border: 'border-rose-500/30',  headerBg: 'bg-rose-500/20' },
@@ -73,7 +79,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {catItems.map((item: any) => {
                           const zero = item.cantidad === 0;
-                          const low = !zero && item.cantidad < 5;
+                          const critico = item.stock_critico ?? 10;
+                          const medio   = item.stock_medio   ?? 20;
+                          const minimo  = item.stock_minimo  ?? 50;
+                          const low     = !zero && item.cantidad <= critico;
+                          const warn    = !zero && !low && item.cantidad <= medio;
                           return (
                             <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
                               <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
@@ -156,6 +166,149 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 )}
               </>
             )}
+
+
+          {/* ── MODAL HISTORIAL + UMBRALES DE STOCK ── */}
+          {selectedStockItem && (() => {
+            const itemMovements = movements
+              .filter(m => m.nombre === selectedStockItem.nombre)
+              .slice(0, 30);
+
+            const handleSaveUmbrales = async () => {
+              setSavingUmbrales(true);
+              await supabase.from('stock').update({
+                stock_minimo:  parseFloat(umbralMinimo)  || 0,
+                stock_medio:   parseFloat(umbralMedio)   || 0,
+                stock_critico: parseFloat(umbralCritico) || 0,
+              }).eq('id', selectedStockItem.id);
+              await fetchMovements();
+              setSavingUmbrales(false);
+              setEditingUmbrales(false);
+            };
+
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); }}>
+                <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl"
+                  onClick={e => e.stopPropagation()}>
+
+                  {/* Header */}
+                  <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                    <div>
+                      <h2 className="font-black text-white text-lg">{selectedStockItem.nombre}</h2>
+                      <p className="text-slate-400 text-xs">{selectedStockItem.categoria} · {selectedStockItem.unidad}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-2xl font-black text-white">
+                          {selectedStockItem.unidad === 'kg' || selectedStockItem.unidad === 'lt'
+                            ? selectedStockItem.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
+                            : selectedStockItem.cantidad}
+                        </p>
+                        <p className="text-xs text-slate-500">{selectedStockItem.unidad} en stock</p>
+                      </div>
+                      <button onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); }}
+                        className="p-2 hover:bg-slate-800 rounded-xl text-slate-400">
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                    {/* Umbrales */}
+                    <div className="bg-slate-800 rounded-2xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-black text-slate-400 uppercase">⚠️ Alertas de stock</p>
+                        <button onClick={() => {
+                          setEditingUmbrales(!editingUmbrales);
+                          setUmbralCritico(String(selectedStockItem.stock_critico ?? ''));
+                          setUmbralMedio(String(selectedStockItem.stock_medio ?? ''));
+                          setUmbralMinimo(String(selectedStockItem.stock_minimo ?? ''));
+                        }} className="text-xs text-blue-400 hover:text-blue-300 font-bold">
+                          {editingUmbrales ? 'Cancelar' : '✏️ Editar'}
+                        </button>
+                      </div>
+
+                      {editingUmbrales ? (
+                        <div className="space-y-3">
+                          {[
+                            { label: '🚨 Crítico (comprar YA)', key: 'critico', val: umbralCritico, set: setUmbralCritico },
+                            { label: '⚠️ Medio (comprar pronto)', key: 'medio', val: umbralMedio, set: setUmbralMedio },
+                            { label: '📦 Mínimo (stock saludable)', key: 'minimo', val: umbralMinimo, set: setUmbralMinimo },
+                          ].map(({ label, key, val, set }) => (
+                            <div key={key} className="flex items-center gap-3">
+                              <label className="text-xs text-slate-400 w-44 shrink-0">{label}</label>
+                              <input type="number" value={val} onChange={e => set(e.target.value)}
+                                placeholder="0"
+                                className="flex-1 bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                              <span className="text-xs text-slate-500">{selectedStockItem.unidad}</span>
+                            </div>
+                          ))}
+                          <button onClick={handleSaveUmbrales} disabled={savingUmbrales}
+                            className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-colors disabled:opacity-50 mt-2">
+                            {savingUmbrales ? 'Guardando...' : '✓ Guardar umbrales'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          {[
+                            { label: '🚨 Crítico', val: selectedStockItem.stock_critico ?? '—', color: 'text-red-400' },
+                            { label: '⚠️ Medio',   val: selectedStockItem.stock_medio   ?? '—', color: 'text-amber-400' },
+                            { label: '📦 Mínimo',  val: selectedStockItem.stock_minimo  ?? '—', color: 'text-green-400' },
+                          ].map(({ label, val, color }) => (
+                            <div key={label} className="bg-slate-700/50 rounded-xl p-3">
+                              <p className={`text-lg font-black ${color}`}>{val} <span className="text-xs text-slate-500">{typeof val === 'number' ? selectedStockItem.unidad : ''}</span></p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">{label}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Historial de movimientos */}
+                    <div>
+                      <p className="text-xs font-black text-slate-400 uppercase mb-3">
+                        Historial de movimientos — {itemMovements.length} registros
+                      </p>
+                      {itemMovements.length === 0 ? (
+                        <div className="text-center py-8 text-slate-600">
+                          <p className="font-bold">Sin movimientos registrados</p>
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-800 text-slate-400 text-xs uppercase">
+                            <tr>
+                              <th className="px-4 py-2.5 text-left">Fecha</th>
+                              <th className="px-4 py-2.5 text-left">Tipo</th>
+                              <th className="px-4 py-2.5 text-left">Motivo</th>
+                              <th className="px-4 py-2.5 text-right">Cantidad</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800">
+                            {itemMovements.map(m => (
+                              <tr key={m.id} className="hover:bg-slate-800/40">
+                                <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{formatFecha(m.fecha)}</td>
+                                <td className="px-4 py-2.5">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-black ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    {m.tipo}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-300 text-xs truncate max-w-[140px]">{m.motivo ?? '—'}</td>
+                                <td className="px-4 py-2.5 text-right font-black text-white">
+                                  {m.tipo === 'egreso' ? '-' : '+'}{m.cantidad} {m.unidad}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           </div>
   );

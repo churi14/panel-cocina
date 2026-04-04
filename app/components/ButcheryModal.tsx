@@ -199,7 +199,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     pendingBatch.forEach(p => saveProduccion({ ...p, status: 'step2_running', step2StartTime: now3 }));
   };
 
-  const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string) => {
+  const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string, observacion?: string) => {
     const prod = step2Queue[step2Index];
     if (!prod) return;
     // Descontar materia prima
@@ -207,7 +207,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
     // Log fin paso 2
     await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
-      `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}`);
+      `Finalizó paso 2 — ${quantity} ${unit} de ${prod.typeName}${observacion ? ' | ' + observacion : ''}`);
     await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit);
 
     // Sumar a stock de producción
@@ -538,7 +538,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                 totalInBatch={step2Queue.length}
                 currentIndex={step2Index}
                 kindLabel={currentStep2Prod.kind}
-                onFinish={handleFinishStep2}
+                onFinish={(q, u, w, g, s, obs) => handleFinishStep2(q, u, w, g, s, obs)}
                 onBack={handleBackFromStep2}
               />
             ) : null

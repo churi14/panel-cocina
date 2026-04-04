@@ -11,7 +11,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   totalInBatch: number;
   currentIndex: number;
   kindLabel?: string;
-  onFinish: (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string) => void;
+  onFinish: (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string, observacion?: string) => void;
   onBack: () => void;
 }) {
   const cut = getCut(production.type);
@@ -45,7 +45,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
       {showConfirm && (
         <FinishStep2Overlay
           data={{ production, quantity: qty, unit, wasteKg: waste, grasaKg: grasa, stockDestino: cut.stockDestino }}
-          onConfirm={(stock) => { setShowConfirm(false); onFinish(qty, unit, waste, grasa, stock); }}
+          onConfirm={(stock, obs) => { setShowConfirm(false); onFinish(qty, unit, waste, grasa, stock, obs); }}
           onCancel={() => setShowConfirm(false)}
         />
       )}

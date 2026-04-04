@@ -69,6 +69,57 @@ async function clearCocinaProduccion(recipeName: string, baseQtyKg: number) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+// ─── Descuento de stock para recetas de Milanesa (Menjunje) ───────────────────
+async function deductStockForMilanesa(
+  corteNombre: string,  // ej: "Cuadrada", "Nalga"
+  cantidadKg: number,   // kg de milanesa cruda a usar
+  ingredientes: { nombre: string; cantidad: number; unidad: string }[]
+) {
+  try {
+    // 1. Descontar del stock_produccion: Milanesa - {corte}
+    const productoMila = `Milanesa - ${corteNombre}`;
+    const { data: milaData } = await supabase
+      .from('stock_produccion')
+      .select('id, cantidad')
+      .eq('producto', productoMila)
+      .maybeSingle();
+
+    if (milaData) {
+      const newQty = Math.max(0, Number(milaData.cantidad) - cantidadKg);
+      await supabase.from('stock_produccion')
+        .update({ cantidad: parseFloat(newQty.toFixed(3)) })
+        .eq('id', milaData.id);
+    }
+
+    // 2. Descontar ingredientes del stock directo (huevo, pan rallado, etc.)
+    for (const ing of ingredientes) {
+      const { data: stockData } = await supabase
+        .from('stock')
+        .select('id, cantidad')
+        .ilike('nombre', ing.nombre)
+        .maybeSingle();
+
+      if (stockData) {
+        const newQty = Math.max(0, Number(stockData.cantidad) - ing.cantidad);
+        await supabase.from('stock')
+          .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
+          .eq('id', stockData.id);
+
+        // Log movement
+        await supabase.from('stock_movements').insert({
+          nombre: ing.nombre, categoria: 'SECOS',
+          tipo: 'egreso', cantidad: ing.cantidad, unidad: ing.unidad,
+          motivo: `Menjunje Milanesa — ${productoMila}`,
+          operador: 'Cocina', fecha: new Date().toISOString(),
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Error descontando stock menjunje:', e);
+  }
+}
+
 export default function KitchenProductionModal({ onClose, activeProduction, setActiveProduction, recipesDB, setProductionHistory }: any) {
   const [view, setView] = useState<'category' | 'product' | 'recipe'>(activeProduction ? 'recipe' : 'category');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -155,7 +206,23 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     await saveCocinaProduccion(selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now);
   };
 
+  // ── Estado para menjunje milanesa ─────────────────────────────────────────
+  const [showMenjunjeModal, setShowMenjunjeModal] = useState(false);
+  const [menjunjeCorte, setMenjunjeCorte]         = useState('');
+  const [menjunjeKg, setMenjunjeKg]               = useState('');
+
+  const isMilanesaRecipe = selectedProduct?.category === 'Milanesas' ||
+    activeProduction?.recipeName?.toLowerCase().includes('menjunje') ||
+    activeProduction?.recipeName?.toLowerCase().includes('milanesa');
+
   const handleFinish = async () => {
+    // Si es receta de milanesa, mostrar modal de menjunje primero
+    if (isMilanesaRecipe && !showMenjunjeModal) {
+      setShowMenjunjeModal(true);
+      return;
+    }
+    setShowMenjunjeModal(false);
+
     const endTime = Date.now();
     const dur = (endTime - activeProduction.startTime) / 1000;
     const baseKg = parseFloat(baseQtyKg || String(activeProduction.targetUnits) || '0');
@@ -169,10 +236,23 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
       endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
 
+    // Si es menjunje, descontar stock
+    if (isMilanesaRecipe && menjunjeCorte && menjunjeKg) {
+      const kg = parseFloat(menjunjeKg);
+      // Ingredientes menjunje por kg de milanesa (proporcional)
+      const ingredientes = [
+        { nombre: 'HUEVO',      cantidad: Math.ceil(kg / 0.18),         unidad: 'u' },
+        { nombre: 'PAN RALLADO', cantidad: parseFloat((kg * 0.15).toFixed(3)), unidad: 'kg' },
+      ];
+      await deductStockForMilanesa(menjunjeCorte, kg, ingredientes);
+    }
+
     // Limpiar Supabase y notificar al admin
     await clearCocinaProduccion(activeProduction.recipeName, baseKg);
 
     setActiveProduction(null);
+    setMenjunjeCorte('');
+    setMenjunjeKg('');
     onClose();
   };
 
@@ -326,6 +406,33 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                         {allChecked ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : `FALTAN ${selectedProduct.ingredients.length - checkedIngredients.size} CHECKS`}
                       </button>
                     ) : (
+                      {showMenjunjeModal && (
+                        <div className="bg-rose-950/50 border border-rose-500/30 rounded-2xl p-5 space-y-4 mb-4">
+                          <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje — ¿Qué milanesa usaste?</p>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Corte (ej: Cuadrada, Nalga)</label>
+                              <input
+                                value={menjunjeCorte}
+                                onChange={e => setMenjunjeCorte(e.target.value)}
+                                placeholder="Cuadrada"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-rose-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg de milanesa usada</label>
+                              <input
+                                type="number"
+                                value={menjunjeKg}
+                                onChange={e => setMenjunjeKg(e.target.value)}
+                                placeholder="5.000"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-rose-500"
+                              />
+                            </div>
+                            <p className="text-xs text-slate-500">Esto descuenta del stock de producción y suma el menjunje al historial.</p>
+                          </div>
+                        </div>
+                      )}
                       <button onClick={handleFinish} className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl text-lg hover:bg-slate-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
                         <CheckCircle2 size={20} /> FINALIZAR Y GUARDAR
                       </button>

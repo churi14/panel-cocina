@@ -102,8 +102,9 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                 const isKg = selectedProdItem.unidad === 'kg';
 
                 // Eventos de fin_paso2 de esta categoría = cada producción completada
+                const itemCat = selectedProdItem.categoria as string;
                 const finales = produccionEventos
-                  .filter(e => e.tipo === 'fin_paso2' && e.kind === cat)
+                  .filter(e => e.tipo === 'fin_paso2' && e.kind === itemCat)
                   .slice(0, 60);
 
                 // Agrupar por día para el gráfico
