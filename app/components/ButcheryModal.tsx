@@ -15,10 +15,10 @@ import { addToStockProduccion } from './butchery/stockProduccion';
 import { saveProduccion, saveProduccionesMany, markProduccionDone } from './butchery/produccionPersistence';
 
 // Registrar evento de producción para notificaciones admin
-async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string, operador?: string) {
+async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string, op?: string) {
   try {
     await supabase.from('produccion_eventos').insert({
-      tipo, kind, corte, peso_kg: pesoKg, operador: operador ?? 'Sistema',
+      tipo, kind, corte, peso_kg: pesoKg, operador: op ?? 'Sistema',
       detalle: detalle ?? '',
       fecha: new Date().toISOString(),
     });
@@ -71,7 +71,6 @@ async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?:
     cantidad:  kgToDeduct,
     unidad:    'kg',
     motivo:    `Producción${kind ? ' - ' + kind : ''} (${nombreCorte})`,
-    operador:  operadorGlobal ?? 'Sistema',
     operador:  'Sistema',
     fecha:     new Date().toISOString(),
   });
@@ -110,8 +109,6 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const [step2Index, setStep2Index] = useState(0);
 
   const activeProductions = butcheryProductions.filter(p => p.status !== 'step2_done');
-  // Guardamos operador en variable para usar en funciones async
-  const operadorGlobal = operador;
   const activeBatches     = groupByBatch(activeProductions);
   const currentStep2Prod  = step2Queue[step2Index];
 
@@ -157,7 +154,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     // Log inicio + push
     entries.forEach(e => {
       logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
-        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`, operador);
+        `Inicio paso 1 — ${getCutLabel(e.type)} ${e.weight}kg`);
       PushEvents.inicioProduccion(kind, getCutLabel(e.type), e.weight);
     });
   };
@@ -351,26 +348,6 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-white rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden">
 
-        {/* SELECTOR OPERADOR */}
-        {!operador && (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
-            <div className="text-center">
-              <div className="text-4xl mb-3">👤</div>
-              <h3 className="text-xl font-black text-slate-800">¿Quién sos?</h3>
-              <p className="text-slate-400 text-sm mt-1">Seleccioná tu nombre para registrar la producción</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-              {OPERADORES.map(op => (
-                <button key={op} onClick={() => setOperador(op)}
-                  className="py-4 rounded-2xl border-2 border-slate-200 hover:border-rose-400 hover:bg-rose-50 transition-all font-black text-slate-700 hover:text-rose-700 active:scale-95">
-                  {op}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!!operador && <>
         {/* HEADER */}
         <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
@@ -407,7 +384,26 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
         {/* CONTENIDO */}
         <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
 
-          {view === 'list' && (
+          {!operador && (
+            <div className="flex flex-col items-center justify-center min-h-96 space-y-6">
+              <div className="text-center">
+                <div className="text-4xl mb-3">&#128100;</div>
+                <h3 className="text-xl font-black text-slate-800">&iquest;Qui&eacute;n sos?</h3>
+                <p className="text-slate-400 text-sm mt-1">Selecci&oacute; tu nombre para registrar la producci&oacute;n</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+                {OPERADORES.map(op => (
+                  <button key={op} onClick={() => setOperador(op)}
+                    className="py-4 rounded-2xl border-2 border-slate-200 hover:border-rose-400 hover:bg-rose-50 transition-all font-black text-slate-700 hover:text-rose-700 active:scale-95">
+                    {op}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+
+          {!!operador && view === 'list' && (
             <div className="max-w-4xl mx-auto space-y-6">
 
               {activeProductions.length > 0 ? (
@@ -535,11 +531,11 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
             </div>
           )}
 
-          {view === 'new' && (
+          {!!operador && view === 'new' && (
             <NewProductionWizard onStart={handleStartProductions} onCancel={() => setView('list')} />
           )}
 
-          {view === 'step2' && step2Queue.length > 0 && (
+          {!!operador && view === 'step2' && step2Queue.length > 0 && (
             step2Queue[0]?.kind === 'burger' ? (
               <Step2BurgerView
                 key={step2Queue.map(p => p.id).join('-')}
@@ -571,8 +567,6 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           onCancel={() => setFinishingBatchId(null)}
         />
       )}
-      </>
-      }
     </div>
   );
 }
