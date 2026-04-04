@@ -582,6 +582,8 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       </tbody>
                     </table>
                   </div>
+                </div>
+                )}
                   <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
                     {!activeProduction ? (
                       <button onClick={handleStart} disabled={!canStart}
@@ -643,8 +645,6 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       </>
                     )}
                   </div>
-                </div>
-                )}
               </div>
             </div>
           )}
