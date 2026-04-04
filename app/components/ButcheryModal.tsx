@@ -124,7 +124,24 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     batch.some(p => p.status === 'step1_running');
 
   // Arranca N producciones con el mismo batchId
-  const handleStartProductions = (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => {
+  const handleStartProductions = async (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => {
+    // Verificar stock disponible para cada corte
+    const CORTE_STOCK: Record<string, string> = {
+      'Lomo': 'LOMO', 'Roast Beef': 'AGUJA', 'Tapa de Asado': 'TAPA DE ASADO',
+      'Tapa de Nalga': 'NALGA', 'Bife de Chorizo': 'BIFE ANGOSTO', 'Vacío': 'VACIO',
+      'Picaña': 'CUADRIL', 'Ojo de Bife': 'CUADRADA', 'Grasa de Pella': 'GRASA',
+      'Pollo': 'POLLO', 'Cuadril': 'CUADRIL', 'Cuadrada': 'CUADRADA', 'Not Burger': 'NOT',
+    };
+    for (const e of entries) {
+      const corteNombre = getCutLabel(e.type);
+      const stockNombre = CORTE_STOCK[corteNombre];
+      if (!stockNombre) continue;
+      const { data } = await supabase.from('stock').select('cantidad').eq('nombre', stockNombre).single();
+      if (!data || data.cantidad < e.weight) {
+        alert(`⚠️ Stock insuficiente para ${corteNombre}\nDisponible: ${data?.cantidad?.toFixed(3) ?? '0'} kg\nRequerido: ${e.weight} kg`);
+        return;
+      }
+    }
     const now = Date.now();
     setButcheryProductions(prev => [
       ...prev,

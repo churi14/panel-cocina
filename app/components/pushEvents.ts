@@ -14,16 +14,16 @@ export async function sendPushNotification(
 }
 
 export const PushEvents = {
-  inicioProduccion: (kind: string, corte: string, pesoKg: number) =>
+  inicioProduccion: (kind: string, corte: string, pesoKg: number, op?: string) =>
     sendPushNotification(
-      `🔪 Inicio de producción`,
+      `🔪 Inicio de producción${op ? ' · ' + op : ''}`,
       `${kind.toUpperCase()} — ${corte} ${pesoKg}kg`,
       'produccion-inicio', '/'
     ),
 
-  finProduccion: (kind: string, corte: string, cantidad: number, unidad: string) =>
+  finProduccion: (kind: string, corte: string, cantidad: number, unidad: string, op?: string) =>
     sendPushNotification(
-      `✅ Producción finalizada`,
+      `✅ Producción finalizada${op ? ' · ' + op : ''}`,
       `${kind.toUpperCase()} — ${cantidad} ${unidad} de ${corte} listos`,
       'produccion-fin', '/'
     ),

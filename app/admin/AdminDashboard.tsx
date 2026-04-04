@@ -85,7 +85,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         const tipo  = e.tipo === 'inicio_paso1' ? 'INICIO' : e.tipo === 'inicio_cocina' ? 'INICIO COCINA' : e.tipo === 'fin_cocina' ? 'FIN COCINA' : 'FINALIZADO';
         setNotifications(prev => [{
           id: Date.now(),
-          message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})`,
+          message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})${e.operador && e.operador !== 'Sistema' ? ' · ' + e.operador : ''}`,
           type: ((e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso') as 'ingreso' | 'egreso' | 'alert',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }, ...prev].slice(0, 20));

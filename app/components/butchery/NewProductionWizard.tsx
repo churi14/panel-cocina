@@ -9,7 +9,7 @@ import { StartConfirmOverlay } from './Overlays';
 type WeightEntry = { type: ButcheryProductionType; weight: string };
 
 export function NewProductionWizard({ onStart, onCancel }: {
-  onStart: (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => void;
+  onStart: (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [step, setStep] = useState<'kind' | 'select' | 'weights'>('kind');
