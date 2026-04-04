@@ -406,6 +406,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                         {allChecked ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : `FALTAN ${selectedProduct.ingredients.length - checkedIngredients.size} CHECKS`}
                       </button>
                     ) : (
+                      <>
                       {showMenjunjeModal && (
                         <div className="bg-rose-950/50 border border-rose-500/30 rounded-2xl p-5 space-y-4 mb-4">
                           <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje — ¿Qué milanesa usaste?</p>
@@ -436,6 +437,7 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
                       <button onClick={handleFinish} className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl text-lg hover:bg-slate-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
                         <CheckCircle2 size={20} /> FINALIZAR Y GUARDAR
                       </button>
+                      </>
                     )}
                   </div>
                 </div>
