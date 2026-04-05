@@ -12,7 +12,9 @@ type DayStats = {
   pct_semana: number;
   semanas: number;
   prod_burgers_estimado: number;
-  prod_lomitos_estimado: number;
+  medallones_recomendados: number;
+  kg_carne_recomendado: number;
+  kg_pan_recomendado: number;
 };
 
 // ─── Datos reales: 238 días / Jul 2025 → Abr 2026 ───────────────────────────
@@ -25,13 +27,13 @@ const BASE_STATS: {
   dias_con_datos: number;
 } = {
   por_dia: {
-    "Lunes":     { prom_ventas: 285296,  prom_ordenes: 9.3,  max_ventas: 776400,   min_ventas: 46660,  pct_semana: 13.5, semanas: 15, prod_burgers_estimado: 12, prod_lomitos_estimado: 4 },
-    "Martes":    { prom_ventas: 249831,  prom_ordenes: 8.6,  max_ventas: 486100,   min_ventas: 17600,  pct_semana: 11.9, semanas: 36, prod_burgers_estimado: 11, prod_lomitos_estimado: 3 },
-    "Miércoles": { prom_ventas: 201695,  prom_ordenes: 6.6,  max_ventas: 533900,   min_ventas: 16500,  pct_semana: 9.6,  semanas: 37, prod_burgers_estimado: 9,  prod_lomitos_estimado: 3 },
-    "Jueves":    { prom_ventas: 246072,  prom_ordenes: 7.9,  max_ventas: 494180,   min_ventas: 32300,  pct_semana: 11.7, semanas: 37, prod_burgers_estimado: 10, prod_lomitos_estimado: 3 },
-    "Viernes":   { prom_ventas: 347678,  prom_ordenes: 10.9, max_ventas: 589850,   min_ventas: 185000, pct_semana: 16.5, semanas: 37, prod_burgers_estimado: 14, prod_lomitos_estimado: 4 },
-    "Sábado":    { prom_ventas: 381579,  prom_ordenes: 12.4, max_ventas: 1336360,  min_ventas: 105600, pct_semana: 18.1, semanas: 38, prod_burgers_estimado: 16, prod_lomitos_estimado: 5 },
-    "Domingo":   { prom_ventas: 395671,  prom_ordenes: 13.1, max_ventas: 761420,   min_ventas: 61100,  pct_semana: 18.8, semanas: 38, prod_burgers_estimado: 17, prod_lomitos_estimado: 5 },
+    "Lunes":     { prom_ventas: 285296,  prom_ordenes: 9.3,  max_ventas: 776400,   min_ventas: 46660,  pct_semana: 13.5, semanas: 15, prod_burgers_estimado: 12 },
+    "Martes":    { prom_ventas: 249831,  prom_ordenes: 8.6,  max_ventas: 486100,   min_ventas: 17600,  pct_semana: 11.9, semanas: 36, prod_burgers_estimado: 11 },
+    "Miércoles": { prom_ventas: 201695,  prom_ordenes: 6.6,  max_ventas: 533900,   min_ventas: 16500,  pct_semana: 9.6,  semanas: 37, prod_burgers_estimado: 9 },
+    "Jueves":    { prom_ventas: 246072,  prom_ordenes: 7.9,  max_ventas: 494180,   min_ventas: 32300,  pct_semana: 11.7, semanas: 37, prod_burgers_estimado: 10 },
+    "Viernes":   { prom_ventas: 347678,  prom_ordenes: 10.9, max_ventas: 589850,   min_ventas: 185000, pct_semana: 16.5, semanas: 37, prod_burgers_estimado: 14 },
+    "Sábado":    { prom_ventas: 381579,  prom_ordenes: 12.4, max_ventas: 1336360,  min_ventas: 105600, pct_semana: 18.1, semanas: 38, prod_burgers_estimado: 16 },
+    "Domingo":   { prom_ventas: 395671,  prom_ordenes: 13.1, max_ventas: 761420,   min_ventas: 61100,  pct_semana: 18.8, semanas: 38, prod_burgers_estimado: 17 },
   },
   por_hora: { "12": 41927, "13": 43438, "14": 37543, "19": 55120, "20": 84072, "21": 97911, "22": 78604, "23": 49053 },
   ticket_promedio: 30610,
@@ -111,7 +113,10 @@ export default function TabProyeccion() {
           prom_ventas: Math.round(pv), prom_ordenes: Math.round(po * 10) / 10,
           max_ventas: Math.max(...v), min_ventas: Math.min(...v),
           pct_semana: Math.round(pv / total_prom * 1000) / 10, semanas: v.length,
-          prod_burgers_estimado: Math.round(po * 1.3), prod_lomitos_estimado: Math.round(po * 0.4),
+          prod_burgers_estimado: Math.round(po * 1.3),
+          medallones_recomendados: Math.round(po * 1.3 * 2.33 * 1.15),
+          kg_carne_recomendado: Math.round(po * 1.3 * 2.33 * 1.15 * 0.120 * 100) / 100,
+          kg_pan_recomendado: Math.round(po * 1.3 * 1.15 * 0.080 * 1000) / 1000,
         };
       });
       const nuevo_por_hora: Record<string, number> = {};
@@ -208,7 +213,7 @@ export default function TabProyeccion() {
         <div className="space-y-4">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 flex items-start gap-2">
             <Info size={14} className="text-slate-400 mt-0.5 shrink-0" />
-            <p className="text-xs text-slate-400">Estimación basada en {stats.ordenes_anio} órdenes reales. Burgers = órdenes × 1.3 · Lomitos = órdenes × 0.4. Ajustá según tus recetas reales.</p>
+            <p className="text-xs text-slate-400">Datos reales de 6 meses (Nov 2025 → Abr 2026). Medallones de 120g. +15% margen de seguridad. 2.33 medallones/burger promedio.</p>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800">
@@ -218,10 +223,10 @@ export default function TabProyeccion() {
               <thead className="bg-slate-800 text-slate-400 text-xs uppercase">
                 <tr>
                   <th className="px-5 py-3 text-left">Día</th>
-                  <th className="px-5 py-3 text-right">Órdenes est.</th>
                   <th className="px-5 py-3 text-right">🍔 Burgers</th>
-                  <th className="px-5 py-3 text-right">🥩 Lomitos</th>
-                  <th className="px-5 py-3 text-right">Ventas est.</th>
+                  <th className="px-5 py-3 text-right">🥩 Medallones</th>
+                  <th className="px-5 py-3 text-right">Kg carne</th>
+                  <th className="px-5 py-3 text-right">Kg pan</th>
                   <th className="px-5 py-3 text-left">Nivel</th>
                 </tr>
               </thead>
@@ -235,16 +240,16 @@ export default function TabProyeccion() {
                       <td className="px-5 py-3 font-black text-white">
                         {esHoy && <span className="text-blue-400 text-[10px] mr-1">⬤ </span>}{dia}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-slate-300">{s.prom_ordenes}</td>
                       <td className="px-5 py-3 text-right">
                         <span className="font-black text-amber-400 text-base">{s.prod_burgers_estimado}</span>
                         <span className="text-slate-500 text-xs ml-1">u</span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <span className="font-black text-rose-400 text-base">{s.prod_lomitos_estimado}</span>
+                        <span className="font-black text-white text-base">{s.medallones_recomendados}</span>
                         <span className="text-slate-500 text-xs ml-1">u</span>
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-400 font-mono">{fmtK(s.prom_ventas)}</td>
+                      <td className="px-5 py-3 text-right font-mono font-black text-rose-400">{s.kg_carne_recomendado} kg</td>
+                      <td className="px-5 py-3 text-right font-mono text-slate-400">{s.kg_pan_recomendado} kg</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-20 bg-slate-700 rounded-full h-1.5">
@@ -260,6 +265,37 @@ export default function TabProyeccion() {
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Resumen semanal */}
+          <div className="px-5 py-4 bg-slate-800/50 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Semana completa</p>
+              <p className="text-xl font-black text-white">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].medallones_recomendados || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">medallones</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg carne/semana</p>
+              <p className="text-xl font-black text-rose-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_carne_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Burgers/semana</p>
+              <p className="text-xl font-black text-amber-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].prod_burgers_estimado || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">u</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg pan/semana</p>
+              <p className="text-xl font-black text-slate-300">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_pan_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -297,6 +333,37 @@ export default function TabProyeccion() {
               );
             })}
           </div>
+          {/* Resumen semanal */}
+          <div className="px-5 py-4 bg-slate-800/50 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Semana completa</p>
+              <p className="text-xl font-black text-white">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].medallones_recomendados || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">medallones</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg carne/semana</p>
+              <p className="text-xl font-black text-rose-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_carne_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Burgers/semana</p>
+              <p className="text-xl font-black text-amber-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].prod_burgers_estimado || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">u</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg pan/semana</p>
+              <p className="text-xl font-black text-slate-300">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_pan_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -324,6 +391,37 @@ export default function TabProyeccion() {
               <div className="w-2 h-2 bg-green-500 rounded-full" />
               <p className="text-sm text-slate-300">
                 <span className="font-black text-white">21hs es el pico máximo</span> — tené todo listo antes de las 19:30. El 80% de las ventas ocurren entre 20hs y 23hs.
+              </p>
+            </div>
+          </div>
+          {/* Resumen semanal */}
+          <div className="px-5 py-4 bg-slate-800/50 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Semana completa</p>
+              <p className="text-xl font-black text-white">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].medallones_recomendados || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">medallones</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg carne/semana</p>
+              <p className="text-xl font-black text-rose-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_carne_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Burgers/semana</p>
+              <p className="text-xl font-black text-amber-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].prod_burgers_estimado || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">u</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg pan/semana</p>
+              <p className="text-xl font-black text-slate-300">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_pan_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
               </p>
             </div>
           </div>
@@ -366,6 +464,37 @@ export default function TabProyeccion() {
                 <p className="font-black text-amber-400">Jul 2025</p>
                 <p className="text-xs text-slate-400">$195k/día</p>
               </div>
+            </div>
+          </div>
+          {/* Resumen semanal */}
+          <div className="px-5 py-4 bg-slate-800/50 border-t border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Semana completa</p>
+              <p className="text-xl font-black text-white">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].medallones_recomendados || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">medallones</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg carne/semana</p>
+              <p className="text-xl font-black text-rose-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_carne_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Burgers/semana</p>
+              <p className="text-xl font-black text-amber-400">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].prod_burgers_estimado || 0), 0)}
+                <span className="text-sm text-slate-400 ml-1">u</span>
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-1">Kg pan/semana</p>
+              <p className="text-xl font-black text-slate-300">
+                {DIAS.filter(d => stats.por_dia[d]).reduce((s, d) => s + (stats.por_dia[d].kg_pan_recomendado || 0), 0).toFixed(2)}
+                <span className="text-sm text-slate-400 ml-1">kg</span>
+              </p>
             </div>
           </div>
         </div>
