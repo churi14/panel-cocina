@@ -257,21 +257,24 @@ function Dashboard() {
     });
     cleanOldProducciones();
 
-    // ✅ Cocina: restaurar producción activa si existía al hacer F5
+    // ✅ Cocina: restaurar producciones activas al hacer F5
     supabase
       .from('cocina_produccion_activa')
       .select('*')
       .eq('status', 'running')
-      .maybeSingle()
       .then(({ data }) => {
-        if (data) {
-          setActiveProduction({
-            recipeName: data.recipe_name ?? 'Producción en curso',
-            targetUnits: parseFloat(data.target_units),
-            unit: data.unit,
-            startTime: data.start_time,
-            status: 'running',
-          });
+        if (data && data.length > 0) {
+          setActiveProductions(data.map((d: any) => ({
+            id: d.id ?? d.start_time,
+            recipeName: d.recipe_name ?? 'Producción en curso',
+            recipeId: d.recipe_id ?? '',
+            targetUnits: parseFloat(d.target_units),
+            unit: d.unit,
+            startTime: d.start_time,
+            status: 'running' as const,
+            operador: d.operador ?? '',
+            baseKg: d.base_qty_kg ?? 0,
+          })));
         }
       });
   }, []);
