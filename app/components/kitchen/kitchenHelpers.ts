@@ -9,13 +9,6 @@ export function formatQty(grams: number): string {
   return `${grams % 1 === 0 ? grams.toFixed(0) : grams.toFixed(1)} gr`;
 }
 
-export const KITCHEN_CATEGORIES = [
-  { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200', hover: 'hover:border-amber-400', icon: <Wheat   size={48} className="text-amber-600 mb-4" /> },
-  { id: 'Salsas',      label: 'Salsas',       border: 'border-red-200',   hover: 'hover:border-red-400',   icon: <Droplet size={48} className="text-red-600 mb-4" /> },
-  { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',  hover: 'hover:border-rose-400',  icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
-  { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200', hover: 'hover:border-green-400', icon: <Carrot  size={48} className="text-green-600 mb-4" /> },
-  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',  hover: 'hover:border-blue-400',  icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
-];
 
 // ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
 
@@ -232,5 +225,3 @@ export async function deductStockForVerdura(recipeId: string, brutoPesoKg: numbe
     }
   } catch (e) { console.error('Error deductStockForVerdura:', e); }
 }
-
-export const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
