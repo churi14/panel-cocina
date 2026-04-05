@@ -31,7 +31,13 @@ const fmtK = (n: number) => n >= 1000 ? `$${(n/1000).toFixed(0)}k` : `$${n}`;
 type DayStats = { prom_ventas: number; prom_ordenes: number; max_ventas: number; min_ventas: number; pct_semana: number };
 
 export default function TabProyeccion() {
-  const [stats, setStats] = useState(BASE_STATS);
+  const [stats, setStats] = useState<{
+    por_dia: Record<string, DayStats>;
+    por_hora: Record<string, number>;
+    ticket_promedio: number;
+    total_30d: number;
+    ordenes_30d: number;
+  }>(BASE_STATS);
   const [uploading, setUploading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState('30 días (Burger, Mar-Abr 2026)');
 
