@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import {
-  UtensilsCrossed, X, ArrowLeft, Play, CheckSquare, Square,
+  UtensilsCrossed, X, ArrowLeft, Play, CheckSquare, Square, Plus,
   CheckCircle2, Clock, Calculator, AlertCircle, Wheat, Droplet, ChefHat, Carrot
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
