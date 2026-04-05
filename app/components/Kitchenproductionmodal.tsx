@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   UtensilsCrossed, X, ArrowLeft, Play, CheckSquare, Square, Plus,
-  CheckCircle2, Calculator, AlertCircle, Wheat, Droplet, ChefHat, Carrot
+  CheckCircle2, Calculator, AlertCircle, Wheat, Droplet, ChefHat, Carrot, Clock
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
 import {
