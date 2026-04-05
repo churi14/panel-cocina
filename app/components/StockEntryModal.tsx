@@ -253,14 +253,42 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
               {/* Izquierda: cantidad */}
               <div className="space-y-6">
                 {/* Stock actual */}
-                <div className={`px-5 py-4 rounded-2xl border-2 ${catConfig.color}`}>
+                <div className={`px-5 py-4 rounded-2xl border-2 ${selectedProduct.cantidad < 0 ? 'border-red-300 bg-red-50' : catConfig.color}`}>
                   <p className="text-xs font-black uppercase mb-1 opacity-70">Stock actual</p>
-                  <p className="text-3xl font-black">
-                    {selectedProduct.cantidad > 0
-                      ? `${selectedProduct.unidad === 'kg' || selectedProduct.unidad === 'lt' ? selectedProduct.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : selectedProduct.cantidad} ${selectedProduct.unidad}`
-                      : 'Sin stock'}
+                  <p className={`text-3xl font-black ${selectedProduct.cantidad < 0 ? 'text-red-600' : ''}`}>
+                    {selectedProduct.unidad === 'kg' || selectedProduct.unidad === 'lt'
+                      ? selectedProduct.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
+                      : selectedProduct.cantidad} {selectedProduct.unidad}
                   </p>
+                  {selectedProduct.cantidad < 0 && (
+                    <p className="text-xs text-red-500 font-bold mt-1">
+                      ⚠️ Stock negativo — pendiente de factura
+                    </p>
+                  )}
                 </div>
+
+                {/* Cobertura de stock negativo */}
+                {selectedProduct.cantidad < 0 && cantidad && parseFloat(cantidad) > 0 && (
+                  <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl px-5 py-4">
+                    <p className="text-xs font-black uppercase mb-2 text-amber-700">📋 Esta factura cubre</p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Stock negativo:</span>
+                        <span className="font-black text-red-600">{selectedProduct.cantidad.toFixed(3).replace('.', ',')} {selectedProduct.unidad}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Factura ingresa:</span>
+                        <span className="font-black text-green-600">+{parseFloat(cantidad).toFixed(3).replace('.', ',')} {selectedProduct.unidad}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-amber-200 pt-1 mt-1">
+                        <span className="font-black text-slate-700">Stock final:</span>
+                        <span className={`font-black ${(selectedProduct.cantidad + parseFloat(cantidad)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {(selectedProduct.cantidad + parseFloat(cantidad)).toFixed(3).replace('.', ',')} {selectedProduct.unidad}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* SELECTOR ESPECIAL PARA ADEREZOS */}
                 {isAderezo && (

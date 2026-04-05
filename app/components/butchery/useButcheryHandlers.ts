@@ -30,7 +30,8 @@ export async function deductStockByName(nombreCorte: string, kgToDeduct: number,
     .select('id, cantidad, stock_critico, stock_medio')
     .eq('nombre', nombre).eq('categoria', 'CARNES').single();
   if (!data) return { ok: true, stockActual: 0, nombre };
-  const newQty = Math.max(0, data.cantidad - kgToDeduct);
+  // Permitir stock negativo — se cubrirá con la próxima factura
+  const newQty = parseFloat((data.cantidad - kgToDeduct).toFixed(3));
   await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', data.id);
   await supabase.from('stock_movements').insert({
     stock_id: data.id, nombre, categoria: 'CARNES', tipo: 'egreso',

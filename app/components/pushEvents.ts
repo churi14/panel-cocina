@@ -83,7 +83,13 @@ export async function checkAndNotifyStock(
     ? n.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
     : Math.round(n).toString();
 
-  if (newQty <= 0) {
+  if (newQty < 0) {
+    await sendPushNotification(
+      `🔴 Stock NEGATIVO: ${nombre}`,
+      `Hay ${fmt(newQty)} ${unidad} — cargá la factura en admin`,
+      'stock-negativo', '/admin'
+    );
+  } else if (newQty === 0) {
     await PushEvents.stockAgotado(nombre);
   } else if (newQty <= critico) {
     await sendPushNotification(

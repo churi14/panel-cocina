@@ -294,7 +294,8 @@ export default function TabVentas() {
           .from(tabla).select('id, cantidad').eq(campoNombre, d.stock_nombre).single();
         if (fetchErr || !data) { errores.push(`${d.stock_nombre}: no encontrado`); continue; }
 
-        const newQty = Math.max(0, (data.cantidad as number) - d.cantidad_total);
+        // Permitir stock negativo — se cubre con próxima factura
+        const newQty = parseFloat(((data.cantidad as number) - d.cantidad_total).toFixed(3));
         const updateData: any = { cantidad: parseFloat(newQty.toFixed(3)) };
         if (d.stock_tipo === 'stock') updateData.fecha_actualizacion = fecha;
         const { error: updateErr } = await supabase.from(tabla)
