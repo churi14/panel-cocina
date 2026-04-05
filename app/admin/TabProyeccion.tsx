@@ -27,13 +27,13 @@ const BASE_STATS: {
   dias_con_datos: number;
 } = {
   por_dia: {
-    "Lunes":     { prom_ventas: 285296,  prom_ordenes: 9.3,  max_ventas: 776400,   min_ventas: 46660,  pct_semana: 13.5, semanas: 15, prod_burgers_estimado: 12 },
-    "Martes":    { prom_ventas: 249831,  prom_ordenes: 8.6,  max_ventas: 486100,   min_ventas: 17600,  pct_semana: 11.9, semanas: 36, prod_burgers_estimado: 11 },
-    "Miércoles": { prom_ventas: 201695,  prom_ordenes: 6.6,  max_ventas: 533900,   min_ventas: 16500,  pct_semana: 9.6,  semanas: 37, prod_burgers_estimado: 9 },
-    "Jueves":    { prom_ventas: 246072,  prom_ordenes: 7.9,  max_ventas: 494180,   min_ventas: 32300,  pct_semana: 11.7, semanas: 37, prod_burgers_estimado: 10 },
-    "Viernes":   { prom_ventas: 347678,  prom_ordenes: 10.9, max_ventas: 589850,   min_ventas: 185000, pct_semana: 16.5, semanas: 37, prod_burgers_estimado: 14 },
-    "Sábado":    { prom_ventas: 381579,  prom_ordenes: 12.4, max_ventas: 1336360,  min_ventas: 105600, pct_semana: 18.1, semanas: 38, prod_burgers_estimado: 16 },
-    "Domingo":   { prom_ventas: 395671,  prom_ordenes: 13.1, max_ventas: 761420,   min_ventas: 61100,  pct_semana: 18.8, semanas: 38, prod_burgers_estimado: 17 },
+    "Lunes":     { prom_ventas: 285296,  prom_ordenes: 9.3,  max_ventas: 776400,   min_ventas: 46660,  pct_semana: 13.5, semanas: 15, prod_burgers_estimado: 17, medallones_recomendados: 33, kg_carne_recomendado: 3.96, kg_pan_recomendado: 1.36 },
+    "Martes":    { prom_ventas: 249831,  prom_ordenes: 8.6,  max_ventas: 486100,   min_ventas: 17600,  pct_semana: 11.9, semanas: 36, prod_burgers_estimado: 16, medallones_recomendados: 37, kg_carne_recomendado: 4.44, kg_pan_recomendado: 1.28 },
+    "Miércoles": { prom_ventas: 201695,  prom_ordenes: 6.6,  max_ventas: 533900,   min_ventas: 16500,  pct_semana: 9.6,  semanas: 37, prod_burgers_estimado: 11, medallones_recomendados: 26, kg_carne_recomendado: 3.12, kg_pan_recomendado: 0.88 },
+    "Jueves":    { prom_ventas: 246072,  prom_ordenes: 7.9,  max_ventas: 494180,   min_ventas: 32300,  pct_semana: 11.7, semanas: 37, prod_burgers_estimado: 16, medallones_recomendados: 37, kg_carne_recomendado: 4.44, kg_pan_recomendado: 1.28 },
+    "Viernes":   { prom_ventas: 347678,  prom_ordenes: 10.9, max_ventas: 589850,   min_ventas: 185000, pct_semana: 16.5, semanas: 37, prod_burgers_estimado: 18, medallones_recomendados: 43, kg_carne_recomendado: 5.16, kg_pan_recomendado: 1.44 },
+    "Sábado":    { prom_ventas: 381579,  prom_ordenes: 12.4, max_ventas: 1336360,  min_ventas: 105600, pct_semana: 18.1, semanas: 38, prod_burgers_estimado: 20, medallones_recomendados: 48, kg_carne_recomendado: 5.76, kg_pan_recomendado: 1.60 },
+    "Domingo":   { prom_ventas: 395671,  prom_ordenes: 13.1, max_ventas: 761420,   min_ventas: 61100,  pct_semana: 18.8, semanas: 38, prod_burgers_estimado: 21, medallones_recomendados: 51, kg_carne_recomendado: 6.12, kg_pan_recomendado: 1.68 },
   },
   por_hora: { "12": 41927, "13": 43438, "14": 37543, "19": 55120, "20": 84072, "21": 97911, "22": 78604, "23": 49053 },
   ticket_promedio: 30610,
