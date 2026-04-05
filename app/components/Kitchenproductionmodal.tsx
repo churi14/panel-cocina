@@ -286,7 +286,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   };
 
   const toggleCheck = (idx: number) => {
-    if (activeProduction) return;
+    if (finishingProd) return;
     const next = new Set(checkedIngredients);
     next.has(idx) ? next.delete(idx) : next.add(idx);
     setCheckedIngredients(next);
@@ -406,7 +406,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
     // Descuento stock salsas en potes — siempre: potes * 0.5 kg
     if (isSalsaPotes && selectedProduct) {
-      const potesProducidos = Math.round(activeProduction.targetUnits);
+      const potesProducidos = Math.round((finishingProd?.targetUnits ?? 0));
       const kgUsados = potesProducidos * 0.5;
       await deductStockForSalsa(selectedProduct.id, kgUsados, potesProducidos);
     }
@@ -422,7 +422,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     onClose();
   };
 
-  const elapsedTime = activeProduction ? currentTime - activeProduction.startTime : 0;
+  const elapsedTime = finishingProd ? currentTime - finishingProd.startTime : 0;
 
 
   const formatTimer = (ms: number) => {
