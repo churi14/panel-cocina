@@ -245,7 +245,7 @@ function Dashboard() {
     // ── PREP ─────────────────────────────────────────────────────────────────
   ]);
 
-  const [activeProduction, setActiveProduction] = useState<ActiveProduction>(null);
+  const [activeProductions, setActiveProductions] = useState<import('./types').ActiveProductionItem[]>([]);
 
   // Cargar producciones activas desde Supabase al iniciar
   useEffect(() => {
@@ -296,11 +296,18 @@ function Dashboard() {
       const interval = setInterval(() => setElapsed(Date.now() - activeProduction.startTime), 1000);
       return () => clearInterval(interval);
     }, []);
-    if (!activeProduction) return null;
+    if (!activeProductions.length) return null;
     return (
         <div onClick={() => setIsKitchenModalOpen(true)} className="col-span-full bg-slate-900 rounded-xl p-4 border border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)] flex justify-between items-center cursor-pointer hover:bg-slate-800 transition-all animate-in slide-in-from-top-2">
-            <div className="flex items-center gap-4"><div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"/><div><h4 className="text-white font-bold text-sm">PRODUCCIÓN EN CURSO: {activeProduction.recipeName.toUpperCase()}</h4><p className="text-slate-400 text-xs">Objetivo: {activeProduction.targetUnits} {activeProduction.unit}</p></div></div>
-            <div className="text-2xl font-mono font-bold text-green-400">{formatTime(Date.now() - activeProduction.startTime)}</div>
+            <div className="flex items-center gap-4 flex-wrap">
+              {activeProductions.map(p => (
+                <div key={p.id} className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/>
+                  <span className="text-white font-bold text-sm">{p.recipeName}</span>
+                  <span className="text-green-400 font-mono text-sm">{formatTime(Date.now() - p.startTime)}</span>
+                </div>
+              ))}
+            </div>
         </div>
     );
   };
@@ -336,17 +343,17 @@ function Dashboard() {
         </header>
 
         <div className="p-8 max-w-7xl mx-auto space-y-10 w-full">
-            {activeProduction && <LiveProductionMonitor />}
+            {activeProductions.length > 0 && <LiveProductionMonitor />}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-slate-900 border-rose-500' : 'bg-white border-slate-100 hover:border-rose-200'}`}>
                     <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-600'}`}><Beef size={28}/></div>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 && <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">{butcheryProductions.filter(p => p.status === 'step1_running').length} EN CURSO</span>}</div>
                     <h3 className={`text-xl font-bold mb-1 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'text-white' : 'text-slate-800'}`}>Carnicería</h3><p className={`text-sm font-medium mb-4 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'text-slate-400' : 'text-slate-400'}`}>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? `${butcheryProductions.filter(p => p.status === 'step1_running').map(p => p.typeName).join(', ')}` : 'Lomito, Burger y Milanesa'}</p>
                     <button onClick={() => setIsButcheryModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-rose-600 text-white hover:bg-rose-500' : 'bg-slate-900 hover:bg-rose-600 text-white'}`}>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'VER PRODUCCIONES' : 'ABRIR CARNICERÍA'} <ChevronRight size={16} /></button>
                 </div>
-                <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${activeProduction ? 'bg-slate-900 border-green-500' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
-                    <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${activeProduction ? 'bg-green-600 text-white' : 'bg-amber-100 text-amber-600'}`}><UtensilsCrossed size={28}/></div>{activeProduction && <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">EN CURSO</span>}</div>
-                    <h3 className={`text-xl font-bold mb-1 ${activeProduction ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProduction ? 'text-slate-400' : 'text-slate-400'}`}>{activeProduction ? `Produciendo: ${activeProduction.recipeName ?? '...'}` : 'Salsas, Panes y Prep'}</p>
-                    <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProduction ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{activeProduction ? 'VER TIMER' : 'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
+                <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${activeProductions.length > 0 ? 'bg-slate-900 border-green-500' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
+                    <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${activeProductions.length > 0 ? 'bg-green-600 text-white' : 'bg-amber-100 text-amber-600'}`}><UtensilsCrossed size={28}/></div>{activeProductions.length > 0 && <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">{activeProductions.length} EN CURSO</span>}</div>
+                    <h3 className={`text-xl font-bold mb-1 ${activeProductions.length > 0 ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProduction ? 'text-slate-400' : 'text-slate-400'}`}>{activeProductions.length > 0 ? activeProductions.map(p => p.recipeName).join(', ') : 'Salsas, Panes y Prep'}</p>
+                    <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProductions.length > 0 ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -366,7 +373,7 @@ function Dashboard() {
       {/* MODALES CONECTADOS A LA DB EN MEMORIA */}
       {isSuppliersModalOpen && <SuppliersModal onClose={() => setIsSuppliersModalOpen(false)} suppliersDB={suppliersDB} setSuppliersDB={setSuppliersDB} />}
       {isRecipeManagerOpen && <RecipeManagerModal onClose={() => setIsRecipeManagerOpen(false)} recipes={recipesDB} setRecipes={setRecipesDB} />}
-      {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProduction={activeProduction} setActiveProduction={setActiveProduction} recipesDB={recipesDB} setProductionHistory={setProductionHistory} />}
+      {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} />}
 
     </div>
   );

@@ -42,12 +42,18 @@ export type Supplier = {
 };
 
 export type ActiveProduction = {
+  id: number;
   recipeName: string;
+  recipeId?: string;
   targetUnits: number;
   unit: string;
   startTime: number;
   status: 'running';
+  operador?: string;
+  baseKg?: number;
 } | null;
+
+export type ActiveProductionItem = NonNullable<ActiveProduction>;
 
 // --- CARNICERÍA ---
 

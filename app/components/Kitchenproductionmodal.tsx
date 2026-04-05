@@ -26,17 +26,17 @@ const KITCHEN_CATEGORIES = [
 
 // ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
 
-async function saveCocinaProduccion(recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number, operadorCocina: string) {
+async function saveCocinaProduccion(id: number, recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number, operadorCocina: string) {
   try {
-    // Borra cualquier producción activa anterior y guarda la nueva
-    await supabase.from('cocina_produccion_activa').delete().neq('id', 0);
     await supabase.from('cocina_produccion_activa').insert({
+      id,
       recipe_name: recipeName,
       target_units: targetUnits,
       unit,
       base_qty_kg: baseQtyKg,
       start_time: startTime,
       status: 'running',
+      operador: operadorCocina,
       updated_at: new Date().toISOString(),
     });
     // Notificar al panel admin via produccion_eventos
@@ -54,9 +54,9 @@ async function saveCocinaProduccion(recipeName: string, targetUnits: number, uni
   }
 }
 
-async function clearCocinaProduccion(recipeName: string, baseQtyKg: number, operadorCocina: string) {
+async function clearCocinaProduccion(prodId: number, recipeName: string, baseQtyKg: number, operadorCocina: string) {
   try {
-    await supabase.from('cocina_produccion_activa').delete().neq('id', 0);
+    await supabase.from('cocina_produccion_activa').delete().eq('id', prodId);
     await supabase.from('produccion_eventos').insert({
       tipo: 'fin_cocina',
       kind: 'cocina',
@@ -242,9 +242,16 @@ async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desp
 
 const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
 
-export default function KitchenProductionModal({ onClose, activeProduction, setActiveProduction, recipesDB, setProductionHistory }: any) {
+export default function KitchenProductionModal({ onClose, activeProductions, setActiveProductions, recipesDB, setProductionHistory }: {
+  onClose: () => void;
+  activeProductions: import('../types').ActiveProductionItem[];
+  setActiveProductions: React.Dispatch<React.SetStateAction<import('../types').ActiveProductionItem[]>>;
+  recipesDB: any[];
+  setProductionHistory: any;
+}) {
   const [operador, setOperador] = useState('');
-  const [view, setView] = useState<'category' | 'product' | 'recipe'>(activeProduction ? 'recipe' : 'category');
+  const [modalView, setModalView] = useState<'list' | 'new'>('list');
+  const [view, setView] = useState<'category' | 'product' | 'recipe'>('category');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Recipe | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -266,21 +273,9 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   }, {});
 
   useEffect(() => {
-    if (activeProduction && !selectedProduct) {
-      const found = recipesDB.find((r: Recipe) => r.name === activeProduction.recipeName);
-      if (found) {
-        setSelectedProduct(found);
-        setTargetUnits(activeProduction.targetUnits);
-        setCheckedIngredients(new Set(found.ingredients.map((_: any, i: number) => i)));
-        // Restaurar baseQtyKg si la unidad es kg base
-        if (activeProduction.unit === 'kg base') {
-          setBaseQtyKg(String(activeProduction.targetUnits));
-        }
-      }
-    }
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [activeProduction]);
+  }, []);
 
   const handleProductSelect = (r: Recipe) => {
     setSelectedProduct(r);
@@ -321,32 +316,48 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     const finalUnit = isVerdura ? 'kg bruto' : isPercent ? 'kg base' : selectedProduct.unit;
     const finalBaseKg = isVerdura ? parseFloat(verduraBrutoKg) : parseFloat(baseQtyKg || '0');
 
-    setActiveProduction({
+    const newProd: import('../types').ActiveProductionItem = {
+      id: now,
       recipeName: selectedProduct.name,
+      recipeId: selectedProduct.id,
       targetUnits: finalTargetUnits,
       unit: finalUnit,
       startTime: now,
       status: 'running',
-    });
+      operador,
+      baseKg: finalBaseKg,
+    };
+    setActiveProductions(prev => [...prev, newProd]);
+    setModalView('list');
+    setView('category');
+    setSelectedProduct(null);
+    setCheckedIngredients(new Set());
+    setTargetUnits(0);
+    setBaseQtyKg('');
 
     // Persistir en Supabase y notificar al admin
-    await saveCocinaProduccion(selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador);
+    await saveCocinaProduccion(now, selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador);
   };
+
+  // ── Produccion activa seleccionada para finalizar ────────────────────────
+  const [finishingProd, setFinishingProd] = useState<import('../types').ActiveProductionItem | null>(null);
 
   // ── Estado para menjunje milanesa ─────────────────────────────────────────
   const [showMenjunjeModal, setShowMenjunjeModal] = useState(false);
   const [menjunjeCorte, setMenjunjeCorte]         = useState('');
   const [menjunjeKg, setMenjunjeKg]               = useState('');
 
-  const isSalsaPotes    = selectedProduct?.id?.startsWith('potes_')    ?? false;
-  const isVerduraRecipe = selectedProduct?.id?.startsWith('verdura_') ?? false;
-  const isMilanesaRecipe = selectedProduct?.category === 'Milanesas' ||
-    activeProduction?.recipeName?.toLowerCase().includes('menjunje');
-
-  // Detectar si es carne o pollo para descuento correcto
-  const menjunjeTipo = activeProduction?.recipeName?.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
+  const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
+  const activeRecipeName = finishingProd?.recipeName ?? '';
+  const isSalsaPotes    = activeRecipeId.startsWith('potes_');
+  const isVerduraRecipe = activeRecipeId.startsWith('verdura_');
+  const isMilanesaRecipe = activeRecipeName.toLowerCase().includes('menjunje') ||
+    recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Milanesas';
+  const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
 
   const handleFinish = async () => {
+    const prod = finishingProd;
+    if (!prod) return;
     // Si es receta de milanesa, mostrar modal de menjunje primero
     if (isMilanesaRecipe && !showMenjunjeModal) {
       setShowMenjunjeModal(true);
@@ -355,15 +366,15 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     setShowMenjunjeModal(false);
 
     const endTime = Date.now();
-    const dur = (endTime - activeProduction.startTime) / 1000;
-    const baseKg = parseFloat(baseQtyKg || String(activeProduction.targetUnits) || '0');
+    const dur = (endTime - prod.startTime) / 1000;
+    const baseKg = prod.baseKg ?? prod.targetUnits;
 
     setProductionHistory((prev: ProductionRecord[]) => [...prev, {
       id: Date.now(), date: new Date().toLocaleDateString(), timestamp: endTime,
-      recipeName: activeProduction.recipeName,
-      quantity: activeProduction.targetUnits, unit: activeProduction.unit,
+      recipeName: prod.recipeName,
+      quantity: prod.targetUnits, unit: prod.unit,
       durationSeconds: dur,
-      startTime: new Date(activeProduction.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      startTime: new Date(prod.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
 
@@ -401,15 +412,19 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
     }
 
     // Limpiar Supabase y notificar al admin
-    await clearCocinaProduccion(activeProduction.recipeName, baseKg, operador);
+    await clearCocinaProduccion(prod.id, prod.recipeName, baseKg, operador);
+    setActiveProductions(prev => prev.filter(p => p.id !== prod.id));
+    setFinishingProd(null);
 
-    setActiveProduction(null);
+    setFinishingProd(null);
     setMenjunjeCorte('');
     setMenjunjeKg('');
     onClose();
   };
 
   const elapsedTime = activeProduction ? currentTime - activeProduction.startTime : 0;
+
+
   const formatTimer = (ms: number) => {
     const s = Math.floor(ms / 1000);
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -417,27 +432,41 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+
+        {/* HEADER */}
         <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
-            {(view === 'product' || view === 'recipe') && !activeProduction && (
-              <button onClick={() => setView(view === 'recipe' ? 'product' : 'category')} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+            {modalView === 'new' && (
+              <button onClick={() => { setModalView('list'); setView('category'); setSelectedProduct(null); }}
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                 <ArrowLeft size={20} className="text-slate-500" />
               </button>
             )}
             <div>
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><UtensilsCrossed className="text-amber-600" /> Cocina General</h2>
-              <p className="text-slate-500 text-sm">{activeProduction ? 'Producción en curso...' : view === 'recipe' ? `Configurando: ${selectedProduct?.name}` : view === 'product' ? selectedCategory : 'Seleccioná una categoría'}</p>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <UtensilsCrossed className="text-amber-600" size={20} /> Cocina General
+              </h2>
+              <p className="text-slate-400 text-xs">
+                {!operador ? 'Seleccioná tu nombre'
+                  : modalView === 'list'
+                    ? `${activeProductions.length} produccion${activeProductions.length !== 1 ? 'es' : ''} activa${activeProductions.length !== 1 ? 's' : ''} · ${operador}`
+                    : `Configurando: ${selectedProduct?.name ?? 'nueva'}`}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={24} className="text-slate-500" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+            <X size={22} className="text-slate-500" />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
+        {/* CONTENIDO */}
+        <div className="flex-1 overflow-y-auto p-8">
+
           {/* SELECTOR OPERADOR */}
-          {!operador && !activeProduction && (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+          {!operador && (
+            <div className="flex flex-col items-center justify-center min-h-96 space-y-6">
               <div className="text-center">
                 <div className="text-4xl mb-3">👤</div>
                 <h3 className="text-xl font-black text-slate-800">¿Quién sos?</h3>
@@ -454,230 +483,251 @@ export default function KitchenProductionModal({ onClose, activeProduction, setA
             </div>
           )}
 
-          {(!!operador || !!activeProduction) && <>
-          {view === 'category' && !activeProduction && (
-            <div className="grid grid-cols-2 gap-6 max-w-lg mx-auto w-full content-center h-full">
-              {KITCHEN_CATEGORIES.map(cat => (
-                <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setView('product'); }}
-                  className={`flex flex-col items-center justify-center p-8 bg-white border-2 ${cat.border} rounded-3xl ${cat.hover} hover:shadow-xl transition-all group`}>
-                  <div className="group-hover:scale-110 transition-transform">{cat.icon}</div>
-                  <span className="text-xl font-bold text-slate-800">{cat.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* VISTA LISTA DE PRODUCCIONES */}
+          {!!operador && modalView === 'list' && (
+            <div className="space-y-4">
+              {/* Producciones activas */}
+              {activeProductions.length > 0 ? activeProductions.map(prod => {
+                const elapsed = currentTime - prod.startTime;
+                const recipe = recipesDB.find((r: any) => r.name === prod.recipeName);
+                const isFin = finishingProd?.id === prod.id;
+                return (
+                  <div key={prod.id} className={`bg-slate-900 rounded-2xl border overflow-hidden transition-all ${isFin ? 'border-amber-500' : 'border-slate-800'}`}>
+                    <div className="px-5 py-4 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                          <p className="font-black text-white">{prod.recipeName}</p>
+                        </div>
+                        <p className="text-slate-400 text-xs">{prod.operador} · {prod.targetUnits} {prod.unit}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-mono font-bold text-green-400">{formatTimer(elapsed)}</p>
+                        <button
+                          onClick={() => { setFinishingProd(prod); setSelectedProduct(recipe ?? null); }}
+                          className="mt-1 text-xs text-amber-400 hover:text-amber-300 font-bold underline">
+                          Finalizar
+                        </button>
+                      </div>
+                    </div>
 
-          {view === 'product' && !activeProduction && (
-            <div className="grid grid-cols-2 gap-3">
-              {(groupedRecipes[selectedCategory] ?? []).map((r: Recipe) => (
-                <button key={r.id} onClick={() => handleProductSelect(r)}
-                  className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-amber-500 hover:shadow-md transition-all text-left group relative">
-                  {r.recipeType === 'percent' && (
-                    <span className="absolute top-3 right-3 text-[10px] bg-amber-100 text-amber-700 font-black px-2 py-0.5 rounded-full">%</span>
-                  )}
-                  <h3 className="font-bold text-base text-slate-800 group-hover:text-amber-600 pr-8 mb-1">{r.name}</h3>
-                  <p className="text-xs text-slate-500">{r.recipeType === 'percent' ? 'Receta porcentual' : `Rinde: ${r.baseYield} ${r.unit}`}</p>
-                  {r.warning && <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded">{r.warning}</span>}
-                </button>
-              ))}
-              {(!groupedRecipes[selectedCategory] || groupedRecipes[selectedCategory].length === 0) && (
-                <div className="col-span-3 text-center py-16 text-slate-400">
-                  <ChefHat size={48} className="mx-auto mb-4 opacity-30" />
-                  <p className="font-bold">No hay recetas en esta categoría</p>
+                    {/* Panel de finalización */}
+                    {isFin && (
+                      <div className="border-t border-slate-700 p-5 space-y-4 bg-slate-800/50">
+
+                        {isVerduraRecipe && (
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <label className="text-xs font-black text-slate-400 uppercase mb-1 block">Desperdicio (kg)</label>
+                              <input type="number" value={verduraDesperdicioKg}
+                                onChange={e => setVerduraDesperdicioKg(e.target.value)} placeholder="0.000"
+                                className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-xl font-black text-center outline-none focus:border-green-400" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-slate-500 mb-1">Neto</p>
+                              <p className="text-xl font-black text-green-400">
+                                {Math.max(0, (prod.baseKg ?? 0) - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {isMilanesaRecipe && showMenjunjeModal && (
+                          <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
+                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — Ingresá los kg usados</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Corte</label>
+                                <input value={menjunjeCorte} onChange={e => setMenjunjeCorte(e.target.value)}
+                                  placeholder={menjunjeTipo === 'Pollo' ? 'Pollo' : 'Cuadrada / Nalga'}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-rose-500" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg usados</label>
+                                <input type="number" value={menjunjeKg} onChange={e => setMenjunjeKg(e.target.value)}
+                                  placeholder="5.000"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-rose-500" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-3">
+                          <button onClick={handleFinish}
+                            className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2">
+                            <CheckCircle2 size={16} /> Confirmar y finalizar
+                          </button>
+                          <button onClick={() => { setFinishingProd(null); setShowMenjunjeModal(false); }}
+                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl transition-colors">
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }) : (
+                <div className="text-center py-12 text-slate-400">
+                  <UtensilsCrossed size={48} className="mx-auto mb-4 opacity-30" />
+                  <p className="font-bold text-lg">Sin producciones activas</p>
+                  <p className="text-sm mt-1">Iniciá una nueva producción</p>
                 </div>
               )}
+
+              <button onClick={() => setModalView('new')}
+                className="w-full py-5 bg-slate-900 text-white font-black text-xl rounded-2xl hover:bg-amber-600 active:scale-[0.98] transition-all shadow-xl flex items-center justify-center gap-3">
+                <Plus size={24} /> NUEVA PRODUCCIÓN
+              </button>
             </div>
           )}
 
-          {view === 'recipe' && selectedProduct && (
+          {/* VISTA NUEVA PRODUCCION */}
+          {!!operador && modalView === 'new' && (
             <div className="flex gap-8 h-full">
+              {/* LEFT: Planificación */}
               <div className="w-1/3 bg-white p-6 rounded-2xl border border-slate-200 flex flex-col shadow-sm">
-                <h3 className="font-bold text-slate-400 uppercase text-xs mb-6 tracking-wider">{activeProduction ? 'Estado Actual' : 'Planificación'}</h3>
+                <h3 className="font-bold text-slate-400 uppercase text-xs mb-6 tracking-wider">Planificación</h3>
 
                 {isVerdura ? (
                   <div className="mb-6">
                     <label className="block text-sm font-bold text-slate-600 mb-1">Peso bruto a trabajar</label>
                     <p className="text-xs text-slate-400 mb-3">Ingresá los kg que vas a preparar</p>
                     <div className="relative">
-                      <input type="number" inputMode="decimal" step="0.1" value={verduraBrutoKg} disabled={!!activeProduction}
+                      <input type="number" inputMode="decimal" step="0.1" value={verduraBrutoKg}
                         onChange={e => setVerduraBrutoKg(e.target.value)} placeholder="0"
-                        className={`w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all ${activeProduction ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-slate-50 border-green-200 text-green-600 focus:border-green-500 focus:bg-white'}`} />
+                        className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-green-200 text-green-600 focus:border-green-500 focus:bg-white" />
                       <span className="absolute right-4 top-6 text-sm font-bold text-slate-300">KG</span>
                     </div>
                   </div>
                 ) : isPercent ? (
                   <div className="mb-6">
                     <label className="block text-sm font-bold text-slate-600 mb-1">
-                      {selectedProduct.ingredients.find(i => i.isBase)?.name ?? 'Ingrediente base'}
+                      {selectedProduct?.ingredients.find((i: any) => i.isBase)?.name ?? 'Ingrediente base'}
                     </label>
                     <p className="text-xs text-slate-400 mb-3">Ingresá la cantidad en kg</p>
                     <div className="relative">
-                      <input type="number" inputMode="decimal" step="0.1" value={baseQtyKg} disabled={!!activeProduction}
+                      <input type="number" inputMode="decimal" step="0.1" value={baseQtyKg}
                         onChange={e => setBaseQtyKg(e.target.value)} placeholder="0"
-                        className={`w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all ${activeProduction ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white'}`} />
+                        className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white" />
                       <span className="absolute right-4 top-6 text-sm font-bold text-slate-300">KG</span>
                     </div>
                   </div>
-                ) : (
+                ) : selectedProduct ? (
                   <div className="mb-8">
                     <label className="block text-sm font-bold text-slate-600 mb-2">Cantidad a producir</label>
                     <div className="relative">
-                      <input type="number" value={targetUnits} disabled={!!activeProduction}
+                      <input type="number" value={targetUnits}
                         onChange={e => setTargetUnits(Math.max(0, Number(e.target.value)))}
-                        className={`w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all ${activeProduction ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white'}`} />
+                        className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white" />
                       <span className="absolute right-4 top-6 text-sm font-bold text-slate-300 uppercase">{selectedProduct.unit}</span>
                     </div>
                   </div>
-                )}
+                ) : null}
 
-                {activeProduction && (
-                  <div className="mt-auto mb-4 bg-slate-900 rounded-2xl p-6 text-center relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-blue-500 animate-pulse" />
-                    <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block mb-2">Tiempo Transcurrido</span>
-                    <span className="text-5xl font-mono font-bold text-white">{formatTimer(elapsedTime)}</span>
-                  </div>
-                )}
-
-                {selectedProduct.warning && (
+                {selectedProduct?.warning && (
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 mt-auto">
                     <AlertCircle className="text-blue-500 shrink-0" size={20} />
                     <p className="text-sm text-blue-600 leading-tight">{selectedProduct.warning}</p>
                   </div>
                 )}
+
+                {selectedProduct && (
+                  <button onClick={handleStart} disabled={!canStart}
+                    className={`mt-4 w-full py-4 font-bold rounded-xl text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${canStart ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+                    {isVerdura ? <><Play size={20} fill="currentColor" /> INICIAR</> :
+                     allChecked ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> :
+                     `FALTAN ${selectedProduct.ingredients.length - checkedIngredients.size} CHECKS`}
+                  </button>
+                )}
               </div>
 
+              {/* RIGHT: Categorías / Productos / Receta */}
               <div className="w-2/3 flex flex-col">
                 {isVerdura ? (
-                  <div className="bg-white rounded-2xl border border-green-200 flex-1 flex flex-col overflow-hidden shadow-sm p-6 space-y-4">
-                    <h3 className="font-bold text-green-700 text-sm uppercase">🥬 {selectedProduct.name}</h3>
-                    {activeProduction ? (
-                      <div className="space-y-4">
-                        <p className="text-xs text-slate-500">Bruto: <strong>{verduraBrutoKg} kg</strong> — ingresá el desperdicio al terminar.</p>
-                        <div>
-                          <label className="text-xs font-black text-slate-500 uppercase mb-1 block">Desperdicio (kg)</label>
-                          <input type="number" value={verduraDesperdicioKg}
-                            onChange={e => setVerduraDesperdicioKg(e.target.value)}
-                            placeholder="0.000"
-                            className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-3xl font-black text-center outline-none focus:border-green-400" />
-                        </div>
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                          <p className="text-xs text-slate-500 mb-1">Neto estimado</p>
-                          <p className="text-3xl font-black text-green-700">
-                            {Math.max(0, parseFloat(verduraBrutoKg || '0') - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center text-slate-400 text-sm text-center">
-                        <p>Ingresá el peso bruto e iniciá la producción</p>
-                      </div>
-                    )}
+                  <div className="bg-white rounded-2xl border border-green-200 flex-1 flex items-center justify-center shadow-sm p-6">
+                    <div className="text-center text-slate-400">
+                      <p className="font-bold">Ingresá el peso bruto e iniciá la producción</p>
+                    </div>
                   </div>
                 ) : (
                 <div className="bg-white rounded-2xl border border-slate-200 flex-1 flex flex-col overflow-hidden shadow-sm">
-                  <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-                    <h3 className="font-bold text-slate-700 flex items-center gap-2"><Calculator size={18} /> Checklist de Insumos</h3>
-                    <span className="text-xs font-bold text-slate-400 uppercase">
-                      {isPercent ? (baseQtyGr > 0 ? `Base: ${baseQtyKg} kg` : 'Ingresá la cantidad base') : `Para ${targetUnits} ${selectedProduct.unit}`}
-                    </span>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-400 text-xs uppercase font-bold sticky top-0">
-                        <tr>
-                          <th className="py-3 pl-6 text-left w-12">✓</th>
-                          <th className="py-3 text-left">Ingrediente</th>
-                          <th className="py-3 pr-6 text-right">Cantidad</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {!isVerdura && selectedProduct.ingredients.map((ing, idx) => {
-                          const isChecked = checkedIngredients.has(idx);
-                          return (
-                            <tr key={idx} onClick={() => toggleCheck(idx)}
-                              className={`cursor-pointer transition-colors ${isChecked ? 'bg-green-50/50' : 'hover:bg-slate-50'}`}>
-                              <td className="py-4 pl-6">{isChecked ? <CheckSquare className="text-green-500" size={20} /> : <Square className="text-slate-300" size={20} />}</td>
-                              <td className={`py-4 font-medium ${isChecked ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                                {ing.name}
-                                {ing.isBase && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 font-black px-1.5 py-0.5 rounded">BASE</span>}
-                              </td>
-                              <td className={`py-4 pr-6 text-right font-black text-lg ${isChecked ? 'text-slate-300' : ing.isBase ? 'text-amber-600' : 'text-slate-900'}`}>
-                                {calcIngredient(idx)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  {/* Categorías */}
+                  {view === 'category' && !selectedProduct && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-6">
+                      {KITCHEN_CATEGORIES.map(cat => (
+                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setView('product'); }}
+                          className={`bg-white p-8 rounded-2xl border-2 ${cat.border} ${cat.hover} flex flex-col items-center transition-all active:scale-95`}>
+                          {cat.icon}
+                          <span className="font-bold text-slate-700">{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* Productos */}
+                  {view === 'product' && !selectedProduct && (
+                    <div className="p-4 flex-1 overflow-y-auto">
+                      <button onClick={() => setView('category')} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mb-4">
+                        <ArrowLeft size={14} /> Categorías
+                      </button>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(groupedRecipes[selectedCategory] ?? []).map((r: Recipe) => (
+                          <button key={r.id} onClick={() => handleProductSelect(r)}
+                            className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-amber-500 hover:shadow-md transition-all text-left group relative">
+                            {r.recipeType === 'percent' && (
+                              <span className="absolute top-3 right-3 text-[10px] bg-amber-100 text-amber-700 font-black px-2 py-0.5 rounded-full">%</span>
+                            )}
+                            <h3 className="font-bold text-base text-slate-800 group-hover:text-amber-600 pr-8 mb-1">{r.name}</h3>
+                            <p className="text-xs text-slate-500">{r.recipeType === 'percent' ? 'Receta porcentual' : `Rinde: ${r.baseYield} ${r.unit}`}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Checklist */}
+                  {selectedProduct && !isVerdura && (
+                    <>
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                      <h3 className="font-bold text-slate-700 flex items-center gap-2"><Calculator size={18} /> Checklist de Insumos</h3>
+                      <span className="text-xs font-bold text-slate-400 uppercase">
+                        {isPercent ? (baseQtyGr > 0 ? `Base: ${baseQtyKg} kg` : 'Ingresá la cantidad base') : `Para ${targetUnits} ${selectedProduct.unit}`}
+                      </span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-400 text-xs uppercase font-bold sticky top-0">
+                          <tr>
+                            <th className="py-3 pl-6 text-left w-12">✓</th>
+                            <th className="py-3 text-left">Ingrediente</th>
+                            <th className="py-3 pr-6 text-right">Cantidad</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {selectedProduct.ingredients.map((ing: any, idx: number) => {
+                            const isChecked = checkedIngredients.has(idx);
+                            return (
+                              <tr key={idx} onClick={() => toggleCheck(idx)}
+                                className={`cursor-pointer transition-colors ${isChecked ? 'bg-green-50/50' : 'hover:bg-slate-50'}`}>
+                                <td className="py-4 pl-6">{isChecked ? <CheckSquare className="text-green-500" size={20} /> : <Square className="text-slate-300" size={20} />}</td>
+                                <td className={`py-4 font-medium ${isChecked ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
+                                  {ing.name}
+                                  {ing.isBase && <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 font-black px-1.5 py-0.5 rounded">BASE</span>}
+                                </td>
+                                <td className={`py-4 pr-6 text-right font-black text-lg ${isChecked ? 'text-slate-300' : ing.isBase ? 'text-amber-600' : 'text-slate-900'}`}>
+                                  {calcIngredient(idx)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    </>
+                  )}
                 </div>
                 )}
-                  <div className="p-6 border-t border-slate-200 bg-slate-50 shrink-0">
-                    {!activeProduction ? (
-                      <button onClick={handleStart} disabled={!canStart}
-                        className={`w-full py-4 font-bold rounded-xl text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${canStart ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-                        {isVerdura ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : allChecked ? <><Play size={20} fill="currentColor" /> INICIAR PRODUCCIÓN</> : `FALTAN ${selectedProduct.ingredients.length - checkedIngredients.size} CHECKS`}
-                      </button>
-                    ) : (
-                      <>
-                      {isVerduraRecipe && (
-                        <div className="bg-green-950/40 border border-green-500/30 rounded-2xl p-4 space-y-3 mb-4">
-                          <p className="text-green-300 font-black text-sm uppercase">🥬 ¿Cuánto desperdicio?</p>
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1">
-                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Desperdicio (kg)</label>
-                              <input type="number" value={verduraDesperdicioKg}
-                                onChange={e => setVerduraDesperdicioKg(e.target.value)}
-                                placeholder="0.000"
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-3 text-2xl font-black text-center outline-none focus:border-green-500" />
-                            </div>
-                            <div className="text-center">
-                              <p className="text-xs text-slate-500 mb-1">Neto</p>
-                              <p className="text-2xl font-black text-green-400">
-                                {Math.max(0, parseFloat(verduraBrutoKg || '0') - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {showMenjunjeModal && (
-                        <div className="bg-rose-950/50 border border-rose-500/30 rounded-2xl p-5 space-y-4 mb-4">
-                          <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — Ingresá los kg usados</p>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Corte (ej: Cuadrada, Nalga)</label>
-                              <input
-                                value={menjunjeCorte}
-                                onChange={e => setMenjunjeCorte(e.target.value)}
-                                placeholder={menjunjeTipo === 'Pollo' ? 'Pollo' : 'Cuadrada / Nalga / etc.'}
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-rose-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg de milanesa usada</label>
-                              <input
-                                type="number"
-                                value={menjunjeKg}
-                                onChange={e => setMenjunjeKg(e.target.value)}
-                                placeholder="5.000"
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-rose-500"
-                              />
-                            </div>
-                            <p className="text-xs text-slate-500">Esto descuenta del stock de producción y suma el menjunje al historial.</p>
-                          </div>
-                        </div>
-                      )}
-                      <button onClick={handleFinish} className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl text-lg hover:bg-slate-800 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
-                        <CheckCircle2 size={20} /> FINALIZAR Y GUARDAR
-                      </button>
-                      </>
-                    )}
-                  </div>
               </div>
             </div>
           )}
-        </>
-        }
         </div>
       </div>
     </div>
