@@ -295,8 +295,8 @@ function Dashboard() {
   const LiveProductionMonitor = () => {
     const [elapsed, setElapsed] = useState(0);
     useEffect(() => {
-      if (!activeProduction) return;
-      const interval = setInterval(() => setElapsed(Date.now() - activeProduction.startTime), 1000);
+      if (!activeProductions.length) return;
+      const interval = setInterval(() => setElapsed(Date.now() - (activeProductions[0]?.startTime ?? Date.now())), 1000);
       return () => clearInterval(interval);
     }, []);
     if (!activeProductions.length) return null;
@@ -355,7 +355,7 @@ function Dashboard() {
                 </div>
                 <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${activeProductions.length > 0 ? 'bg-slate-900 border-green-500' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
                     <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${activeProductions.length > 0 ? 'bg-green-600 text-white' : 'bg-amber-100 text-amber-600'}`}><UtensilsCrossed size={28}/></div>{activeProductions.length > 0 && <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">{activeProductions.length} EN CURSO</span>}</div>
-                    <h3 className={`text-xl font-bold mb-1 ${activeProductions.length > 0 ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProduction ? 'text-slate-400' : 'text-slate-400'}`}>{activeProductions.length > 0 ? activeProductions.map(p => p.recipeName).join(', ') : 'Salsas, Panes y Prep'}</p>
+                    <h3 className={`text-xl font-bold mb-1 ${activeProductions.length > 0 ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProductions.length > 0 ? 'text-slate-400' : 'text-slate-400'}`}>{activeProductions.length > 0 ? activeProductions.map(p => p.recipeName).join(', ') : 'Salsas, Panes y Prep'}</p>
                     <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProductions.length > 0 ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
