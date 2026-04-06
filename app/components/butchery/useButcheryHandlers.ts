@@ -6,11 +6,12 @@ import { addToStockProduccion } from './stockProduccion';
 import { saveProduccion, saveProduccionesMany, markProduccionDone } from './produccionPersistence';
 import { BurgerBlendResult } from './Step2BurgerView';
 
-export async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string, op?: string) {
+export async function logProduccionEvento(tipo: string, kind: string, corte: string, pesoKg: number, detalle?: string, op?: string, wasteKg?: number) {
   try {
     await supabase.from('produccion_eventos').insert({
       tipo, kind, corte, peso_kg: pesoKg, operador: op ?? 'Sistema',
       detalle: detalle ?? '', fecha: new Date().toISOString(),
+      waste_kg: wasteKg ?? 0,
     });
   } catch (e) { console.error('Error logging evento:', e); }
 }
@@ -118,7 +119,7 @@ export function createButcheryHandlers(s: Setters) {
     if (!prod) return;
     await deductStockByName(prod.typeName, prod.weightKg, prod.kind ?? 'lomito');
     await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
-      `Finalizo paso 2 - ${quantity} ${unit} de ${prod.typeName} - ${operador}`, operador);
+      `Finalizo paso 2 - ${quantity} ${unit} de ${prod.typeName} - ${operador}`, operador, wasteKg);
     await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit, operador);
     const kindLabel = prod.kind ?? 'lomito';
     if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Lomito - ${prod.typeName}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
@@ -169,7 +170,7 @@ export function createButcheryHandlers(s: Setters) {
         avgWeightPerUnit: (result.totalBlendKg / result.units) * 1000 } : p
     ));
     await logProduccionEvento('fin_paso2', 'burger', 'Blend', result.totalBlendKg,
-      `Finalizo burger - ${result.units} medallones - ${operador}`, operador);
+      `Finalizo burger - ${result.units} medallones - ${operador}`, operador, result.wasteKg);
     await PushEvents.finProduccion('burger', 'Medallones', result.units, 'u', operador);
     await addToStockProduccion({ producto: 'Medallones Burger', categoria: 'burger', cantidad: result.units, unidad: 'u' });
     step2Queue.forEach(p => markProduccionDone(p.id));

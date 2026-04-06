@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, Award
+  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, Trash2
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -16,7 +16,8 @@ import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
 import TabUsuarios    from './TabUsuarios';
 import TabOperadores  from './TabOperadores';
-import TabProyeccion  from './TabProyeccion';
+import TabProyeccion   from './TabProyeccion';
+import TabDesperdicios from './TabDesperdicios';
 import PushButton     from '../components/PushButton';
 import { useAuth }    from '../AuthContext';
 
@@ -25,7 +26,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
-  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion'>('dashboard');
+  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'desperdicios'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -105,7 +106,8 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
     { id: 'usuarios',   label: 'Usuarios',    icon: <Users size={16} /> },
     { id: 'operadores', label: 'Operadores',  icon: <Award size={16} /> },
-    { id: 'proyeccion', label: 'Proyección',   icon: <TrendingUp size={16} /> },
+    { id: 'proyeccion',    label: 'Proyección',    icon: <TrendingUp size={16} /> },
+    { id: 'desperdicios',  label: 'Desperdicios',  icon: <Trash2 size={16} /> },
   ] as const;
 
   return (
@@ -171,7 +173,8 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'usuarios'   && <TabUsuarios />}
         {activeTab === 'operadores' && <TabOperadores />}
-        {activeTab === 'proyeccion' && <TabProyeccion />}
+        {activeTab === 'proyeccion'    && <TabProyeccion />}
+        {activeTab === 'desperdicios'  && <TabDesperdicios />}
       </main>
 
     </div>

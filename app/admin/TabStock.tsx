@@ -16,6 +16,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [stockSearch, setStockSearch]     = useState('');
   const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion'>('materiales');
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
+  const [facturaQty, setFacturaQty]           = useState('');
+  const [facturaProveedor, setFacturaProveedor] = useState('');
+  const [savingFactura, setSavingFactura]     = useState(false);
   const [editingUmbrales, setEditingUmbrales]       = useState(false);
   const [umbralMinimo, setUmbralMinimo]             = useState('');
   const [umbralMedio, setUmbralMedio]               = useState('');
@@ -264,6 +267,86 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    {/* Cargar Factura */}
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4">
+                      <p className="text-xs font-black text-green-400 uppercase mb-3">📦 Cargar factura / ingreso</p>
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad</label>
+                          <input
+                            type="number" step="0.001" min="0"
+                            value={facturaQty}
+                            onChange={e => setFacturaQty(e.target.value)}
+                            placeholder="0.000"
+                            className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <span className="text-slate-400 font-bold pb-2.5">{selectedStockItem.unidad}</span>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
+                          <input
+                            type="text"
+                            value={facturaProveedor}
+                            onChange={e => setFacturaProveedor(e.target.value)}
+                            placeholder="Nombre proveedor"
+                            className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500"
+                          />
+                        </div>
+                      </div>
+                      {selectedStockItem.cantidad < 0 && facturaQty && parseFloat(facturaQty) > 0 && (
+                        <div className="mt-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Stock negativo:</span>
+                            <span className="font-black text-red-400">{selectedStockItem.cantidad.toFixed(3)} {selectedStockItem.unidad}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Factura ingresa:</span>
+                            <span className="font-black text-green-400">+{parseFloat(facturaQty).toFixed(3)} {selectedStockItem.unidad}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-amber-500/20 pt-1 mt-1">
+                            <span className="font-black text-slate-300">Stock final:</span>
+                            <span className={`font-black ${selectedStockItem.cantidad + parseFloat(facturaQty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {(selectedStockItem.cantidad + parseFloat(facturaQty)).toFixed(3)} {selectedStockItem.unidad}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        onClick={async () => {
+                          const qty = parseFloat(facturaQty);
+                          if (!qty || qty <= 0) return;
+                          setSavingFactura(true);
+                          const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
+                          await supabase.from('stock').update({
+                            cantidad: newQty,
+                            fecha_actualizacion: new Date().toISOString().slice(0, 10),
+                          }).eq('id', selectedStockItem.id);
+                          await supabase.from('stock_movements').insert({
+                            stock_id: selectedStockItem.id,
+                            nombre: selectedStockItem.nombre,
+                            categoria: selectedStockItem.categoria,
+                            tipo: 'ingreso',
+                            cantidad: qty,
+                            unidad: selectedStockItem.unidad,
+                            motivo: `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''}`,
+                            operador: 'Admin',
+                            fecha: new Date().toISOString(),
+                          });
+                          setFacturaQty('');
+                          setFacturaProveedor('');
+                          setSavingFactura(false);
+                          await fetchMovements();
+                          setSelectedStockItem(prev => prev ? { ...prev, cantidad: newQty } : null);
+                        }}
+                        disabled={!facturaQty || parseFloat(facturaQty) <= 0 || savingFactura}
+                        className="mt-3 w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
+                      >
+                        {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
+                      </button>
                     </div>
 
                     {/* Historial de movimientos */}

@@ -222,6 +222,13 @@ async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desp
         tipo: 'egreso', cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',
         motivo: `Producción ${prodNombre}`, operador: 'Cocina', fecha: new Date().toISOString(),
       });
+      // Log desperdicio
+      await supabase.from('produccion_eventos').insert({
+        tipo: 'fin_cocina', kind: 'cocina', corte: prodNombre,
+        peso_kg: brutoPesoKg, waste_kg: desperdicioKg,
+        operador: 'Cocina', detalle: `Bruto: ${brutoPesoKg}kg | Desperdicio: ${desperdicioKg}kg | Neto: ${netoKg}kg`,
+        fecha: new Date().toISOString(),
+      });
     }
 
     // 2. Sumar neto a stock_produccion
