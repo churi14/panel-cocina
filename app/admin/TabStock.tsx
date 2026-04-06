@@ -340,7 +340,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           setFacturaProveedor('');
                           setSavingFactura(false);
                           await fetchMovements();
-                          setSelectedStockItem(prev => prev ? { ...prev, cantidad: newQty } : null);
+                          setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
                         }}
                         disabled={!facturaQty || parseFloat(facturaQty) <= 0 || savingFactura}
                         className="mt-3 w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
