@@ -16,9 +16,13 @@ export async function POST(req: Request) {
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+    // Usar upsert para cubrir el caso en que el trigger ya creó el perfil vacío
     const { error: perfilError } = await supabaseAdmin
       .from('perfiles')
-      .insert({ id: data.user.id, nombre, rol, local, activo: true });
+      .upsert(
+        { id: data.user.id, nombre, rol, local: local ?? null, activo: true },
+        { onConflict: 'id' }
+      );
     if (perfilError) return NextResponse.json({ error: perfilError.message }, { status: 400 });
 
     return NextResponse.json({ ok: true });
