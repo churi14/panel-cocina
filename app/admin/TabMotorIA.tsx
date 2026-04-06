@@ -98,7 +98,7 @@ Cuando detectás algo importante (sobreproducción, día fuerte, stock crítico)
 Usás números concretos. Máximo 200 palabras por respuesta.
 Si encontrás un insight importante que el admin debería saber urgente, terminá con: [NOTIF: mensaje breve]`;
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/ia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
