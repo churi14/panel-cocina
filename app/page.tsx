@@ -62,11 +62,11 @@ export default function Page() {
   );
 
   // ── Sin sesión → login ────────────────────────────────────────────────────
+  const [verCocina, setVerCocina] = React.useState(false);
+
   if (!user || !perfil) return <LoginPage />;
 
   // ── Renderizar según rol — sin navegación, sin reload ─────────────────────
-  const [verCocina, setVerCocina] = React.useState(false);
-
   if ((perfil.rol === 'admin' || perfil.rol === 'administrativa') && !verCocina) {
     return <AdminDashboardWrapper onIrACocina={() => setVerCocina(true)} />;
   }
