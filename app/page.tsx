@@ -35,9 +35,9 @@ function usePWA() {
 
 // ── Auth gate — NO hooks after conditional returns ────────────────────────────
 // Wrapper para AdminDashboard que provee signOut
-function AdminDashboardWrapper() {
+function AdminDashboardWrapper({ onIrACocina }: { onIrACocina?: () => void }) {
   const { signOut } = useAuth();
-  return <AdminDashboard onLock={signOut} />;
+  return <AdminDashboard onLock={signOut} onIrACocina={onIrACocina} />;
 }
 
 export default function Page() {
@@ -65,15 +65,17 @@ export default function Page() {
   if (!user || !perfil) return <LoginPage />;
 
   // ── Renderizar según rol — sin navegación, sin reload ─────────────────────
-  if (perfil.rol === 'admin' || perfil.rol === 'administrativa') {
-    return <AdminDashboardWrapper />;
+  const [verCocina, setVerCocina] = React.useState(false);
+
+  if ((perfil.rol === 'admin' || perfil.rol === 'administrativa') && !verCocina) {
+    return <AdminDashboardWrapper onIrACocina={() => setVerCocina(true)} />;
   }
 
-  return <Dashboard />;
+  return <Dashboard onIrAAdmin={perfil.rol === 'admin' || perfil.rol === 'administrativa' ? () => setVerCocina(false) : undefined} />;
 }
 
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
-function Dashboard() {
+function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const { signOut } = useAuth();
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
@@ -334,6 +336,11 @@ function Dashboard() {
           </nav>
         </div>
         <div className="mt-auto pt-6 border-t border-slate-100">
+           {onIrAAdmin && (
+             <button onClick={onIrAAdmin} className="flex items-center gap-3 text-slate-500 hover:text-blue-600 transition-colors w-full px-3 py-2 rounded-lg hover:bg-blue-50 mb-2">
+               <Scale size={20} /> <span className="font-medium text-sm">Panel Admin</span>
+             </button>
+           )}
            <button onClick={signOut} className="flex items-center gap-3 text-slate-500 hover:text-red-500 transition-colors w-full px-3 py-2 rounded-lg hover:bg-red-50"><LogOut size={20} /> <span className="font-medium text-sm">Cerrar Sesión</span></button>
         </div>
       </aside>

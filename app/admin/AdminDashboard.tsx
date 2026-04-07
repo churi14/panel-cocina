@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, Trash2
+  RefreshCw, BarChart3, Activity, ChefHat, Users, Award
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -16,17 +16,16 @@ import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
 import TabUsuarios    from './TabUsuarios';
 import TabOperadores  from './TabOperadores';
-import TabProyeccion   from './TabProyeccion';
-import TabDesperdicios from './TabDesperdicios';
+import TabProyeccion  from './TabProyeccion';
 import PushButton     from '../components/PushButton';
 import { useAuth }    from '../AuthContext';
 
-export default function AdminDashboard({ onLock }: { onLock: () => void }) {
+export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => void; onIrACocina?: () => void }) {
   const { perfil } = useAuth();
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
-  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'desperdicios'>('dashboard');
+  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -106,8 +105,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
     { id: 'usuarios',   label: 'Usuarios',    icon: <Users size={16} /> },
     { id: 'operadores', label: 'Operadores',  icon: <Award size={16} /> },
-    { id: 'proyeccion',    label: 'Proyección',    icon: <TrendingUp size={16} /> },
-    { id: 'desperdicios',  label: 'Desperdicios',  icon: <Trash2 size={16} /> },
+    { id: 'proyeccion', label: 'Proyección',   icon: <TrendingUp size={16} /> },
   ] as const;
 
   return (
@@ -142,9 +140,9 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
               <span className="text-slate-300 text-sm font-bold">{perfil.nombre}</span>
             </div>
           )}
-          <a href="/" className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
+          <button onClick={onIrACocina} className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
             <ChefHat size={16} /> <span className="hidden md:inline">Cocina</span>
-          </a>
+          </button>
           <button onClick={onLock} className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
             <LogOut size={16} /> <span className="hidden md:inline">Salir</span>
           </button>
@@ -173,8 +171,7 @@ export default function AdminDashboard({ onLock }: { onLock: () => void }) {
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'usuarios'   && <TabUsuarios />}
         {activeTab === 'operadores' && <TabOperadores />}
-        {activeTab === 'proyeccion'    && <TabProyeccion />}
-        {activeTab === 'desperdicios'  && <TabDesperdicios />}
+        {activeTab === 'proyeccion' && <TabProyeccion />}
       </main>
 
     </div>
