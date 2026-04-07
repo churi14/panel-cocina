@@ -355,11 +355,14 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [menjunjeKg, setMenjunjeKg]               = useState('');
   const [milanesaKgSalieron, setMilanesaKgSalieron] = useState('');
   const [milanesaUnidades, setMilanesaUnidades]     = useState('');
+  const [panUnidades, setPanUnidades]               = useState('');
+  const [showPanModal, setShowPanModal]             = useState(false);
 
   const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
   const activeRecipeName = finishingProd?.recipeName ?? '';
   const isSalsaPotes    = activeRecipeId.startsWith('potes_');
   const isVerduraRecipe = activeRecipeId.startsWith('verdura_');
+  const isPanRecipe     = activeRecipeId.startsWith('pan_');
   const isMilanesaRecipe = activeRecipeName.toLowerCase().includes('menjunje') ||
     recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Milanesas';
   const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
@@ -367,6 +370,12 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const handleFinish = async () => {
     const prod = finishingProd;
     if (!prod) return;
+    // Si es pan, pedir unidades primero
+    if (isPanRecipe && !showPanModal) {
+      setShowPanModal(true);
+      return;
+    }
+    setShowPanModal(false);
     // Si es receta de milanesa, mostrar modal de menjunje primero
     if (isMilanesaRecipe && !showMenjunjeModal) {
       setShowMenjunjeModal(true);
@@ -445,6 +454,39 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
       }
     }
 
+    // Registrar pan producido en stock_produccion
+    if (isPanRecipe && panUnidades && parseInt(panUnidades) > 0) {
+      const unidadesPan = parseInt(panUnidades);
+      const nombrePan = prod.recipeName; // "Pan de Lomito" o "Pan Sanguchero"
+      const { data: existePan } = await supabase.from('stock_produccion')
+        .select('id, cantidad').eq('producto', nombrePan).maybeSingle();
+      if (existePan) {
+        await supabase.from('stock_produccion')
+          .update({ cantidad: existePan.cantidad + unidadesPan, ultima_prod: new Date().toISOString() })
+          .eq('id', existePan.id);
+      } else {
+        await supabase.from('stock_produccion')
+          .insert({ producto: nombrePan, categoria: 'pan', cantidad: unidadesPan, unidad: 'u', ultima_prod: new Date().toISOString() });
+      }
+      // Notificar
+      await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `🍞 ${nombrePan} finalizado · ${operador}`,
+          body: `${unidadesPan} unidades producidas`,
+          tag: 'pan-producido', url: '/admin',
+        }),
+      });
+      // Log evento
+      await supabase.from('produccion_eventos').insert({
+        tipo: 'fin_cocina', kind: 'pan', corte: nombrePan,
+        peso_kg: prod.baseKg ?? 0, operador,
+        detalle: `${unidadesPan}u producidas`,
+        fecha: new Date().toISOString(),
+      });
+    }
+
     // Descuento stock verduras producidas
     if (isVerduraRecipe && selectedProduct) {
       const bruto = parseFloat(verduraBrutoKg) || baseKg;
@@ -469,10 +511,22 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
     // Si no quedan producciones activas → resumen de turno a admins
     if (remaining.length === 0) {
-      const { data: stockProdData } = await supabase.from('stock_produccion').select('producto, cantidad, unidad').order('ultima_prod', { ascending: false }).limit(6);
+      const { data: stockProdData } = await supabase
+        .from('stock_produccion')
+        .select('producto, cantidad, unidad, categoria')
+        .order('categoria')
+        .order('ultima_prod', { ascending: false });
+      
+      // Agrupar por categoría para el resumen
+      const stockResumen = (stockProdData ?? []).map((s: any) => ({
+        producto: s.producto,
+        cantidad: s.cantidad,
+        unidad: s.unidad,
+      }));
+      
       await sendResumenTurno(
         [{ recipeName: prod.recipeName, operador, cantidad: prod.targetUnits, unidad: prod.unit }],
-        (stockProdData ?? []) as { producto: string; cantidad: number; unidad: string }[]
+        stockResumen as { producto: string; cantidad: number; unidad: string }[]
       );
     }
 
@@ -481,6 +535,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setMenjunjeKg('');
     setMilanesaKgSalieron('');
     setMilanesaUnidades('');
+    setPanUnidades('');
+    setShowPanModal(false);
     onClose();
   };
 
@@ -591,6 +647,23 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                 {Math.max(0, (prod.baseKg ?? 0) - (parseFloat(verduraDesperdicioKg) || 0)).toFixed(3)} kg
                               </p>
                             </div>
+                          </div>
+                        )}
+
+                        {isPanRecipe && showPanModal && (
+                          <div className="bg-amber-950/50 border border-amber-500/30 rounded-xl p-4 space-y-3">
+                            <p className="text-amber-300 font-black text-sm uppercase">🍞 {prod.recipeName} — ¿Cuántas unidades salieron?</p>
+                            <div>
+                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Unidades producidas</label>
+                              <input type="number" value={panUnidades} onChange={e => setPanUnidades(e.target.value)}
+                                placeholder="140"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xl font-black text-center outline-none focus:border-amber-500" />
+                            </div>
+                            {panUnidades && parseInt(panUnidades) > 0 && prod.baseKg && prod.baseKg > 0 && (
+                              <p className="text-xs text-green-400 font-black">
+                                → {Math.round(prod.baseKg * 1000 / parseInt(panUnidades))}g de harina por unidad
+                              </p>
+                            )}
                           </div>
                         )}
 
