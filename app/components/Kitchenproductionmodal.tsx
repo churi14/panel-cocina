@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
 import { supabase } from '../supabase';
-import { checkAndNotifyStock } from './pushEvents';
+import { checkAndNotifyStock, sendResumenTurno } from './pushEvents';
 
 function formatQty(grams: number): string {
   if (grams >= 1000) {
@@ -353,6 +353,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [showMenjunjeModal, setShowMenjunjeModal] = useState(false);
   const [menjunjeCorte, setMenjunjeCorte]         = useState('');
   const [menjunjeKg, setMenjunjeKg]               = useState('');
+  const [milanesaKgSalieron, setMilanesaKgSalieron] = useState('');
+  const [milanesaUnidades, setMilanesaUnidades]     = useState('');
 
   const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
   const activeRecipeName = finishingProd?.recipeName ?? '';
@@ -400,6 +402,47 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
       // corte viene del input, tipo (carne/pollo) viene de la receta seleccionada
       const corteKey = menjunjeCorte || menjunjeTipo;
       await deductStockForMilanesa(corteKey, kg, ingredientes);
+
+      // Registrar milanesas producidas en stock_produccion
+      const kgSalieron = parseFloat(milanesaKgSalieron) || 0;
+      const unidades   = parseInt(milanesaUnidades) || 0;
+      if (kgSalieron > 0 && unidades > 0) {
+        const grPorU = Math.round((kgSalieron / unidades) * 1000);
+        const tipoMila = corteKey.toLowerCase().includes('pollo') ? 'Suprema de Pollo' : 
+                         activeRecipeName.toLowerCase().includes('suprema') ? 'Suprema' : 'Milanesa';
+        const productoNombre = `${tipoMila} - ${corteKey}`;
+        
+        // Upsert en stock_produccion
+        const { data: existente } = await supabase.from('stock_produccion')
+          .select('id, cantidad').eq('producto', productoNombre).maybeSingle();
+        if (existente) {
+          await supabase.from('stock_produccion')
+            .update({ cantidad: parseFloat((existente.cantidad + unidades).toFixed(0)), ultima_prod: new Date().toISOString() })
+            .eq('id', existente.id);
+        } else {
+          await supabase.from('stock_produccion')
+            .insert({ producto: productoNombre, categoria: 'milanesa', cantidad: unidades, unidad: 'u', ultima_prod: new Date().toISOString() });
+        }
+
+        // Notificar al admin
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `✅ Menjunje finalizado · \${operador}`,
+            body: `\${unidades} \${tipoMila} (\${kgSalieron}kg · \${grPorU}g/u) — \${corteKey}`,
+            tag: 'menjunje-fin', url: '/admin',
+          }),
+        });
+
+        // Guardar rendimiento en produccion_eventos
+        await supabase.from('produccion_eventos').insert({
+          tipo: 'fin_cocina', kind: 'milanesa', corte: productoNombre,
+          peso_kg: kgSalieron, waste_kg: parseFloat(menjunjeKg) - kgSalieron,
+          operador, detalle: `\${unidades}u · \${grPorU}g/u · de \${menjunjeKg}kg carne`,
+          fecha: new Date().toISOString(),
+        });
+      }
     }
 
     // Descuento stock verduras producidas
@@ -420,12 +463,24 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
     // Limpiar Supabase y notificar al admin
     await clearCocinaProduccion(prod.id, prod.recipeName, baseKg, operador);
-    setActiveProductions(prev => prev.filter(p => p.id !== prod.id));
+    const remaining = activeProductions.filter(p => p.id !== prod.id);
+    setActiveProductions(remaining);
     setFinishingProd(null);
+
+    // Si no quedan producciones activas → resumen de turno a admins
+    if (remaining.length === 0) {
+      const { data: stockProdData } = await supabase.from('stock_produccion').select('producto, cantidad, unidad').order('ultima_prod', { ascending: false }).limit(6);
+      await sendResumenTurno(
+        [{ recipeName: prod.recipeName, operador, cantidad: prod.targetUnits, unidad: prod.unit }],
+        (stockProdData ?? []) as { producto: string; cantidad: number; unidad: string }[]
+      );
+    }
 
     setFinishingProd(null);
     setMenjunjeCorte('');
     setMenjunjeKg('');
+    setMilanesaKgSalieron('');
+    setMilanesaUnidades('');
     onClose();
   };
 
@@ -550,11 +605,34 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-rose-500" />
                               </div>
                               <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg usados</label>
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg carne usados</label>
                                 <input type="number" value={menjunjeKg} onChange={e => setMenjunjeKg(e.target.value)}
                                   placeholder="5.000"
                                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-rose-500" />
                               </div>
+                            </div>
+                            {/* Rendimiento — kg y unidades que salieron */}
+                            <div className="bg-slate-800/50 rounded-xl p-3 space-y-2">
+                              <p className="text-xs text-amber-400 font-black uppercase">📦 ¿Cuánto salió?</p>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg totales</label>
+                                  <input type="number" value={milanesaKgSalieron} onChange={e => setMilanesaKgSalieron(e.target.value)}
+                                    placeholder="4.200"
+                                    className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-500" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Unidades</label>
+                                  <input type="number" value={milanesaUnidades} onChange={e => setMilanesaUnidades(e.target.value)}
+                                    placeholder="20"
+                                    className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-500" />
+                                </div>
+                              </div>
+                              {milanesaKgSalieron && milanesaUnidades && parseFloat(milanesaKgSalieron) > 0 && parseInt(milanesaUnidades) > 0 && (
+                                <p className="text-xs text-green-400 font-black">
+                                  → {Math.round(parseFloat(milanesaKgSalieron) / parseInt(milanesaUnidades) * 1000)}g por unidad
+                                </p>
+                              )}
                             </div>
                           </div>
                         )}

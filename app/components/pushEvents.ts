@@ -70,6 +70,21 @@ export function isStockAgotado(cantidad: number): boolean {
  * Chequea umbrales dinámicos de un item y dispara la push correspondiente.
  * stockItem puede tener stock_critico, stock_medio, stock_minimo.
  */
+export async function sendResumenTurno(
+  producciones: { recipeName: string; operador: string; cantidad?: number; unidad?: string }[],
+  stockResumen: { producto: string; cantidad: number; unidad: string }[]
+): Promise<void> {
+  const operadores = [...new Set(producciones.map(p => p.operador).filter(Boolean))].join(', ');
+  const nProd = producciones.length;
+  const stockLines = stockResumen.slice(0, 4).map(s => `${s.producto}: ${s.cantidad} ${s.unidad}`).join(' | ');
+  
+  await sendPushNotification(
+    `📋 Resumen de turno · ${operadores}`,
+    `${nProd} produccion${nProd !== 1 ? 'es' : ''} completada${nProd !== 1 ? 's' : ''}. Stock: ${stockLines}`,
+    'resumen-turno', '/admin'
+  );
+}
+
 export async function checkAndNotifyStock(
   nombre: string,
   newQty: number,
