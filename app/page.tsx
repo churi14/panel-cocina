@@ -44,6 +44,9 @@ export default function Page() {
   usePWA();
   const { user, perfil, loading } = useAuth();
 
+  // Hook ANTES de cualquier return
+  const [verCocina, setVerCocina] = React.useState(false);
+
   // ── Spinner mientras carga la sesión ──────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -62,8 +65,6 @@ export default function Page() {
   );
 
   // ── Sin sesión → login ────────────────────────────────────────────────────
-  const [verCocina, setVerCocina] = React.useState(false);
-
   if (!user || !perfil) return <LoginPage />;
 
   // ── Renderizar según rol — sin navegación, sin reload ─────────────────────
