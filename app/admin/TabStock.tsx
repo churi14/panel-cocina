@@ -81,18 +81,21 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {catItems.map((item: any) => {
-                          const zero = item.cantidad === 0;
+                          const negativo = item.cantidad < 0;
+                          const zero    = item.cantidad === 0;
                           const critico = item.stock_critico ?? 10;
                           const medio   = item.stock_medio   ?? 20;
-                          const minimo  = item.stock_minimo  ?? 50;
-                          const low     = !zero && item.cantidad <= critico;
-                          const warn    = !zero && !low && item.cantidad <= medio;
+                          const low     = !zero && !negativo && item.cantidad <= critico;
+                          const warn    = !zero && !negativo && !low && item.cantidad <= medio;
                           return (
-                            <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
+                            <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${negativo ? 'border-red-600/60 bg-red-600/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
                               <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
-                              <p className={`text-2xl font-black ${zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
-                                {zero ? '—' : `${item.unidad === 'kg' || item.unidad === 'lt' ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',') : Number.isInteger(item.cantidad) ? item.cantidad : item.cantidad.toFixed(1)} ${item.unidad}`}
+                              <p className={`text-2xl font-black ${negativo ? 'text-red-500' : zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
+                                {item.unidad === 'kg' || item.unidad === 'lt'
+                                  ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
+                                  : Number.isInteger(item.cantidad) ? item.cantidad : item.cantidad.toFixed(1)} {item.unidad}
                               </p>
+                              {negativo && <p className="text-xs text-red-500 font-black mt-1">⚠️ STOCK NEGATIVO</p>}
                               {zero && <p className="text-xs text-red-400 font-black mt-1">SIN STOCK</p>}
                               {item.fecha_vencimiento && <p className="text-xs text-slate-600 mt-1">Vence: {item.fecha_vencimiento}</p>}
                             </div>
