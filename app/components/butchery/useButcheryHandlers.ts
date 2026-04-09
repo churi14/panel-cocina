@@ -66,14 +66,23 @@ export function createButcheryHandlers(s: Setters) {
   const { operador, step2Queue, step2Index } = s;
 
   const handleStartProductions = async (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => {
+    // Solo notificar si hay stock negativo — no bloquear producción
     for (const e of entries) {
       const corteNombre = getCutLabel(e.type);
       const stockNombre = CORTE_STOCK_MAP[corteNombre];
       if (!stockNombre) continue;
       const { data } = await supabase.from('stock').select('cantidad').eq('nombre', stockNombre).single();
-      if (!data || data.cantidad < e.weight) {
-        alert(`Stock insuficiente para ${corteNombre}\nDisponible: ${data?.cantidad?.toFixed(3) ?? '0'} kg\nRequerido: ${e.weight} kg`);
-        return;
+      if (data && data.cantidad < e.weight) {
+        // Solo avisa, no bloquea — el stock quedará negativo y se cubre con la próxima factura
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: `⚠️ Stock bajo: ${corteNombre}`,
+            body: `Disponible: ${data.cantidad.toFixed(3)}kg | Requerido: ${e.weight}kg — cargá la factura`,
+            tag: 'stock-bajo-produccion', url: '/admin',
+          }),
+        });
       }
     }
     const now = Date.now();
