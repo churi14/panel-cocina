@@ -20,11 +20,18 @@ const CATEGORY_CONFIG: Record<string, { emoji: string; color: string; bg: string
   DESCARTABLES: { emoji: '📦', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
 };
 
-const PROD_CONFIG = {
-  lomito:   { emoji: '🥩', border: 'border-rose-200',  bg: 'bg-rose-50',   text: 'text-rose-700'  },
-  burger:   { emoji: '🍔', border: 'border-blue-200',  bg: 'bg-blue-50',   text: 'text-blue-700'  },
-  milanesa: { emoji: '🥪', border: 'border-amber-200', bg: 'bg-amber-50',  text: 'text-amber-700' },
+const PROD_CONFIG: Record<string, { emoji: string; border: string; bg: string; text: string }> = {
+  lomito:   { emoji: '🥩', border: 'border-rose-200',   bg: 'bg-rose-50',    text: 'text-rose-700'   },
+  burger:   { emoji: '🍔', border: 'border-blue-200',   bg: 'bg-blue-50',    text: 'text-blue-700'   },
+  milanesa: { emoji: '🥪', border: 'border-amber-200',  bg: 'bg-amber-50',   text: 'text-amber-700'  },
+  verdura:  { emoji: '🥦', border: 'border-green-200',  bg: 'bg-green-50',   text: 'text-green-700'  },
+  fiambre:  { emoji: '🧀', border: 'border-yellow-200', bg: 'bg-yellow-50',  text: 'text-yellow-700' },
+  pan:      { emoji: '🍞', border: 'border-orange-200', bg: 'bg-orange-50',  text: 'text-orange-700' },
+  salsa:    { emoji: '🫙', border: 'border-purple-200', bg: 'bg-purple-50',  text: 'text-purple-700' },
+  dip:      { emoji: '🥄', border: 'border-pink-200',   bg: 'bg-pink-50',    text: 'text-pink-700'   },
+  caja:     { emoji: '📦', border: 'border-slate-200',  bg: 'bg-slate-50',   text: 'text-slate-700'  },
 };
+const DEFAULT_PROD_CFG = { emoji: '📋', border: 'border-slate-200', bg: 'bg-slate-50', text: 'text-slate-700' };
 
 function formatQty(qty: number, unit: string): string {
   if (qty === 0) return '—';
@@ -229,65 +236,76 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
         {/* ── TAB PRODUCCIÓN ── */}
         {activeTab === 'produccion' && (
           <div className="flex-1 overflow-y-auto p-6">
-            {/* Totales */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
-                const catItems = stockProd.filter((s: any) => s.categoria === cat);
-                const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
-                const cfg = PROD_CONFIG[cat];
-                const unit = cat === 'milanesa' ? 'kg' : 'u';
-                return (
-                  <div key={cat} className={`rounded-2xl border-2 p-5 ${cfg.bg} ${cfg.border}`}>
-                    <p className={`text-xs font-black uppercase mb-1 ${cfg.text}`}>{cfg.emoji} {cat}</p>
-                    <p className={`text-4xl font-black ${cfg.text}`}>
-                      {cat === 'milanesa' ? total.toFixed(2) : Math.round(total)}
-                      <span className="text-lg font-bold opacity-60 ml-1">{unit}</span>
-                    </p>
-                    <p className={`text-xs mt-1 ${cfg.text} opacity-60`}>{catItems.length} productos</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Detalle */}
-            <div className="space-y-6">
-              {(['lomito', 'burger', 'milanesa'] as const).map(cat => {
-                const catItems = stockProd.filter((s: any) => s.categoria === cat);
-                if (catItems.length === 0) return null;
-                const cfg = PROD_CONFIG[cat];
-                return (
-                  <div key={cat}>
-                    <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl mb-3 border ${cfg.border} ${cfg.bg}`}>
-                      <span className={`font-black text-sm uppercase ${cfg.text}`}>{cfg.emoji} {cat}</span>
-                      <span className="text-xs text-slate-400">{catItems.length} items</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {catItems.map((item: any) => (
-                        <div key={item.id} className={`rounded-2xl border-2 p-4 bg-white ${cfg.border}`}>
-                          <p className="font-bold text-slate-800 text-sm leading-tight mb-2">{item.producto}</p>
-                          <p className={`text-2xl font-black ${cfg.text}`}>
-                            {cat === 'milanesa' ? item.cantidad.toFixed(2) : Math.round(item.cantidad)}
-                            <span className="text-sm font-bold opacity-60 ml-1">{item.unidad}</span>
+            {/* Totales — dinámico */}
+            {(() => {
+              const prodCats = [...new Set(stockProd.map((s: any) => s.categoria as string))].sort();
+              return (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                    {prodCats.map(cat => {
+                      const catItems = stockProd.filter((s: any) => s.categoria === cat);
+                      const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
+                      const cfg = PROD_CONFIG[cat] ?? DEFAULT_PROD_CFG;
+                      const units = [...new Set(catItems.map((s: any) => s.unidad as string))];
+                      const unit = units.length === 1 ? units[0] : 'u';
+                      return (
+                        <div key={cat} className={`rounded-2xl border-2 p-4 ${cfg.bg} ${cfg.border}`}>
+                          <p className={`text-xs font-black uppercase mb-1 ${cfg.text}`}>{cfg.emoji} {cat}</p>
+                          <p className={`text-3xl font-black ${cfg.text}`}>
+                            {total % 1 === 0 ? total : total.toFixed(2).replace('.', ',')}
+                            <span className="text-sm font-bold opacity-60 ml-1">{unit}</span>
                           </p>
-                          {item.ultima_prod && (
-                            <p className="text-xs text-slate-400 mt-1">
-                              {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}
-                            </p>
-                          )}
+                          <p className={`text-xs mt-1 ${cfg.text} opacity-60`}>{catItems.length} productos</p>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-              {stockProd.length === 0 && (
-                <div className="text-center py-16 text-slate-400">
-                  <p className="text-4xl mb-4">🍔</p>
-                  <p className="font-bold text-lg">No hay stock de producción todavía</p>
-                  <p className="text-sm">Aparecerá aquí cuando se confirmen producciones</p>
-                </div>
-              )}
-            </div>
+
+            {/* Detalle — dinámico */}
+                  <div className="space-y-6">
+                    {prodCats.map(cat => {
+                      const catItems = stockProd.filter((s: any) => s.categoria === cat);
+                      if (catItems.length === 0) return null;
+                      const cfg = PROD_CONFIG[cat] ?? DEFAULT_PROD_CFG;
+                      return (
+                        <div key={cat}>
+                          <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl mb-3 border ${cfg.border} ${cfg.bg}`}>
+                            <span className={`font-black text-sm uppercase ${cfg.text}`}>{cfg.emoji} {cat}</span>
+                            <span className="text-xs text-slate-400">{catItems.length} items</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {catItems.map((item: any) => (
+                              <div key={item.id} className={`rounded-2xl border-2 p-4 bg-white ${cfg.border}`}>
+                                <p className="font-bold text-slate-800 text-sm leading-tight mb-2">{item.producto}</p>
+                                <p className={`text-2xl font-black ${item.cantidad === 0 ? 'text-slate-400' : cfg.text}`}>
+                                  {item.unidad === 'kg' || item.unidad === 'lt'
+                                    ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
+                                    : item.cantidad}
+                                  <span className="text-sm font-bold opacity-60 ml-1">{item.unidad}</span>
+                                </p>
+                                {item.cantidad === 0 && <p className="text-[10px] text-slate-400 font-black mt-1">SIN STOCK</p>}
+                                {item.ultima_prod && (
+                                  <p className="text-xs text-slate-400 mt-1">
+                                    {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {stockProd.length === 0 && (
+                      <div className="text-center py-16 text-slate-400">
+                        <p className="text-4xl mb-4">🍔</p>
+                        <p className="font-bold text-lg">No hay stock de producción todavía</p>
+                        <p className="text-sm">Aparecerá aquí cuando se confirmen producciones</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 
