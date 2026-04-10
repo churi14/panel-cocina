@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
-import { Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
-import { Movement, formatFecha } from './types';
-import { supabase } from '../supabase';
+import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
+import { AlertTriangle, Movement, formatFecha } from './types';
+import { AlertTriangle, supabase } from '../supabase';
 
 type Props = {
   stock: any[];
@@ -87,17 +87,37 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           const medio   = item.stock_medio   ?? 20;
                           const low     = !zero && !negativo && item.cantidad <= critico;
                           const warn    = !zero && !negativo && !low && item.cantidad <= medio;
+                          // Detectar vencimiento
+                          const hoyStr = new Date().toISOString().slice(0,10);
+                          const vencDate = item.fecha_vencimiento ? (() => {
+                            const [d,m,y] = item.fecha_vencimiento.split('/');
+                            return y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : null;
+                          })() : null;
+                          const vencido  = vencDate ? vencDate < hoyStr : false;
+                          const proxVenc = vencDate ? (vencDate >= hoyStr && vencDate <= new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0,10)) : false;
+                          const tieneAlerta = negativo || vencido || proxVenc;
+
                           return (
-                            <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity ${negativo ? 'border-red-600/60 bg-red-600/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
-                              <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.nombre}</p>
-                              <p className={`text-2xl font-black ${negativo ? 'text-red-500' : zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
+                            <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity relative ${negativo ? 'border-red-600/60 bg-red-600/10' : vencido ? 'border-orange-500/60 bg-orange-500/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
+                              
+                              {/* Icono de alerta */}
+                              {tieneAlerta && (
+                                <div className={`absolute top-2 right-2 rounded-full p-1 ${negativo ? 'bg-red-500' : vencido ? 'bg-orange-500' : 'bg-amber-500'}`}
+                                  title={negativo ? 'Stock negativo' : vencido ? `Vencido: ${item.fecha_vencimiento}` : `Vence pronto: ${item.fecha_vencimiento}`}>
+                                  <AlertTriangle size={12} className="text-white" />
+                                </div>
+                              )}
+
+                              <p className="font-bold text-slate-300 text-sm leading-tight mb-2 pr-6">{item.nombre}</p>
+                              <p className={`text-2xl font-black ${negativo ? 'text-red-500' : vencido ? 'text-orange-400' : zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
                                 {item.unidad === 'kg' || item.unidad === 'lt'
                                   ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
                                   : Number.isInteger(item.cantidad) ? item.cantidad : item.cantidad.toFixed(1)} {item.unidad}
                               </p>
-                              {negativo && <p className="text-xs text-red-500 font-black mt-1">⚠️ STOCK NEGATIVO</p>}
-                              {zero && <p className="text-xs text-red-400 font-black mt-1">SIN STOCK</p>}
-                              {item.fecha_vencimiento && <p className="text-xs text-slate-600 mt-1">Vence: {item.fecha_vencimiento}</p>}
+                              {negativo  && <p className="text-xs text-red-500 font-black mt-1">⚠️ STOCK NEGATIVO</p>}
+                              {vencido   && <p className="text-xs text-orange-400 font-black mt-1">⚠️ VENCIDO: {item.fecha_vencimiento}</p>}
+                              {proxVenc  && !vencido && <p className="text-xs text-amber-400 font-black mt-1">⏰ Vence: {item.fecha_vencimiento}</p>}
+                              {zero && !vencido && <p className="text-xs text-red-400 font-black mt-1">SIN STOCK</p>}
                             </div>
                           );
                         })}
@@ -203,6 +223,16 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     <div>
                       <h2 className="font-black text-white text-lg">{selectedStockItem.nombre}</h2>
                       <p className="text-slate-400 text-xs">{selectedStockItem.categoria} · {selectedStockItem.unidad}</p>
+                      {selectedStockItem.fecha_vencimiento && (() => {
+                        const [d,m,y] = selectedStockItem.fecha_vencimiento.split('/');
+                        const vd = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : null;
+                        const esVencido = vd ? vd < new Date().toISOString().slice(0,10) : false;
+                        return (
+                          <p className={`text-xs font-black mt-0.5 ${esVencido ? 'text-orange-400' : 'text-slate-500'}`}>
+                            {esVencido ? '⚠️ VENCIDO' : '📅 Vence'}: {selectedStockItem.fecha_vencimiento}
+                          </p>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
