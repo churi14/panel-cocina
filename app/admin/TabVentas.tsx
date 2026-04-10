@@ -59,17 +59,36 @@ function calcularDescuentos(productos: VentaProducto[]): StockDescuento[] {
       .replace(/  +/g, ' ');
     
     const FUDO_ALIASES: Record<string,string> = {
-      // Bebidas — se ignoran para descuento de stock (son unidades)
+      // ── LOMITO — nombres distintos en Fudo ──
+      '1 LOMO CLASICO':        'LOMITO SIMPLE',
+      '1 LOMO AMERICANO':      'LOMITO AMERICANO',
+      '1 LOMO AMERICANO DELUX':'LOMITO AMERICANO DELUX',
+      '1 LOMO OKLAHOMA':       'LOMITO OKLAHOMA',
+      '1 LOMO CRIOLLO':        'LOMITO CRIOLLO',
+      '1 LOMO NAPOLITANO':     'LOMITO NAPOLITANO',
+      '1 LOMO PROVOLETA':      'LOMITO PROVOLETA',
+      '1 LOMO VEGETARIANO':    'LOMITO VEGETARIANO',
+      'PROMO CLASICO X2':      'PROMO LOMITO 2X1',
+      'PROMO SANGUCHE CLASICO X2': 'PROMO LOMITO 2X1',
+      // ── Cajas de papas ──
+      'CAJA DE PAPAS CHICA':   'CAJA DE PAPAS CHICAS',
+      'CAJA DE PAPAS MEDIANO': 'CAJAS DE PAPAS MEDIANAS',
+      'CAJA DE PAPAS GRANDE':  'CAJA DE PAPAS GRANDES',
+      // ── Brolas ──
       'BROLA DE CALAFATE': 'BROLA CALAFATE',
-      'BROLA DE ROCKLETS': 'BROLA ROCKLETS',
-      'BROLAS KINDER': 'BROLA KINDER',
-      // Combos y genericos — ignorar
+      'BROLA DE ROCKLETS':  'BROLA ROCKLETS',
+      'BROLAS KINDER':      'BROLA KINDER',
+      // ── Ignorar ──
       'COMBO DUO 1': '__IGNORAR__',
       'COMBO DUO INDIVIDUAL': '__IGNORAR__',
       'COSTO DE ENVIOO': '__IGNORAR__',
+      'COSTO DE ENVIO': '__IGNORAR__',
       'PRODUCTO GENERICO': '__IGNORAR__',
       'EL COSTO DE ENVIO SE COTIZA UNA VEZ REALIZADO EL PEDIDO !': '__IGNORAR__',
       'PROMO 2X1 CHESSE IS LOVE': '__IGNORAR__',
+      'EXTRA CARNE': '__IGNORAR__',
+      'EXTRA CHEDAR': '__IGNORAR__',
+      'EXTRA VERDEO': '__IGNORAR__',
     };
 
     const nombreNorm = normalizarNombre(venta.producto);
