@@ -15,7 +15,10 @@ export type Recipe = {
   unit: string;
   ingredients: Ingredient[];
   warning?: string;
-  recipeType?: 'percent' | 'fixed' | 'verdura' | 'fraccion'; // 'percent' = todo en % del ingrediente base
+  recipeType?: 'percent' | 'fixed' | 'verdura' | 'fraccion';
+  stockOrigen?: 'stock' | 'stock_produccion';
+  stockNombre?: string;
+  potes?: { id: string; label: string; capacidadKg: number }[]; // 'percent' = todo en % del ingrediente base
 };
 
 export type ProductionRecord = {
