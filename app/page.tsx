@@ -126,36 +126,118 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Agua',               qty: 56,              unit: '%' },
       ]
     },
-    // ── SALSAS ───────────────────────────────────────────────────────────────
-    // Salsas producidas — ingresás cuántos potes hiciste, descuenta kg automático
-    // 1 pote 500ml = 0.5 kg de aderezo
+    // ── SALSAS DE PACK — Fraccionar en potes ────────────────────────────────
+    // stockOrigen: 'stock' = materias primas | 'stock_produccion' = producido en cocina
     {
-      id: 'potes_ketchup', name: 'Ketchup en Potes', category: 'Salsas',
-      baseYield: 6, unit: 'potes',
-      ingredients: [
-        { name: 'KETCHUP', qty: 0.5, unit: 'kg' },
-      ]
+      id: 'frac_mayonesa', name: 'Mayonesa', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock', stockNombre: 'MAYONESA',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'MAYONESA', qty: 1, unit: 'kg' }],
     },
     {
-      id: 'potes_barbacoa', name: 'Barbacoa en Potes', category: 'Salsas',
-      baseYield: 6, unit: 'potes',
-      ingredients: [
-        { name: 'BARBACOA', qty: 0.5, unit: 'kg' },
-      ]
+      id: 'frac_ketchup', name: 'Ketchup', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock', stockNombre: 'KETCHUP',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'KETCHUP', qty: 1, unit: 'kg' }],
     },
     {
-      id: 'potes_mayonesa', name: 'Mayonesa en Potes', category: 'Salsas',
-      baseYield: 5, unit: 'potes',
-      ingredients: [
-        { name: 'MAYONESA', qty: 0.5, unit: 'kg' },
-      ]
+      id: 'frac_barbacoa', name: 'Barbacoa', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock', stockNombre: 'BARBACOA',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'BARBACOA', qty: 1, unit: 'kg' }],
     },
     {
-      id: 'potes_savora', name: 'Savora en Potes', category: 'Salsas',
-      baseYield: 6, unit: 'potes',
-      ingredients: [
-        { name: 'SAVORA', qty: 0.5, unit: 'kg' },
-      ]
+      id: 'frac_savora', name: 'Savora', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock', stockNombre: 'SAVORA',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'SAVORA', qty: 1, unit: 'kg' }],
+    },
+    {
+      id: 'frac_mostaza', name: 'Mostaza', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock', stockNombre: 'MOSTAZA',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'MOSTAZA', qty: 1, unit: 'kg' }],
+    },
+    // ── SALSAS DE RECETA — fraccionar lo producido ───────────────────────────
+    {
+      id: 'frac_salsa_club', name: 'Salsa Club', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock_produccion', stockNombre: 'SALSA CLUB',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'SALSA CLUB', qty: 1, unit: 'kg' }],
+    },
+    {
+      id: 'frac_mayo_mila', name: 'Mayo Mila', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock_produccion', stockNombre: 'MAYO MILA',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'MAYO MILA', qty: 1, unit: 'kg' }],
+    },
+    {
+      id: 'frac_salsa_spread', name: 'Salsa Spread', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock_produccion', stockNombre: 'SALSA SPREAD',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'SALSA SPREAD', qty: 1, unit: 'kg' }],
+    },
+    {
+      id: 'frac_salsa_crema', name: 'Salsa Crema', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock_produccion', stockNombre: 'SALSA CREMA',
+      potes: [
+        { id: 'crema',   label: 'Pote Crema', capacidadKg: 0.530 },
+        { id: 'grande',  label: 'Grande',     capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano',    capacidadKg: 0.850 },
+      ],
+      ingredients: [{ name: 'SALSA CREMA', qty: 1, unit: 'kg' }],
+    },
+    {
+      id: 'frac_mayo_ajo', name: 'Mayo con Ajo', category: 'Fraccionar',
+      baseYield: 0, unit: 'potes', recipeType: 'fraccion',
+      stockOrigen: 'stock_produccion', stockNombre: 'SALSA DE AJO',
+      potes: [
+        { id: 'grande',  label: 'Grande',  capacidadKg: 1.100 },
+        { id: 'mediano', label: 'Mediano', capacidadKg: 0.850 },
+        { id: 'chico',   label: 'Chico',   capacidadKg: 0.480 },
+      ],
+      ingredients: [{ name: 'SALSA DE AJO', qty: 1, unit: 'kg' }],
     },
     {
       id: 'mayo_ajo', name: 'Mayonesa de Ajo', category: 'Salsas',
