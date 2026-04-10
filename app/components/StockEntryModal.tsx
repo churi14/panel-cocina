@@ -19,34 +19,50 @@ const CATEGORIES = [
 
 const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
 
-// ─── Configuración de aderezos ────────────────────────────────────────────────
-const ADEREZOS = ['KETCHUP', 'BARBACOA', 'MAYONESA', 'SAVORA'];
+// ─── Configuración de aderezos en doypack/sachet ──────────────────────────────
+// Variantes según imagen de proveedor + formatos comunes del mercado
+const FORMATOS_CLASICA   = [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }];
+const FORMATOS_GRANDE    = [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '2.9 kg', kg: 2.900 }, { label: '3 kg', kg: 3.000 }];
+const FORMATOS_250       = [{ label: '118g', kg: 0.118 }, { label: '250g', kg: 0.250 }, { label: '500g', kg: 0.500 }];
+const FORMATOS_STD       = [{ label: '232g', kg: 0.232 }, { label: '242g', kg: 0.242 }, { label: '445g', kg: 0.445 }, { label: '485g', kg: 0.485 }, { label: '970g', kg: 0.970 }];
 
 const ADEREZO_FORMATOS: Record<string, { label: string; kg: number }[]> = {
-  MAYONESA: [
-    { label: '237g',   kg: 0.237 },
-    { label: '475g',   kg: 0.475 },
-    { label: '950g',   kg: 0.950 },
-    { label: '2.9 kg', kg: 2.900 },
-  ],
-  KETCHUP:  [
-    { label: '237g',  kg: 0.237 },
-    { label: '475g',  kg: 0.475 },
-    { label: '950g',  kg: 0.950 },
-    { label: '3 kg',  kg: 3.000 },
-  ],
-  BARBACOA: [
-    { label: '237g',  kg: 0.237 },
-    { label: '475g',  kg: 0.475 },
-    { label: '950g',  kg: 0.950 },
-    { label: '3 kg',  kg: 3.000 },
-  ],
-  SAVORA:   [
-    { label: '237g',  kg: 0.237 },
-    { label: '475g',  kg: 0.475 },
-    { label: '950g',  kg: 0.950 },
-    { label: '3 kg',  kg: 3.000 },
-  ],
+  // Mayonesas — múltiples variantes
+  'MAYONESA':              [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '2.9 kg', kg: 2.900 }],
+  'MAYONESA CLASICA':      [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '2.9 kg', kg: 2.900 }],
+  'MAYONESA LIGHT':        [{ label: '118g', kg: 0.118 }, { label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }],
+  'MAYONESA SIN TACC':     [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }],
+  'MAYONESA CASERA':       [{ label: '232g', kg: 0.232 }, { label: '445g', kg: 0.445 }],
+  'MAYONESA AJO':          [{ label: '250g', kg: 0.250 }],
+  'MAYONESA AHUMADA':      [{ label: '250g', kg: 0.250 }],
+  'MAYONESA PICANTE':      [{ label: '250g', kg: 0.250 }],
+  'MAYONESA SUAVE':        [{ label: '242g', kg: 0.242 }, { label: '485g', kg: 0.485 }, { label: '970g', kg: 0.970 }],
+  'MAYONESA VEGANA':       [{ label: '250g', kg: 0.250 }, { label: '500g', kg: 0.500 }],
+  'MAYONESA LIBRE COLESTEROL': [{ label: '250g', kg: 0.250 }, { label: '500g', kg: 0.500 }],
+  'MAYONESA CON PALTA':    [{ label: '242g', kg: 0.242 }],
+  // Ketchup
+  'KETCHUP':               [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '3 kg', kg: 3.000 }],
+  // Mostaza / Savora
+  'MOSTAZA':               [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '3 kg', kg: 3.000 }],
+  'SAVORA':                [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '3 kg', kg: 3.000 }],
+  // Barbacoa / Salsas
+  'BARBACOA':              [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '3 kg', kg: 3.000 }],
+  'SALSA CRIOLLA':         [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }],
+  'SALSA GOLF':            [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }],
+  'ADEREZO CESAR':         [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }],
+  'ADEREZO RANCH':         [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }],
+  'CHIMICHURRI':           [{ label: '237g', kg: 0.237 }, { label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }],
+  'CHEDDAR LIQUIDO':       [{ label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '3 kg', kg: 3.000 }],
+  'CHEDDAR LÍQUIDO':       [{ label: '475g', kg: 0.475 }, { label: '950g', kg: 0.950 }, { label: '3 kg', kg: 3.000 }],
+};
+
+// Detecta si un producto tiene formatos doypack
+const ADEREZOS = Object.keys(ADEREZO_FORMATOS);
+const getFormatosAderezo = (nombre: string): { label: string; kg: number }[] => {
+  // Buscar coincidencia exacta primero, luego parcial
+  if (ADEREZO_FORMATOS[nombre]) return ADEREZO_FORMATOS[nombre];
+  const key = Object.keys(ADEREZO_FORMATOS).find(k => nombre.toUpperCase().includes(k) || k.includes(nombre.toUpperCase()));
+  return key ? ADEREZO_FORMATOS[key] : [];
 };
 
 
@@ -138,7 +154,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
 
   // Aderezo helpers
   const isAderezo = selectedProduct ? ADEREZOS.includes(selectedProduct.nombre) : false;
-  const formatos  = selectedProduct ? (ADEREZO_FORMATOS[selectedProduct.nombre] ?? []) : [];
+  const formatos  = selectedProduct ? getFormatosAderezo(selectedProduct.nombre) : [];
   const totalKgAderezo = formatos.reduce((sum, f) => sum + f.kg * (aderezoCounts[f.label] ?? 0), 0);
 
   const filteredProducts = products.filter(p =>

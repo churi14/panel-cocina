@@ -27,7 +27,7 @@ const MOTIVOS = [
   'Otro',
 ];
 
-const OPERADORES = ['Eri', 'Mati', 'Javi', 'Otro'];
+const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
 
 export default function StockExitModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<'cat' | 'product' | 'form' | 'operador'>('operador');
