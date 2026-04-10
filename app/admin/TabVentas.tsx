@@ -53,7 +53,29 @@ type StockDescuento = {
 function calcularDescuentos(productos: VentaProducto[]): StockDescuento[] {
   const map: Record<string, StockDescuento> = {};
   for (const venta of productos) {
-    const receta = RECETAS_MAP[venta.producto.toUpperCase().trim()];
+    // Normalizar nombre: quitar tildes, limpiar espacios, alias de Fudo
+    const normalizarNombre = (s: string) => s.toUpperCase().trim()
+      .replace(/Á/g,'A').replace(/É/g,'E').replace(/Í/g,'I').replace(/Ó/g,'O').replace(/Ú/g,'U')
+      .replace(/  +/g, ' ');
+    
+    const FUDO_ALIASES: Record<string,string> = {
+      // Bebidas — se ignoran para descuento de stock (son unidades)
+      'BROLA DE CALAFATE': 'BROLA CALAFATE',
+      'BROLA DE ROCKLETS': 'BROLA ROCKLETS',
+      'BROLAS KINDER': 'BROLA KINDER',
+      // Combos y genericos — ignorar
+      'COMBO DUO 1': '__IGNORAR__',
+      'COMBO DUO INDIVIDUAL': '__IGNORAR__',
+      'COSTO DE ENVIOO': '__IGNORAR__',
+      'PRODUCTO GENERICO': '__IGNORAR__',
+      'EL COSTO DE ENVIO SE COTIZA UNA VEZ REALIZADO EL PEDIDO !': '__IGNORAR__',
+      'PROMO 2X1 CHESSE IS LOVE': '__IGNORAR__',
+    };
+
+    const nombreNorm = normalizarNombre(venta.producto);
+    const nombreFinal = FUDO_ALIASES[nombreNorm] ?? nombreNorm;
+    if (nombreFinal === '__IGNORAR__') continue;
+    const receta = RECETAS_MAP[nombreFinal];
     if (!receta) continue;
     for (const ing of receta) {
       if (ing.stock_tipo === 'ignorar' || !ing.stock_nombre) continue;
