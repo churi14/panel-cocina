@@ -89,6 +89,12 @@ function calcularDescuentos(productos: VentaProducto[]): StockDescuento[] {
       'EXTRA CARNE': '__IGNORAR__',
       'EXTRA CHEDAR': '__IGNORAR__',
       'EXTRA VERDEO': '__IGNORAR__',
+      // ── MILANESA ──
+      'PROMO MILA CLASICA  X2': 'PROMO MILA CLASICA 2X1',
+      'PROMO MILA CLASICA X2':  'PROMO MILA CLASICA 2X1',
+      '(PY) MILANESA CRIOLLO':  'CRIOLLO',
+      'EXTRA PANCETA': '__IGNORAR__',
+      'SIN MOSTAZA':   '__IGNORAR__',
     };
 
     const nombreNorm = normalizarNombre(venta.producto);
