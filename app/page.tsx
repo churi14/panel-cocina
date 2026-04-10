@@ -239,33 +239,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       ],
       ingredients: [{ name: 'SALSA DE AJO', qty: 1, unit: 'kg' }],
     },
-    {
-      id: 'mayo_ajo', name: 'Mayonesa de Ajo', category: 'Salsas',
-      baseYield: 3, unit: 'kg', recipeType: 'percent',
-      ingredients: [
-        { name: 'Mayonesa',       qty: 100, unit: '%', isBase: true },
-        { name: 'Ajo triturado', qty: 1,   unit: '%' },
-      ]
-    },
-    {
-      id: 'mayo_mila', name: 'Mayonesa de Mila', category: 'Salsas',
-      baseYield: 3, unit: 'kg', recipeType: 'percent',
-      ingredients: [
-        { name: 'Mayonesa',       qty: 100,  unit: '%', isBase: true },
-        { name: 'Jugo de limón', qty: 0.26, unit: '%' },
-      ]
-    },
-    {
-      id: 'salsa_spread', name: 'Salsa Spread', category: 'Salsas',
-      baseYield: 0, unit: 'kg', recipeType: 'percent',
-      ingredients: [
-        { name: 'Mayonesa Natura', qty: 100, unit: '%', isBase: true },
-        { name: 'Ketchup',         qty: 38,  unit: '%' },
-        { name: 'Relish',          qty: 25,  unit: '%' },
-        { name: 'Vinagre',         qty: 6,   unit: '%' },
-        { name: 'Azúcar',          qty: 2.5, unit: '%' },
-      ]
-    },
+
     {
       id: 'salsa_napolitana', name: 'Salsa Napolitana', category: 'Salsas',
       baseYield: 0, unit: 'kg', recipeType: 'percent',
