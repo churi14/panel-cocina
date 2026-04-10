@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
-import { AlertTriangle, Movement, formatFecha } from './types';
-import { AlertTriangle, supabase } from '../supabase';
+import { Movement, formatFecha } from './types';
+import { supabase } from '../supabase';
 
 type Props = {
   stock: any[];
