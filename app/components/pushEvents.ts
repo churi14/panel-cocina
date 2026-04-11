@@ -48,6 +48,17 @@ export const PushEvents = {
       `Disponible: ${disponible.toFixed(1)}kg — Requerido: ${requerido.toFixed(1)}kg`,
       'stock-insuficiente', '/admin'
     ),
+
+  // ─── NUEVO: aviso de que hay que producir ────────────────────────────────────
+  necesitaProduccion: (producto: string, cantidad: number, unidad: string, dias?: number | null) =>
+    sendPushNotification(
+      `🍳 Hay que producir: ${producto}`,
+      dias && dias > 0
+        ? `Quedan ${cantidad} ${unidad} — producí en los próximos ${dias} día${dias !== 1 ? 's' : ''}`
+        : `Quedan ${cantidad} ${unidad} — producí hoy`,
+      'necesita-produccion',
+      '/admin'
+    ),
 };
 
 // ─── Umbrales dinámicos desde Supabase ───────────────────────────────────────
@@ -108,15 +119,86 @@ export async function checkAndNotifyStock(
     await PushEvents.stockAgotado(nombre);
   } else if (newQty <= critico) {
     await sendPushNotification(
-      `🚨 Stock CRÍTICO: \${nombre}`,
-      `Solo quedan \${fmt(newQty)} \${unidad} — comprá YA`,
+      `🚨 Stock CRÍTICO: ${nombre}`,
+      `Solo quedan ${fmt(newQty)} ${unidad} — comprá YA`,
       'stock-critico', '/admin'
     );
   } else if (newQty <= medio) {
     await sendPushNotification(
-      `⚠️ Stock bajo: \${nombre}`,
-      `Quedan \${fmt(newQty)} \${unidad} — reponé pronto`,
+      `⚠️ Stock bajo: ${nombre}`,
+      `Quedan ${fmt(newQty)} ${unidad} — reponé pronto`,
       'stock-bajo', '/admin'
     );
+  }
+}
+
+// ─── NUEVO: Chequeo de umbral de producción ──────────────────────────────────
+/**
+ * Llama esto cada vez que se descuenta de un item de stock_produccion.
+ * Busca el item en la BD (para leer alerta_umbral y alerta_dias) y manda
+ * push si el nuevo stock quedó por debajo del umbral configurado.
+ *
+ * @param productoId  - id del row en stock_produccion
+ * @param producto    - nombre del producto (para el mensaje)
+ * @param newQty      - cantidad nueva después del descuento
+ * @param unidad      - unidad del producto
+ * @param alertaUmbral - umbral configurado (se puede pasar directo si ya lo tenés)
+ * @param alertaDias   - días de anticipación configurados
+ */
+export async function checkAndNotifyProduccion(
+  producto: string,
+  newQty: number,
+  unidad: string,
+  alertaUmbral?: number | null,
+  alertaDias?: number | null
+): Promise<void> {
+  // Sin umbral configurado → no avisar
+  if (!alertaUmbral || alertaUmbral <= 0) return;
+
+  const fmt = (n: number) =>
+    (unidad === 'kg' || unidad === 'lt')
+      ? n.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
+      : Math.round(n).toString();
+
+  if (newQty <= 0) {
+    // Se agotó completamente → aviso urgente
+    await sendPushNotification(
+      `🚨 SIN STOCK para producir: ${producto}`,
+      `Se agotó — necesitás producir YA`,
+      'produccion-agotada',
+      '/admin'
+    );
+  } else if (newQty <= alertaUmbral) {
+    // Bajó del umbral → aviso de que hay que producir
+    await PushEvents.necesitaProduccion(producto, parseFloat(fmt(newQty)), unidad, alertaDias);
+  }
+}
+
+/**
+ * Versión que busca el item en Supabase por nombre para leer los umbrales.
+ * Útil cuando no tenés los datos del item a mano en el momento del descuento.
+ */
+export async function checkAndNotifyProduccionByName(
+  producto: string,
+  newQty: number,
+  unidad: string,
+  supabaseClient: any
+): Promise<void> {
+  try {
+    const { data } = await supabaseClient
+      .from('stock_produccion')
+      .select('alerta_umbral, alerta_dias')
+      .ilike('producto', producto)
+      .maybeSingle();
+
+    await checkAndNotifyProduccion(
+      producto,
+      newQty,
+      unidad,
+      data?.alerta_umbral ?? null,
+      data?.alerta_dias ?? null
+    );
+  } catch (e) {
+    console.warn('checkAndNotifyProduccionByName error:', e);
   }
 }

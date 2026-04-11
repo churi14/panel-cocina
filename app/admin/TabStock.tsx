@@ -25,6 +25,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [umbralCritico, setUmbralCritico]           = useState('');
   const [savingUmbrales, setSavingUmbrales]         = useState(false);
   const [selectedProdItem, setSelectedProdItem]   = useState<any | null>(null);
+  const [alertaUmbral, setAlertaUmbral]           = useState('');
+  const [alertaDias, setAlertaDias]               = useState('');
+  const [savingAlerta, setSavingAlerta]           = useState(false);
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
     lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   headerBg: 'bg-rose-500/20'   },
     burger:   { emoji: '🍔', color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   headerBg: 'bg-blue-500/20'   },
@@ -174,7 +177,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
                         {catItems.map((item: any) => (
-                          <div key={item.id} onClick={() => setSelectedProdItem(item)}
+                          <div key={item.id} onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); }}
                             className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                             <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
                             <p className={`text-3xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
@@ -183,6 +186,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                 : item.cantidad}
                             </p>
                             <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                            {item.alerta_umbral > 0 && (
+                              <p className="text-[10px] text-amber-400/70 font-black mt-1">🔔 alerta &lt;{item.alerta_umbral}{item.unidad}</p>
+                            )}
                             {item.cantidad === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
                             {item.ultima_prod && (
                               <p className="text-xs text-slate-600 mt-2">
@@ -205,6 +211,167 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               </>
             )}
 
+
+          {/* ── MODAL ALERTAS DE PRODUCCIÓN ── */}
+          {selectedProdItem && (() => {
+            const cfg = PROD_CFG[selectedProdItem.categoria] ?? DEFAULT_CFG;
+
+            const handleSaveAlerta = async () => {
+              setSavingAlerta(true);
+              await supabase.from('stock_produccion').update({
+                alerta_umbral: parseFloat(alertaUmbral) || null,
+                alerta_dias:   parseInt(alertaDias)     || null,
+              }).eq('id', selectedProdItem.id);
+              await fetchMovements();
+              setSavingAlerta(false);
+              setSelectedProdItem(null);
+            };
+
+            const tieneAlerta = selectedProdItem.alerta_umbral > 0;
+
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                onClick={() => setSelectedProdItem(null)}>
+                <div className={`bg-slate-900 border-2 ${cfg.border} rounded-2xl w-full max-w-md shadow-2xl`}
+                  onClick={e => e.stopPropagation()}>
+
+                  {/* Header */}
+                  <div className={`px-6 py-4 rounded-t-2xl border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
+                    <div>
+                      <p className={`text-xs font-black uppercase ${cfg.color}`}>{cfg.emoji} {selectedProdItem.categoria}</p>
+                      <h2 className="font-black text-white text-lg leading-tight">{selectedProdItem.producto}</h2>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className={`text-2xl font-black ${cfg.color}`}>
+                          {selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt'
+                            ? selectedProdItem.cantidad.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
+                            : selectedProdItem.cantidad}
+                        </p>
+                        <p className="text-xs text-slate-500">{selectedProdItem.unidad} en stock</p>
+                      </div>
+                      <button onClick={() => setSelectedProdItem(null)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400">
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 space-y-5">
+
+                    {/* Estado actual de la alerta */}
+                    {tieneAlerta ? (
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span className="text-xl">🔔</span>
+                        <div>
+                          <p className="text-amber-400 font-black text-sm">Alerta activa</p>
+                          <p className="text-slate-400 text-xs">
+                            Avisa cuando quedan menos de <span className="text-white font-bold">{selectedProdItem.alerta_umbral} {selectedProdItem.unidad}</span>
+                            {selectedProdItem.alerta_dias > 0 && (
+                              <> · con <span className="text-white font-bold">{selectedProdItem.alerta_dias} día{selectedProdItem.alerta_dias !== 1 ? 's' : ''}</span> de anticipación</>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span className="text-xl">🔕</span>
+                        <p className="text-slate-500 text-sm">Sin alerta configurada — completá los campos para activarla</p>
+                      </div>
+                    )}
+
+                    {/* Campos editables */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-black text-slate-400 uppercase mb-2 block">
+                          Avisar cuando quedan menos de ({selectedProdItem.unidad})
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={alertaUmbral}
+                            onChange={e => setAlertaUmbral(e.target.value)}
+                            placeholder={`ej: ${selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? '2' : '10'}`}
+                            className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm outline-none focus:border-amber-500/60"
+                          />
+                          <span className="text-slate-400 text-sm font-bold">{selectedProdItem.unidad}</span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1.5">
+                          Cuando el stock baje de este número, te mandamos una push
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-black text-slate-400 uppercase mb-2 block">
+                          Días de anticipación en el aviso
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="7"
+                            step="1"
+                            value={alertaDias}
+                            onChange={e => setAlertaDias(e.target.value)}
+                            placeholder="ej: 1"
+                            className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm outline-none focus:border-amber-500/60"
+                          />
+                          <span className="text-slate-400 text-sm font-bold">días</span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1.5">
+                          0 = avisar que producís hoy · 1 = mañana · etc.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Ejemplos rápidos */}
+                    <div>
+                      <p className="text-xs font-black text-slate-500 uppercase mb-2">Presets rápidos</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: 'Hoy urgente',  umbral: selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? '1' : '5',  dias: '0' },
+                          { label: '1 día antes',  umbral: selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? '2' : '10', dias: '1' },
+                          { label: '2 días antes', umbral: selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? '3' : '20', dias: '2' },
+                        ].map(p => (
+                          <button key={p.label}
+                            onClick={() => { setAlertaUmbral(p.umbral); setAlertaDias(p.dias); }}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-xs text-slate-300 font-bold transition-all">
+                            {p.label}
+                          </button>
+                        ))}
+                        {tieneAlerta && (
+                          <button
+                            onClick={() => { setAlertaUmbral('0'); setAlertaDias('0'); }}
+                            className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-full text-xs text-red-400 font-bold transition-all">
+                            🔕 Desactivar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Botón guardar */}
+                    <button
+                      onClick={handleSaveAlerta}
+                      disabled={savingAlerta || (!alertaUmbral && !alertaDias)}
+                      className={`w-full py-3 rounded-xl font-black text-sm transition-all
+                        ${savingAlerta || (!alertaUmbral && !alertaDias)
+                          ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                          : 'bg-amber-500 hover:bg-amber-400 text-slate-900'}`}>
+                      {savingAlerta ? 'Guardando...' : '🔔 Guardar alerta'}
+                    </button>
+
+                    {selectedProdItem.ultima_prod && (
+                      <p className="text-center text-xs text-slate-600">
+                        Última producción: {new Date(selectedProdItem.ultima_prod).toLocaleDateString('es-AR')} a las {new Date(selectedProdItem.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── MODAL HISTORIAL + UMBRALES DE STOCK ── */}
           {selectedStockItem && (() => {

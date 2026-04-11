@@ -1,5 +1,5 @@
 import { supabase } from '../../supabase';
-import { checkAndNotifyStock } from '../pushEvents';
+import { checkAndNotifyStock, checkAndNotifyProduccionByName } from '../pushEvents';
 
 export function formatQty(grams: number): string {
   if (grams >= 1000) {
@@ -80,6 +80,8 @@ export async function deductStockForMilanesa(
       await supabase.from('stock_produccion')
         .update({ cantidad: parseFloat(newQty.toFixed(3)) })
         .eq('id', milaData.id);
+      // Avisar si el stock de producción bajó del umbral configurado
+      await checkAndNotifyProduccionByName(productoMila, parseFloat(newQty.toFixed(3)), 'kg', supabase);
     }
 
     // 2. Descontar ingredientes del stock directo (huevo, pan rallado, etc.)

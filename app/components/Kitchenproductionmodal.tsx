@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
 import { supabase } from '../supabase';
-import { checkAndNotifyStock, sendResumenTurno } from './pushEvents';
+import { checkAndNotifyStock, sendResumenTurno, checkAndNotifyProduccionByName } from './pushEvents';
 
 function formatQty(grams: number): string {
   if (grams >= 1000) {
@@ -95,6 +95,7 @@ async function deductStockForMilanesa(
       await supabase.from('stock_produccion')
         .update({ cantidad: parseFloat(newQty.toFixed(3)) })
         .eq('id', milaData.id);
+      await checkAndNotifyProduccionByName(productoMila, newQty, 'kg', supabase);
     }
 
     // 2. Descontar ingredientes del stock directo (huevo, pan rallado, etc.)
