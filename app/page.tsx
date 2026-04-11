@@ -19,6 +19,7 @@ import RecipeManagerModal from './components/Recipemanagermodal';
 import SuppliersModal from './components/Suppliersmodal';
 import KitchenProductionModal from './components/Kitchenproductionmodal';
 import { NavItem, StationCard, QuickActionCard } from './components/Uicomponents';
+import KitchenTour from './components/KitchenTour';
 import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, ButcheryProduction, ButcheryRecord } from './types';
 import { loadProduccionesActivas, cleanOldProducciones } from './components/butchery/produccionPersistence';
 import { supabase } from './supabase';
@@ -380,13 +381,13 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       <aside className="w-72 bg-white rounded-2xl shadow-sm flex flex-col justify-between p-6 mr-4 transition-all hidden md:flex">
         <div>
           <div className="flex items-center gap-3 mb-10 px-2">
-            <img src="/icons/icon-cocina-192.png" alt="La Cocina" className="w-10 h-10 rounded-xl object-cover" />
+            <img id="tour-logo" src="/icons/icon-cocina-192.png" alt="La Cocina" className="w-10 h-10 rounded-xl object-cover" />
             <div><h1 className="text-lg font-bold text-slate-900 leading-tight">La Cocina</h1><span className="text-xs text-slate-400 font-medium">Dark Kitchen</span></div>
           </div>
           <nav className="space-y-2">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">Principal</p>
             <NavItem icon={<LayoutDashboard size={20} />} label="Panel Control" active />
-            <button onClick={() => setIsRecipeManagerOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
+            <button id="tour-nav-recetario" onClick={() => setIsRecipeManagerOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
                 <BookOpen size={20} /> <span>Recetario</span>
             </button>
 
@@ -398,7 +399,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                <Scale size={20} /> <span className="font-medium text-sm">Panel Admin</span>
              </button>
            )}
-           <button onClick={signOut} className="flex items-center gap-3 text-slate-500 hover:text-red-500 transition-colors w-full px-3 py-2 rounded-lg hover:bg-red-50"><LogOut size={20} /> <span className="font-medium text-sm">Cerrar Sesión</span></button>
+           <button id="tour-logout" onClick={signOut} className="flex items-center gap-3 text-slate-500 hover:text-red-500 transition-colors w-full px-3 py-2 rounded-lg hover:bg-red-50"><LogOut size={20} /> <span className="font-medium text-sm">Cerrar Sesión</span></button>
         </div>
       </aside>
 
@@ -412,21 +413,21 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         <div className="p-8 max-w-7xl mx-auto space-y-10 w-full">
             {activeProductions.length > 0 && <LiveProductionMonitor />}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-slate-900 border-rose-500' : 'bg-white border-slate-100 hover:border-rose-200'}`}>
+                <div id="tour-card-carniceria" className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-slate-900 border-rose-500' : 'bg-white border-slate-100 hover:border-rose-200'}`}>
                     <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-600'}`}><Beef size={28}/></div>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 && <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">{butcheryProductions.filter(p => p.status === 'step1_running').length} EN CURSO</span>}</div>
                     <h3 className={`text-xl font-bold mb-1 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'text-white' : 'text-slate-800'}`}>Carnicería</h3><p className={`text-sm font-medium mb-4 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'text-slate-400' : 'text-slate-400'}`}>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? `${butcheryProductions.filter(p => p.status === 'step1_running').map(p => p.typeName).join(', ')}` : 'Lomito, Burger y Milanesa'}</p>
                     <button onClick={() => setIsButcheryModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-rose-600 text-white hover:bg-rose-500' : 'bg-slate-900 hover:bg-rose-600 text-white'}`}>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'VER PRODUCCIONES' : 'ABRIR CARNICERÍA'} <ChevronRight size={16} /></button>
                 </div>
-                <div className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${activeProductions.length > 0 ? 'bg-slate-900 border-green-500' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
+                <div id="tour-card-cocina" className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${activeProductions.length > 0 ? 'bg-slate-900 border-green-500' : 'bg-white border-slate-100 hover:border-amber-200'}`}>
                     <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${activeProductions.length > 0 ? 'bg-green-600 text-white' : 'bg-amber-100 text-amber-600'}`}><UtensilsCrossed size={28}/></div>{activeProductions.length > 0 && <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">{activeProductions.length} EN CURSO</span>}</div>
                     <h3 className={`text-xl font-bold mb-1 ${activeProductions.length > 0 ? 'text-white' : 'text-slate-800'}`}>Cocina General</h3><p className={`text-sm font-medium mb-4 ${activeProductions.length > 0 ? 'text-slate-400' : 'text-slate-400'}`}>{activeProductions.length > 0 ? activeProductions.map(p => p.recipeName).join(', ') : 'Salsas, Panes y Prep'}</p>
                     <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProductions.length > 0 ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <QuickActionCard title="Cargar Stock / Facturas" subtitle="Sumá mercadería al stock" icon={<Truck size={24} />} color="blue" onClick={() => setIsEntryModalOpen(true)} />
-                <QuickActionCard title="Uso Manual / Mermas" subtitle="Descontar stock manualmente" icon={<PackageMinus size={24} />} color="orange" onClick={() => setIsStockModalOpen(true)} />
-                <QuickActionCard title="Ver Stock" subtitle="Stock actual por categoría" icon={<BarChart3 size={24} />} color="green" onClick={() => setIsStockViewOpen(true)} />
+                <div id="tour-card-stock-entry"><QuickActionCard title="Cargar Stock / Facturas" subtitle="Sumá mercadería al stock" icon={<Truck size={24} />} color="blue" onClick={() => setIsEntryModalOpen(true)} /></div>
+                <div id="tour-card-stock-exit"><QuickActionCard title="Uso Manual / Mermas" subtitle="Descontar stock manualmente" icon={<PackageMinus size={24} />} color="orange" onClick={() => setIsStockModalOpen(true)} /></div>
+                <div id="tour-card-stock-view"><QuickActionCard title="Ver Stock" subtitle="Stock actual por categoría" icon={<BarChart3 size={24} />} color="green" onClick={() => setIsStockViewOpen(true)} /></div>
             </section>
         </div>
       </main>
@@ -441,6 +442,9 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       {isSuppliersModalOpen && <SuppliersModal onClose={() => setIsSuppliersModalOpen(false)} suppliersDB={suppliersDB} setSuppliersDB={setSuppliersDB} />}
       {isRecipeManagerOpen && <RecipeManagerModal onClose={() => setIsRecipeManagerOpen(false)} recipes={recipesDB} setRecipes={setRecipesDB} />}
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} />}
+
+      {/* ── TOUR ── */}
+      <KitchenTour />
 
     </div>
   );
