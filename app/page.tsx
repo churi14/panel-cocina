@@ -380,7 +380,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       <aside className="w-72 bg-white rounded-2xl shadow-sm flex flex-col justify-between p-6 mr-4 transition-all hidden md:flex">
         <div>
           <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/30"><ChefHat size={24} className="text-white" /></div>
+            <img src="/icons/icon-cocina-192.png" alt="La Cocina" className="w-10 h-10 rounded-xl object-cover" />
             <div><h1 className="text-lg font-bold text-slate-900 leading-tight">La Cocina</h1><span className="text-xs text-slate-400 font-medium">Dark Kitchen</span></div>
           </div>
           <nav className="space-y-2">

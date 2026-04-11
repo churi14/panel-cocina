@@ -114,9 +114,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       {/* TOP BAR */}
       <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-            <span className="text-slate-900 font-black text-sm">K</span>
-          </div>
+          <img src="/icons/icon-admin-192.png" alt="La Cocina" className="w-9 h-9 rounded-xl object-cover" />
           <h1 className="font-black text-lg">La Cocina <span className="text-slate-400 font-normal text-sm">Admin</span></h1>
         </div>
         <div className="flex items-center gap-4">
