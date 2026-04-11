@@ -17,6 +17,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const [selected, setSelected]         = useState<ButcheryProductionType[]>([]);
   const [weights, setWeights]           = useState<WeightEntry[]>([]);
   const [showConfirm, setShowConfirm]   = useState(false);
+  const [tipVisible, setTipVisible]     = useState(() => typeof window !== 'undefined' ? !localStorage.getItem('wizard_tip_seen') : true);
 
   const kindConfig = selectedKind ? PRODUCTION_KINDS.find(k => k.id === selectedKind)! : null;
   const availableCuts = selectedKind ? getCutsByKind(selectedKind) : [];
@@ -28,6 +29,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setSelectedKind(kind);
     setSelected([]);
     setWeights([]);
+    setTipVisible(!localStorage.getItem('wizard_tip_seen'));
     setStep('select');
   };
 
@@ -36,6 +38,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
       type,
       weight: weights.find(w => w.type === type)?.weight ?? '',
     })));
+    setTipVisible(!localStorage.getItem('wizard_tip_seen'));
     setStep('weights');
   };
 
@@ -53,11 +56,46 @@ export function NewProductionWizard({ onStart, onCancel }: {
     );
   };
 
+
+  // ─── Banner de ayuda colapsable ───────────────────────────────────────────
+  const TipBox = ({ children }: { children: React.ReactNode }) => (
+    <>
+      {!tipVisible && (
+        <div className="max-w-3xl mx-auto w-full mb-4 flex justify-end">
+          <button
+            onClick={() => setTipVisible(true)}
+            className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-full transition-all"
+          >
+            💡 Ver ayuda
+          </button>
+        </div>
+      )}
+      <div className={`max-w-3xl mx-auto w-full mb-8 transition-all ${tipVisible ? '' : 'hidden'}`}>
+      <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+        <span className="text-2xl shrink-0 mt-0.5">💡</span>
+        <div className="flex-1 text-sm text-amber-900 leading-relaxed">{children}</div>
+        <button
+          onClick={() => { setTipVisible(false); localStorage.setItem('wizard_tip_seen', '1'); }}
+          className="shrink-0 text-amber-400 hover:text-amber-600 font-black text-lg leading-none mt-0.5 transition-colors"
+          title="Ocultar ayuda"
+        >×</button>
+      </div>
+    </div>
+    </>
+  );
+
   // ─── PASO 1: elegir tipo ───
   if (step === 'kind') {
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col justify-center">
+          <TipBox>
+            <p className="font-black mb-1">¿Cómo funciona?</p>
+            <p><strong>LOMITO</strong> → cuando vas a hacer bifes para sándwiches de lomito.</p>
+            <p><strong>BURGER</strong> → cuando vas a hacer medallones de hamburguesa.</p>
+            <p><strong>MILANESA</strong> → cuando vas a empanar milanesas.</p>
+            <p className="mt-1 text-amber-700">Tocá el que corresponde para arrancar.</p>
+          </TipBox>
           <div className="text-center mb-12">
             <h3 className="text-xl md:text-3xl font-black text-slate-800 mb-2">¿Qué vas a producir?</h3>
             <p className="text-slate-400 text-sm md:text-lg">Elegí el tipo de producción</p>
@@ -92,7 +130,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col justify-center">
-          <div className="text-center mb-10">
+          <div className="text-center mb-6">
             {/* Tipo seleccionado */}
             <span className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-white font-black text-lg mb-4 ${kindConfig.color}`}>
               {kindConfig.emoji} {kindConfig.label}
@@ -100,6 +138,12 @@ export function NewProductionWizard({ onStart, onCancel }: {
             <h3 className="text-2xl font-black text-slate-800 mb-2">¿Qué cortes vas a usar?</h3>
             <p className="text-slate-400">Podés seleccionar varios a la vez</p>
           </div>
+          <TipBox>
+            <p className="font-black mb-1">Cómo elegir los cortes:</p>
+            <p>• Tocá <strong>uno o más cortes</strong> de la lista. Quedará marcado con un tilde ✓.</p>
+            <p>• Si vas a trabajar con más de un corte al mismo tiempo, seleccionalos todos antes de continuar.</p>
+            <p>• Cuando tengas los que vas a usar, tocá <strong>INGRESAR PESOS</strong>.</p>
+          </TipBox>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
             {availableCuts.map(cut => {
@@ -178,7 +222,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
       </button>
 
       {kindConfig && (
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <span className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-white font-black text-lg mb-3 ${kindConfig.color}`}>
             {kindConfig.emoji} {kindConfig.label}
           </span>
@@ -186,6 +230,13 @@ export function NewProductionWizard({ onStart, onCancel }: {
           <p className="text-slate-400 text-sm">Peso bruto antes del procesamiento</p>
         </div>
       )}
+      <TipBox>
+        <p className="font-black mb-1">Cómo pesar la carne:</p>
+        <p>1. Poné el corte en la báscula <strong>antes de limpiarlo o cortarlo</strong>.</p>
+        <p>2. Ingresá el número que muestra la báscula (en kg, con decimales).</p>
+        <p>3. Cuando todos los campos estén completos, tocá <strong>EMPEZAR</strong>.</p>
+        <p className="mt-1 text-amber-700">⚠️ Es el peso bruto — con todo, sin limpiar. El sistema calcula el desperdicio después.</p>
+      </TipBox>
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-4 max-w-2xl mx-auto w-full">
