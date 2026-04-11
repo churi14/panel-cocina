@@ -30,7 +30,7 @@ export default function LoginPage() {
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/30">
             <ChefHat size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black text-white">KitchenOS</h1>
+          <h1 className="text-2xl font-black text-white">La Cocina</h1>
           <p className="text-slate-400 text-sm mt-1">Sistema de Gestión</p>
         </div>
 

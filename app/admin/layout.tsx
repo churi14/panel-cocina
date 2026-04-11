@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "KitchenOS Admin",
+  title: "La Cocina · Admin",
   description: "Panel de Administración",
   manifest: "/manifest-admin.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "KitchenOS Admin",
+    title: "La Cocina · Admin",
   },
 };
 

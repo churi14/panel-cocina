@@ -381,7 +381,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         <div>
           <div className="flex items-center gap-3 mb-10 px-2">
             <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/30"><ChefHat size={24} className="text-white" /></div>
-            <div><h1 className="text-lg font-bold text-slate-900 leading-tight">KitchenOS</h1><span className="text-xs text-slate-400 font-medium">v20.0 Final Fixed</span></div>
+            <div><h1 className="text-lg font-bold text-slate-900 leading-tight">La Cocina</h1><span className="text-xs text-slate-400 font-medium">Dark Kitchen</span></div>
           </div>
           <nav className="space-y-2">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">Principal</p>

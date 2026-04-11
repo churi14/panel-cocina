@@ -65,7 +65,7 @@ export default function TabMotorIA() {
     setNotificaciones(prev => [notif, ...prev].slice(0, 20));
     // Browser notification if permitted
     if (typeof window !== 'undefined' && Notification.permission === 'granted') {
-      new Notification(`KitchenOS · ${negocioInfo.label}`, { body: texto, icon: '/icon-192.png' });
+      new Notification(`La Cocina · ${negocioInfo.label}`, { body: texto, icon: '/icon-192.png' });
     }
   };
 
@@ -89,7 +89,7 @@ export default function TabMotorIA() {
     try {
       const historial = silent ? [] : msgs.slice(-8); // Últimos 8 mensajes de contexto
 
-      const systemPrompt = `Sos el motor de inteligencia de KitchenOS, el sistema de gestión de una dark kitchen en Ushuaia, Argentina.
+      const systemPrompt = `Sos el motor de inteligencia de La Cocina, el sistema de gestión de una dark kitchen en Ushuaia, Argentina.
 ${NEGOCIO_CONTEXT[negocio]}
 
 Tu rol es analizar datos de ventas, proyectar producción y dar recomendaciones concretas.
@@ -230,7 +230,7 @@ Si encontrás un insight importante que el admin debería saber urgente, termin�
                 {m.role === 'assistant' && (
                   <div className="flex items-center gap-1.5 mb-2">
                     <Sparkles size={12} className="text-purple-400" />
-                    <span className="text-xs font-black text-purple-400">KitchenOS IA</span>
+                    <span className="text-xs font-black text-purple-400">La Cocina IA</span>
                     <span className="text-xs text-slate-500">{m.timestamp}</span>
                   </div>
                 )}

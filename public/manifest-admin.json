@@ -1,7 +1,7 @@
 {
-  "name": "KitchenOS \u2014 Admin",
-  "short_name": "KOS Admin",
-  "description": "Panel de administraci\u00f3n \u2014 La Cocina Ushuaia",
+  "name": "La Cocina — Admin",
+  "short_name": "Admin",
+  "description": "Panel de administración — La Cocina Ushuaia",
   "start_url": "/admin",
   "scope": "/",
   "display": "standalone",

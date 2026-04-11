@@ -85,7 +85,7 @@ export function usePushNotifications() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: '🍔 KitchenOS',
+        title: '🍽️ La Cocina',
         body:  '¡Las notificaciones push funcionan!',
         tag:   'test',
         url:   '/',

@@ -6,12 +6,12 @@ import { AuthProvider } from "./AuthContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "KitchenOS",
+  title: "La Cocina",
   description: "Sistema de Gestión de Cocina",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "KitchenOS",
+    title: "La Cocina",
   },
 };
 

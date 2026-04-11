@@ -117,7 +117,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
           <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
             <span className="text-slate-900 font-black text-sm">K</span>
           </div>
-          <h1 className="font-black text-lg">KitchenOS <span className="text-slate-400 font-normal text-sm">Admin</span></h1>
+          <h1 className="font-black text-lg">La Cocina <span className="text-slate-400 font-normal text-sm">Admin</span></h1>
         </div>
         <div className="flex items-center gap-4">
           {notifications.length > 0 && (

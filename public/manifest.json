@@ -1,7 +1,7 @@
 {
-  "name": "KitchenOS \u2014 Cocina",
+  "name": "La Cocina — Cocina",
   "short_name": "Cocina",
-  "description": "Panel de operadores \u2014 La Cocina Ushuaia",
+  "description": "Panel de operadores — La Cocina Ushuaia",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

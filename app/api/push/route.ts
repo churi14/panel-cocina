@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     if (!subs || subs.length === 0) return NextResponse.json({ sent: 0, message: 'No hay suscriptores' });
 
     const payload = JSON.stringify({
-      title: title ?? 'KitchenOS',
+      title: title ?? 'La Cocina',
       body:  body  ?? '',
       tag:   tag   ?? 'kitchenos',
       url:   notifUrl ?? '/',
