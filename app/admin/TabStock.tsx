@@ -28,6 +28,10 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [alertaUmbral, setAlertaUmbral]           = useState('');
   const [alertaDias, setAlertaDias]               = useState('');
   const [savingAlerta, setSavingAlerta]           = useState(false);
+  const [cargaQty, setCargaQty]                   = useState('');
+  const [cargaMotivo, setCargaMotivo]             = useState('Producción manual');
+  const [savingCarga, setSavingCarga]             = useState(false);
+  const [prodTab, setProdTab]                     = useState<'carga' | 'alerta'>('carga');
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
     lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   headerBg: 'bg-rose-500/20'   },
     burger:   { emoji: '🍔', color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   headerBg: 'bg-blue-500/20'   },
@@ -177,7 +181,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
                         {catItems.map((item: any) => (
-                          <div key={item.id} onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); }}
+                          <div key={item.id} onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('carga'); }}
                             className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                             <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
                             <p className={`text-3xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
@@ -229,6 +233,30 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
             const tieneAlerta = selectedProdItem.alerta_umbral > 0;
 
+            const handleCargarStock = async () => {
+              const qty = parseFloat(cargaQty.replace(',', '.'));
+              if (!qty || qty <= 0) return;
+              setSavingCarga(true);
+              const newQty = parseFloat((Number(selectedProdItem.cantidad) + qty).toFixed(3));
+              await supabase.from('stock_produccion').update({
+                cantidad: newQty,
+                ultima_prod: new Date().toISOString(),
+              }).eq('id', selectedProdItem.id);
+              await supabase.from('stock_movements').insert({
+                nombre: selectedProdItem.producto,
+                categoria: selectedProdItem.categoria,
+                tipo: 'ingreso',
+                cantidad: qty,
+                unidad: selectedProdItem.unidad,
+                motivo: cargaMotivo,
+                operador: 'Admin',
+                fecha: new Date().toISOString(),
+              });
+              await fetchMovements();
+              setSavingCarga(false);
+              setSelectedProdItem(null);
+            };
+
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
                 onClick={() => setSelectedProdItem(null)}>
@@ -256,8 +284,84 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     </div>
                   </div>
 
+                  {/* Tabs */}
+                  <div className="flex border-b border-slate-800">
+                    {([
+                      { id: 'carga', label: '📦 Cargar Stock' },
+                      { id: 'alerta', label: '🔔 Alerta' },
+                    ] as const).map(t => (
+                      <button key={t.id} onClick={() => setProdTab(t.id)}
+                        className={`flex-1 py-3 text-sm font-black transition-all
+                          ${prodTab === t.id ? 'text-white border-b-2 border-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Body */}
                   <div className="p-6 space-y-5">
+
+                    {/* ── TAB CARGA ── */}
+                    {prodTab === 'carga' && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs font-black text-slate-400 uppercase mb-2 block">
+                            Cantidad a agregar ({selectedProdItem.unidad})
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setCargaQty(v => String(Math.max(0, parseFloat(v||'0') - (selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? 0.5 : 1))))}
+                              className="w-11 h-11 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-black text-lg transition-all">−</button>
+                            <input
+                              type="number" min="0" step={selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? '0.5' : '1'}
+                              value={cargaQty}
+                              onChange={e => setCargaQty(e.target.value)}
+                              placeholder="0"
+                              className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-lg font-black text-center outline-none focus:border-white/40"
+                            />
+                            <button onClick={() => setCargaQty(v => String(parseFloat(v||'0') + (selectedProdItem.unidad === 'kg' || selectedProdItem.unidad === 'lt' ? 0.5 : 1)))}
+                              className="w-11 h-11 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-white font-black text-lg transition-all">+</button>
+                            <span className="text-slate-400 text-sm font-bold w-8">{selectedProdItem.unidad}</span>
+                          </div>
+                          {cargaQty && parseFloat(cargaQty) > 0 && (
+                            <p className="text-xs text-slate-500 mt-1.5">
+                              Stock actual: <span className="text-white font-bold">{selectedProdItem.cantidad}</span> → nuevo: <span className={`font-black ${cfg.color}`}>{parseFloat((Number(selectedProdItem.cantidad) + parseFloat(cargaQty.replace(',','.'))).toFixed(3))} {selectedProdItem.unidad}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-black text-slate-400 uppercase mb-2 block">Motivo</label>
+                          <div className="flex flex-wrap gap-2">
+                            {['Producción manual', 'Corrección de stock', 'Ingreso externo', 'Sobrante de turno'].map(m => (
+                              <button key={m} onClick={() => setCargaMotivo(m)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border
+                                  ${cargaMotivo === m ? 'bg-white text-slate-900 border-white' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}>
+                                {m}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleCargarStock}
+                          disabled={savingCarga || !cargaQty || parseFloat(cargaQty) <= 0}
+                          className={`w-full py-3 rounded-xl font-black text-sm transition-all
+                            ${savingCarga || !cargaQty || parseFloat(cargaQty) <= 0
+                              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                              : `${cfg.bg} border ${cfg.border} ${cfg.color} hover:opacity-80`}`}>
+                          {savingCarga ? 'Guardando...' : `📦 Cargar ${cargaQty || '0'} ${selectedProdItem.unidad}`}
+                        </button>
+
+                        {selectedProdItem.ultima_prod && (
+                          <p className="text-center text-xs text-slate-600">
+                            Última producción: {new Date(selectedProdItem.ultima_prod).toLocaleDateString('es-AR')} a las {new Date(selectedProdItem.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── TAB ALERTA ── */}
+                    {prodTab === 'alerta' && <>
 
                     {/* Estado actual de la alerta */}
                     {tieneAlerta ? (
@@ -367,6 +471,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         Última producción: {new Date(selectedProdItem.ultima_prod).toLocaleDateString('es-AR')} a las {new Date(selectedProdItem.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
+                    </>}
                   </div>
                 </div>
               </div>
