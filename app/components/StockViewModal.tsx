@@ -181,15 +181,15 @@ function EditModal({ item, onClose, onSaved }: {
           </label>
           <div className="flex items-center gap-2">
             <button onClick={() => setValor(v => String(Math.max(0, parseFloat(v||'0') - step)))}
-              className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-lg transition-all">
-              <Minus size={16} className="mx-auto" />
+              className="w-11 h-11 bg-slate-200 hover:bg-slate-300 rounded-xl font-black text-lg transition-all text-slate-700 flex items-center justify-center">
+              <Minus size={18} />
             </button>
             <input type="number" step={step} min="0" value={valor}
               onChange={e => setValor(e.target.value)} placeholder="0"
-              className="flex-1 px-3 py-2.5 border-2 border-slate-200 rounded-xl text-2xl font-black text-center outline-none focus:border-slate-900" />
+              className="flex-1 px-3 py-2.5 border-2 border-slate-200 rounded-xl text-2xl font-black text-center outline-none focus:border-slate-900 bg-white text-slate-900" />
             <button onClick={() => setValor(v => String(parseFloat(v||'0') + step))}
-              className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-lg transition-all">
-              <Plus size={16} className="mx-auto" />
+              className="w-11 h-11 bg-slate-200 hover:bg-slate-300 rounded-xl font-black text-lg transition-all text-slate-700 flex items-center justify-center">
+              <Plus size={18} />
             </button>
           </div>
           {valorNum > 0 && (
@@ -218,7 +218,7 @@ function EditModal({ item, onClose, onSaved }: {
           <textarea value={comentario} onChange={e => setComentario(e.target.value)}
             placeholder="Escribí un motivo..."
             rows={2}
-            className="w-full px-3 py-2 border-2 rounded-xl text-sm outline-none resize-none border-slate-200 focus:border-slate-900" />
+            className="w-full px-3 py-2 border-2 rounded-xl text-sm outline-none resize-none border-slate-200 focus:border-slate-900 bg-white text-slate-900" />
         </div>
 
         {/* Guardar */}
