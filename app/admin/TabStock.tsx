@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../AuthContext';
 import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
 import { Movement, formatFecha } from './types';
 import { supabase } from '../supabase';
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export default function TabStock({ stock, stockProd, movements, fetchMovements }: Props) {
+  const { user } = useAuth();
   const [stockCat, setStockCat]           = useState('all');
   const [stockSearch, setStockSearch]     = useState('');
   const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion'>('materiales');
@@ -24,6 +26,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [umbralMedio, setUmbralMedio]               = useState('');
   const [umbralCritico, setUmbralCritico]           = useState('');
   const [savingUmbrales, setSavingUmbrales]         = useState(false);
+  // Umbrales personales (por usuario logueado)
+  const [miCritico, setMiCritico]                   = useState('');
+  const [miMedio, setMiMedio]                       = useState('');
+  const [savingMiAlerta, setSavingMiAlerta]         = useState(false);
+  const [miAlertaActual, setMiAlertaActual]         = useState<{critico?:number|null;medio?:number|null}|null>(null);
   const [selectedProdItem, setSelectedProdItem]   = useState<any | null>(null);
   const [alertaUmbral, setAlertaUmbral]           = useState('');
   const [alertaDias, setAlertaDias]               = useState('');
@@ -496,6 +503,20 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               setEditingUmbrales(false);
             };
 
+            const handleSaveMiAlerta = async () => {
+              if (!user) return;
+              setSavingMiAlerta(true);
+              await supabase.from('user_stock_alertas').upsert({
+                user_id:  user.id,
+                stock_id: selectedStockItem.id,
+                critico:  parseFloat(miCritico) || null,
+                medio:    parseFloat(miMedio)   || null,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'user_id,stock_id' });
+              setMiAlertaActual({ critico: parseFloat(miCritico)||null, medio: parseFloat(miMedio)||null });
+              setSavingMiAlerta(false);
+            };
+
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
                 onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); }}>
@@ -664,6 +685,54 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       >
                         {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
                       </button>
+                    </div>
+
+                    {/* ── MIS ALERTAS PERSONALES ── */}
+                    <div className="border-t border-slate-800 pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-black text-slate-400 uppercase">🔔 Mis alertas personales</p>
+                        {miAlertaActual && (miAlertaActual.critico || miAlertaActual.medio) && (
+                          <span className="text-[10px] text-amber-400 font-black bg-amber-500/10 px-2 py-0.5 rounded-full">ACTIVA</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mb-3">Umbrales propios — solo vos recibís estas notificaciones</p>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        {[
+                          { label: '🚨 Crítico personal', val: miCritico, set: setMiCritico, color: 'focus:border-red-500' },
+                          { label: '⚠️ Medio personal',   val: miMedio,   set: setMiMedio,   color: 'focus:border-amber-500' },
+                        ].map(({ label, val, set, color }) => (
+                          <div key={label}>
+                            <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">{label}</label>
+                            <div className="flex items-center gap-1">
+                              <input type="number" min="0" step="0.5" value={val}
+                                onChange={e => set(e.target.value)}
+                                placeholder="—"
+                                className={`flex-1 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm outline-none ${color}`} />
+                              <span className="text-slate-500 text-xs">{selectedStockItem.unidad}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={handleSaveMiAlerta}
+                          disabled={savingMiAlerta || (!miCritico && !miMedio)}
+                          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all
+                            ${savingMiAlerta || (!miCritico && !miMedio)
+                              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                              : 'bg-amber-500 hover:bg-amber-400 text-slate-900'}`}>
+                          {savingMiAlerta ? 'Guardando...' : '🔔 Guardar mis alertas'}
+                        </button>
+                        {(miAlertaActual?.critico || miAlertaActual?.medio) && (
+                          <button onClick={async () => {
+                            if (!user) return;
+                            await supabase.from('user_stock_alertas').delete()
+                              .eq('user_id', user.id).eq('stock_id', selectedStockItem.id);
+                            setMiCritico(''); setMiMedio(''); setMiAlertaActual(null);
+                          }} className="px-3 py-2 rounded-xl text-xs font-black bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all">
+                            🔕 Quitar
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Historial de movimientos */}

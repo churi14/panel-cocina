@@ -100,7 +100,8 @@ export async function checkAndNotifyStock(
   nombre: string,
   newQty: number,
   unidad: string,
-  stockItem?: { stock_critico?: number | null; stock_medio?: number | null; stock_minimo?: number | null }
+  stockItem?: { id?: number; stock_critico?: number | null; stock_medio?: number | null; stock_minimo?: number | null },
+  supabaseClient?: any
 ): Promise<void> {
   const critico = stockItem?.stock_critico ?? ((unidad === 'kg' || unidad === 'lt') ? FALLBACK_CRITICO_KG : FALLBACK_CRITICO_U);
   const medio   = stockItem?.stock_medio   ?? ((unidad === 'kg' || unidad === 'lt') ? FALLBACK_MEDIO_KG   : FALLBACK_MEDIO_U);
@@ -109,6 +110,7 @@ export async function checkAndNotifyStock(
     ? n.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
     : Math.round(n).toString();
 
+  // ── 1. Push global (para todos) ──────────────────────────────────────────
   if (newQty < 0) {
     await sendPushNotification(
       `🔴 Stock NEGATIVO: ${nombre}`,
@@ -129,6 +131,46 @@ export async function checkAndNotifyStock(
       `Quedan ${fmt(newQty)} ${unidad} — reponé pronto`,
       'stock-bajo', '/admin'
     );
+  }
+
+  // ── 2. Push personales (umbrales por usuario) ────────────────────────────
+  if (!supabaseClient || !stockItem?.id) return;
+  try {
+    const { data: alertas } = await supabaseClient
+      .from('user_stock_alertas')
+      .select('user_id, critico, medio')
+      .eq('stock_id', stockItem.id);
+
+    if (!alertas || alertas.length === 0) return;
+
+    for (const alerta of alertas) {
+      const uCritico = alerta.critico;
+      const uMedio   = alerta.medio;
+      if (!uCritico && !uMedio) continue;
+
+      let title = '', body = '', tag = '';
+      if (newQty <= 0) {
+        title = `🚨 AGOTADO: ${nombre}`; body = `Sin stock`; tag = 'personal-agotado';
+      } else if (uCritico && newQty <= uCritico) {
+        title = `🚨 Stock CRÍTICO: ${nombre}`;
+        body  = `Solo quedan ${fmt(newQty)} ${unidad} — comprá YA`;
+        tag   = 'personal-critico';
+      } else if (uMedio && newQty <= uMedio) {
+        title = `⚠️ Stock bajo: ${nombre}`;
+        body  = `Quedan ${fmt(newQty)} ${unidad} — reponé pronto`;
+        tag   = 'personal-bajo';
+      }
+
+      if (title) {
+        await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, body, tag, url: '/admin', userId: alerta.user_id }),
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('checkAndNotifyStock personal alertas error:', e);
   }
 }
 
