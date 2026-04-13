@@ -409,6 +409,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   // ── Estado para menjunje milanesa ─────────────────────────────────────────
   const [showMenjunjeModal, setShowMenjunjeModal] = useState(false);
   const [menjunjeCorte, setMenjunjeCorte]         = useState('');
+  const [menjunjeStocks, setMenjunjeStocks]       = useState<{producto: string; cantidad: number}[]>([]);
   const [menjunjeKg, setMenjunjeKg]               = useState('');
   const [milanesaKgSalieron, setMilanesaKgSalieron] = useState('');
   const [milanesaUnidades, setMilanesaUnidades]     = useState('');
@@ -912,10 +913,26 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — Ingresá los kg usados</p>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Corte</label>
-                                <input value={menjunjeCorte} onChange={e => setMenjunjeCorte(e.target.value)}
-                                  placeholder={menjunjeTipo === 'Pollo' ? 'Pollo' : 'Cuadrada / Nalga'}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-rose-500" />
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Stock de carne</label>
+                                {menjunjeStocks.length > 0 ? (
+                                  <div className="space-y-1 max-h-36 overflow-y-auto">
+                                    {menjunjeStocks.map(s => (
+                                      <button key={s.producto}
+                                        onClick={() => setMenjunjeCorte(s.producto.replace('Milanesa - ', ''))}
+                                        className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all border
+                                          ${menjunjeCorte === s.producto.replace('Milanesa - ', '')
+                                            ? 'bg-rose-600 text-white border-rose-500'
+                                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-rose-500'}`}>
+                                        <span>{s.producto}</span>
+                                        <span className="float-right text-xs opacity-60">{s.cantidad.toFixed(2)} kg</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-500 italic">
+                                    No hay stock de milanesa cruda. Producí primero en Carnicería.
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg carne usados</label>
