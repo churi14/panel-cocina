@@ -311,7 +311,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   setProductionHistory: any;
   operadorNombre?: string;
 }) {
-  const [operador, setOperador] = useState(operadorNombre ?? '');
+  const [operador, setOperador] = useState(''); // Siempre mostrar selector — no auto-fill
   const [modalView, setModalView] = useState<'list' | 'new'>('list');
   const [view, setView] = useState<'category' | 'product' | 'recipe'>('category');
   const [selectedCategory, setSelectedCategory] = useState('');

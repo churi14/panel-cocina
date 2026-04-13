@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, RefreshCw, TrendingDown, AlertTriangle, Edit2, Check, Plus, Minus } from 'lucide-react';
 import { supabase } from '../supabase';
-import { useAuth } from '../AuthContext';
 
 type StockItem = {
   id: number; nombre: string; categoria: string;
@@ -62,13 +61,16 @@ type EditTarget = {
   tabla: 'stock' | 'stock_produccion'; nombreCampo: 'nombre' | 'producto';
 };
 
-function EditModal({ item, onClose, onSaved, operador }: {
-  item: EditTarget; onClose: () => void; onSaved: () => void; operador: string;
+const OPERADORES_STOCK = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+
+function EditModal({ item, onClose, onSaved }: {
+  item: EditTarget; onClose: () => void; onSaved: () => void;
 }) {
-  const [modo, setModo]       = useState<'agregar' | 'reemplazar'>('agregar');
-  const [valor, setValor]     = useState('');
+  const [operador, setOperador] = useState('');
+  const [modo, setModo]         = useState<'agregar' | 'reemplazar'>('agregar');
+  const [valor, setValor]       = useState('');
   const [comentario, setComentario] = useState('');
-  const [saving, setSaving]   = useState(false);
+  const [saving, setSaving]     = useState(false);
 
   const step = item.unidad === 'kg' || item.unidad === 'lt' ? 0.5 : 1;
   const valorNum = parseFloat(valor.replace(',', '.')) || 0;
@@ -76,7 +78,7 @@ function EditModal({ item, onClose, onSaved, operador }: {
     ? parseFloat((item.cantidad + valorNum).toFixed(3))
     : valorNum;
 
-  const canSave = valorNum > 0 && comentario.trim().length >= 3;
+  const canSave = !!operador && valorNum > 0 && comentario.trim().length >= 3;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -142,6 +144,20 @@ function EditModal({ item, onClose, onSaved, operador }: {
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400">
             <X size={18} />
           </button>
+        </div>
+
+        {/* Selector operador */}
+        <div>
+          <p className="text-xs font-black text-slate-400 uppercase mb-2">¿Quién sos?</p>
+          <div className="flex flex-wrap gap-2">
+            {OPERADORES_STOCK.map(op => (
+              <button key={op} onClick={() => setOperador(op)}
+                className={`px-3 py-1.5 rounded-xl text-sm font-black border transition-all
+                  ${operador === op ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-400'}`}>
+                {op}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Modo */}
@@ -217,10 +233,7 @@ function EditModal({ item, onClose, onSaved, operador }: {
   );
 }
 
-export default function StockViewModal({ onClose, operadorNombre }: { onClose: () => void; operadorNombre?: string }) {
-  const { perfil } = useAuth();
-  const operador = operadorNombre ?? perfil?.nombre ?? 'Operador';
-
+export default function StockViewModal({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'materiales' | 'produccion'>('materiales');
   const [items, setItems] = useState<StockItem[]>([]);
   const [stockProd, setStockProd] = useState<any[]>([]);
@@ -481,7 +494,6 @@ export default function StockViewModal({ onClose, operadorNombre }: { onClose: (
       {editItem && (
         <EditModal
           item={editItem}
-          operador={operador}
           onClose={() => setEditItem(null)}
           onSaved={fetchAll}
         />
