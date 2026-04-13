@@ -352,7 +352,13 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
         .eq('categoria', 'milanesa')
         .gt('cantidad', 0)
         .order('producto');
-      setMenjunjeStocks(data ?? []);
+      const filtered = (data ?? [])
+        .filter((s: any) => !s.producto.toLowerCase().includes('jugo') && !s.producto.toLowerCase().includes('empanada'))
+        .map((s: any) => ({
+          ...s,
+          producto: s.producto.toLowerCase().includes('nalga feteada') ? 'Milanesa - Nalga' : s.producto,
+        }));
+      setMenjunjeStocks(filtered);
     }
     setView('recipe');
   };
