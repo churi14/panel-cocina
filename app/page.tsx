@@ -302,6 +302,72 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Perejil',  qty: 0.150, unit: 'kg' },
       ]
     },
+    // ── FIAMBRES ─────────────────────────────────────────────────────────────
+    { id: 'fiambre_jamon',          name: 'Jamón',                category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_panceta',        name: 'Panceta',              category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_cheddar_feta',   name: 'Cheddar en Feta',      category: 'Fiambres', baseYield: 0, unit: 'u',  recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_cheddar_liq',    name: 'Cheddar Líquido',      category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_cheddar_burger', name: 'Cheddar para Burger',  category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_provoleta',      name: 'Provoleta',            category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_muzza',          name: 'Queso Muzza',          category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_tybo',           name: 'Queso Tybo',           category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+
+    // ── EMPANADO MILANESA ─────────────────────────────────────────────────────
+    { id: 'empanado_carne', name: 'Empanado Milanesa Carne', category: 'Milanesas', baseYield: 0, unit: 'kg',
+      recipeType: 'empanado' as any,
+      warning: 'Usa menjunje de carne del stock de producción',
+      ingredients: [] },
+    { id: 'empanado_pollo', name: 'Empanado Milanesa Pollo', category: 'Milanesas', baseYield: 0, unit: 'kg',
+      recipeType: 'empanado' as any,
+      warning: 'Usa menjunje de pollo del stock de producción',
+      ingredients: [] },
+
+    // ── SALSAS PRODUCCIÓN ─────────────────────────────────────────────────────
+    { id: 'salsa_club',    name: 'Salsa Club',    category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      ingredients: [
+        { name: 'Mayonesa',       qty: 100, unit: '%', isBase: true },
+        { name: 'Ajo',            qty: 2,   unit: '%' },
+        { name: 'Jugo de limón',  qty: 1,   unit: '%' },
+        { name: 'Sal',            qty: 0.5, unit: '%' },
+      ]},
+    { id: 'salsa_mayo_mila', name: 'Mayo Mila', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      ingredients: [
+        { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
+        { name: 'Ajo',       qty: 1.5, unit: '%' },
+        { name: 'Sal',       qty: 0.5, unit: '%' },
+        { name: 'Orégano',   qty: 0.3, unit: '%' },
+      ]},
+    { id: 'salsa_spread', name: 'Salsa Spread', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      ingredients: [
+        { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
+        { name: 'Ketchup',   qty: 20,  unit: '%' },
+        { name: 'Mostaza',   qty: 5,   unit: '%' },
+        { name: 'Sal',       qty: 0.3, unit: '%' },
+      ]},
+    { id: 'salsa_crema', name: 'Salsa Crema', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      ingredients: [
+        { name: 'Queso crema', qty: 100, unit: '%', isBase: true },
+        { name: 'Ajo',         qty: 2,   unit: '%' },
+        { name: 'Sal',         qty: 0.5, unit: '%' },
+      ]},
+    { id: 'salsa_ajo', name: 'Salsa de Ajo', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      ingredients: [
+        { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
+        { name: 'Ajo',       qty: 8,   unit: '%' },
+        { name: 'Limón',     qty: 1,   unit: '%' },
+        { name: 'Sal',       qty: 0.5, unit: '%' },
+      ]},
+    { id: 'salsa_criolla', name: 'Criolla', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      ingredients: [
+        { name: 'Tomate',    qty: 100, unit: '%', isBase: true },
+        { name: 'Cebolla',   qty: 40,  unit: '%' },
+        { name: 'Morrón',    qty: 20,  unit: '%' },
+        { name: 'Aceite',    qty: 10,  unit: '%' },
+        { name: 'Vinagre',   qty: 5,   unit: '%' },
+        { name: 'Sal',       qty: 1,   unit: '%' },
+        { name: 'Orégano',   qty: 0.5, unit: '%' },
+      ]},
+
     // ── PREP ─────────────────────────────────────────────────────────────────
   ]);
 
@@ -441,7 +507,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       {/* MODALES CONECTADOS A LA DB EN MEMORIA */}
       {isSuppliersModalOpen && <SuppliersModal onClose={() => setIsSuppliersModalOpen(false)} suppliersDB={suppliersDB} setSuppliersDB={setSuppliersDB} />}
       {isRecipeManagerOpen && <RecipeManagerModal onClose={() => setIsRecipeManagerOpen(false)} recipes={recipesDB} setRecipes={setRecipesDB} />}
-      {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} />}
+      {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} operadorNombre={perfil?.nombre ?? ''} />}
 
       {/* ── TOUR ── */}
       <KitchenTour />
