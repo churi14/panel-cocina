@@ -78,7 +78,7 @@ export default function Page() {
 
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
 function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
-  const { signOut } = useAuth();
+  const { signOut, perfil } = useAuth();
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
