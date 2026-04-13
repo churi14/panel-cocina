@@ -179,24 +179,24 @@ function EditModal({ item, onClose, onSaved }: {
           <label className="text-xs font-black text-slate-400 uppercase mb-2 block">
             {modo === 'agregar' ? `Cantidad a agregar (${item.unidad})` : `Nuevo valor (${item.unidad})`}
           </label>
-          <div className="flex items-center gap-2">
+          <div style={{display:'grid', gridTemplateColumns:'44px 1fr 44px', gap:'8px', alignItems:'center'}}>
             <button onClick={() => setValor(v => String(Math.max(0, parseFloat(v||'0') - step)))}
-              className="w-11 h-11 bg-slate-200 hover:bg-slate-300 rounded-xl font-black text-lg transition-all text-slate-700 flex items-center justify-center">
-              <Minus size={18} />
+              style={{width:'44px', height:'44px', background:'#e2e8f0', borderRadius:'12px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'900', fontSize:'20px', color:'#334155'}}>
+              −
             </button>
             <input type="number" step={step} min="0" value={valor}
               onChange={e => setValor(e.target.value)} placeholder="0"
-              className="flex-1 px-3 py-2.5 border-2 border-slate-200 rounded-xl text-2xl font-black text-center outline-none focus:border-slate-900 bg-white text-slate-900" />
+              style={{width:'100%', padding:'10px', border:'2px solid #e2e8f0', borderRadius:'12px', fontSize:'24px', fontWeight:'900', textAlign:'center', outline:'none', background:'#ffffff', color:'#0f172a', boxSizing:'border-box'}} />
             <button onClick={() => setValor(v => String(parseFloat(v||'0') + step))}
-              className="w-11 h-11 bg-slate-200 hover:bg-slate-300 rounded-xl font-black text-lg transition-all text-slate-700 flex items-center justify-center">
-              <Plus size={18} />
+              style={{width:'44px', height:'44px', background:'#e2e8f0', borderRadius:'12px', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'900', fontSize:'20px', color:'#334155'}}>
+              +
             </button>
           </div>
           {valorNum > 0 && (
-            <p className="text-xs text-slate-400 mt-1.5 text-center">
+            <p style={{fontSize:'12px', color:'#94a3b8', marginTop:'6px', textAlign:'center'}}>
               {modo === 'agregar'
-                ? <>Stock nuevo: <span className="font-black text-green-600">{nuevaCantidad} {item.unidad}</span></>
-                : <>Reemplaza {item.cantidad} → <span className="font-black text-blue-600">{nuevaCantidad} {item.unidad}</span></>}
+                ? <><span>Stock nuevo: </span><span style={{fontWeight:'900', color:'#16a34a'}}>{nuevaCantidad} {item.unidad}</span></>
+                : <><span>Reemplaza {item.cantidad} → </span><span style={{fontWeight:'900', color:'#2563eb'}}>{nuevaCantidad} {item.unidad}</span></>}
             </p>
           )}
         </div>
@@ -218,7 +218,7 @@ function EditModal({ item, onClose, onSaved }: {
           <textarea value={comentario} onChange={e => setComentario(e.target.value)}
             placeholder="Escribí un motivo..."
             rows={2}
-            className="w-full px-3 py-2 border-2 rounded-xl text-sm outline-none resize-none border-slate-200 focus:border-slate-900 bg-white text-slate-900" />
+            style={{width:'100%', padding:'8px 12px', border:'2px solid #e2e8f0', borderRadius:'12px', fontSize:'14px', outline:'none', resize:'none', background:'#ffffff', color:'#0f172a', boxSizing:'border-box', fontFamily:'inherit'}} />
         </div>
 
         {/* Guardar */}
