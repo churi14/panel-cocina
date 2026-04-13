@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Search, RefreshCw, TrendingDown, AlertTriangle } from 'lucide-react';
+import { X, Search, RefreshCw, TrendingDown, AlertTriangle, Edit2, Check, Plus, Minus } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useAuth } from '../AuthContext';
 
 type StockItem = {
   id: number; nombre: string; categoria: string;
@@ -55,7 +56,171 @@ function isExpiringSoon(fecha: string | null): boolean {
   } catch { return false; }
 }
 
-export default function StockViewModal({ onClose }: { onClose: () => void }) {
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+type EditTarget = {
+  id: number; nombre: string; cantidad: number; unidad: string;
+  tabla: 'stock' | 'stock_produccion'; nombreCampo: 'nombre' | 'producto';
+};
+
+function EditModal({ item, onClose, onSaved, operador }: {
+  item: EditTarget; onClose: () => void; onSaved: () => void; operador: string;
+}) {
+  const [modo, setModo]       = useState<'agregar' | 'reemplazar'>('agregar');
+  const [valor, setValor]     = useState('');
+  const [comentario, setComentario] = useState('');
+  const [saving, setSaving]   = useState(false);
+
+  const step = item.unidad === 'kg' || item.unidad === 'lt' ? 0.5 : 1;
+  const valorNum = parseFloat(valor.replace(',', '.')) || 0;
+  const nuevaCantidad = modo === 'agregar'
+    ? parseFloat((item.cantidad + valorNum).toFixed(3))
+    : valorNum;
+
+  const canSave = valorNum > 0 && comentario.trim().length >= 3;
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      // Update stock
+      if (item.tabla === 'stock') {
+        await supabase.from('stock').update({
+          cantidad: nuevaCantidad,
+          fecha_actualizacion: new Date().toISOString().slice(0, 10),
+        }).eq('id', item.id);
+        // Log movement
+        await supabase.from('stock_movements').insert({
+          nombre: item.nombre,
+          categoria: '',
+          tipo: modo === 'agregar' ? 'ingreso' : 'ajuste',
+          cantidad: valorNum,
+          unidad: item.unidad,
+          motivo: comentario.trim(),
+          operador,
+          fecha: new Date().toISOString(),
+        });
+      } else {
+        await supabase.from('stock_produccion').update({
+          cantidad: nuevaCantidad,
+          ultima_prod: new Date().toISOString(),
+        }).eq('id', item.id);
+        await supabase.from('stock_movements').insert({
+          nombre: item.nombre,
+          categoria: 'produccion',
+          tipo: modo === 'agregar' ? 'ingreso' : 'ajuste',
+          cantidad: valorNum,
+          unidad: item.unidad,
+          motivo: comentario.trim(),
+          operador,
+          fecha: new Date().toISOString(),
+        });
+      }
+      onSaved();
+      onClose();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-black text-slate-400 uppercase">Editar stock</p>
+            <h3 className="font-black text-slate-800 text-lg leading-tight">{item.nombre}</h3>
+            <p className="text-sm text-slate-500">
+              Stock actual: <span className="font-black">{item.cantidad} {item.unidad}</span>
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modo */}
+        <div className="flex gap-2">
+          {([
+            { id: 'agregar', label: '➕ Agregar' },
+            { id: 'reemplazar', label: '✏️ Reemplazar' },
+          ] as const).map(m => (
+            <button key={m.id} onClick={() => { setModo(m.id); setValor(''); }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all border
+                ${modo === m.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Valor */}
+        <div>
+          <label className="text-xs font-black text-slate-400 uppercase mb-2 block">
+            {modo === 'agregar' ? `Cantidad a agregar (${item.unidad})` : `Nuevo valor (${item.unidad})`}
+          </label>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setValor(v => String(Math.max(0, parseFloat(v||'0') - step)))}
+              className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-lg transition-all">
+              <Minus size={16} className="mx-auto" />
+            </button>
+            <input type="number" step={step} min="0" value={valor}
+              onChange={e => setValor(e.target.value)} placeholder="0"
+              className="flex-1 px-3 py-2.5 border-2 border-slate-200 rounded-xl text-2xl font-black text-center outline-none focus:border-slate-900" />
+            <button onClick={() => setValor(v => String(parseFloat(v||'0') + step))}
+              className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-xl font-black text-lg transition-all">
+              <Plus size={16} className="mx-auto" />
+            </button>
+          </div>
+          {valorNum > 0 && (
+            <p className="text-xs text-slate-400 mt-1.5 text-center">
+              {modo === 'agregar'
+                ? <>Stock nuevo: <span className="font-black text-green-600">{nuevaCantidad} {item.unidad}</span></>
+                : <>Reemplaza {item.cantidad} → <span className="font-black text-blue-600">{nuevaCantidad} {item.unidad}</span></>}
+            </p>
+          )}
+        </div>
+
+        {/* Comentario OBLIGATORIO */}
+        <div>
+          <label className="text-xs font-black text-slate-400 uppercase mb-2 block">
+            ¿Por qué? <span className="text-red-500">*obligatorio</span>
+          </label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {['Llegó mercadería', 'Corrección de inventario', 'Error de carga', 'Sobrante de turno', 'Ajuste manual'].map(s => (
+              <button key={s} onClick={() => setComentario(s)}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-all
+                  ${comentario === s ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-400'}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <textarea value={comentario} onChange={e => setComentario(e.target.value)}
+            placeholder="Escribí un motivo..."
+            rows={2}
+            className="w-full px-3 py-2 border-2 rounded-xl text-sm outline-none resize-none border-slate-200 focus:border-slate-900" />
+        </div>
+
+        {/* Guardar */}
+        <button onClick={handleSave} disabled={!canSave || saving}
+          className={`w-full py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2
+            ${canSave && !saving ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
+          {saving ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} />}
+          {saving ? 'Guardando...' : 'Guardar cambio'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function StockViewModal({ onClose, operadorNombre }: { onClose: () => void; operadorNombre?: string }) {
+  const { perfil } = useAuth();
+  const operador = operadorNombre ?? perfil?.nombre ?? 'Operador';
+
   const [activeTab, setActiveTab] = useState<'materiales' | 'produccion'>('materiales');
   const [items, setItems] = useState<StockItem[]>([]);
   const [stockProd, setStockProd] = useState<any[]>([]);
@@ -64,6 +229,7 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState('');
+  const [editItem, setEditItem] = useState<EditTarget | null>(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -139,7 +305,6 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
         {/* ── TAB MATERIALES ── */}
         {activeTab === 'materiales' && (
           <>
-            {/* Filtros */}
             <div className="px-8 py-4 border-b border-slate-100 flex items-center gap-4 shrink-0 flex-wrap">
               <div className="relative flex-1 min-w-48">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -165,13 +330,8 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {/* Items */}
             <div className="flex-1 overflow-y-auto p-6">
-              {loading && (
-                <div className="flex items-center justify-center h-full">
-                  <RefreshCw size={40} className="text-slate-300 animate-spin mx-auto mb-4" />
-                </div>
-              )}
+              {loading && <div className="flex items-center justify-center h-full"><RefreshCw size={40} className="text-slate-300 animate-spin mx-auto mb-4" /></div>}
               {error && (
                 <div className="text-center py-16 text-red-500">
                   <AlertTriangle size={40} className="mx-auto mb-4" />
@@ -199,12 +359,17 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
                             const expiring = isExpiringSoon(item.fecha_vencimiento);
                             const zero = item.cantidad === 0;
                             return (
-                              <div key={item.id} className={`rounded-2xl border-2 p-4
-                                ${zero ? 'border-red-200 bg-red-50' : low ? 'border-amber-200 bg-amber-50' : expiring ? 'border-amber-200 bg-amber-50' : `${cfg.border} bg-white`}`}>
+                              <div key={item.id}
+                                onClick={() => setEditItem({ id: item.id, nombre: item.nombre, cantidad: item.cantidad, unidad: item.unidad, tabla: 'stock', nombreCampo: 'nombre' })}
+                                className={`rounded-2xl border-2 p-4 cursor-pointer hover:shadow-md active:scale-95 transition-all relative group
+                                  ${zero ? 'border-red-200 bg-red-50' : low ? 'border-amber-200 bg-amber-50' : expiring ? 'border-amber-200 bg-amber-50' : `${cfg.border} bg-white`}`}>
                                 <div className="flex items-start justify-between mb-2">
                                   <p className="font-bold text-slate-800 text-sm leading-tight">{item.nombre}</p>
-                                  {(low || zero) && <TrendingDown size={14} className={zero ? 'text-red-500 shrink-0 ml-1' : 'text-amber-500 shrink-0 ml-1'} />}
-                                  {expiring && !zero && <AlertTriangle size={14} className="text-amber-500 shrink-0 ml-1" />}
+                                  <div className="flex items-center gap-1 shrink-0 ml-1">
+                                    {(low || zero) && <TrendingDown size={14} className={zero ? 'text-red-500' : 'text-amber-500'} />}
+                                    {expiring && !zero && <AlertTriangle size={14} className="text-amber-500" />}
+                                    <Edit2 size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                                  </div>
                                 </div>
                                 <p className={`text-2xl font-black ${zero ? 'text-red-500' : low ? 'text-amber-600' : cfg.color}`}>
                                   {formatQty(item.cantidad, item.unidad)}
@@ -236,7 +401,6 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
         {/* ── TAB PRODUCCIÓN ── */}
         {activeTab === 'produccion' && (
           <div className="flex-1 overflow-y-auto p-6">
-            {/* Totales — dinámico */}
             {(() => {
               const prodCats = [...new Set(stockProd.map((s: any) => s.categoria as string))].sort();
               return (
@@ -260,8 +424,6 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
                       );
                     })}
                   </div>
-
-            {/* Detalle — dinámico */}
                   <div className="space-y-6">
                     {prodCats.map(cat => {
                       const catItems = stockProd.filter((s: any) => s.categoria === cat);
@@ -275,8 +437,13 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                             {catItems.map((item: any) => (
-                              <div key={item.id} className={`rounded-2xl border-2 p-4 bg-white ${cfg.border}`}>
-                                <p className="font-bold text-slate-800 text-sm leading-tight mb-2">{item.producto}</p>
+                              <div key={item.id}
+                                onClick={() => setEditItem({ id: item.id, nombre: item.producto, cantidad: item.cantidad, unidad: item.unidad, tabla: 'stock_produccion', nombreCampo: 'producto' })}
+                                className={`rounded-2xl border-2 p-4 bg-white cursor-pointer hover:shadow-md active:scale-95 transition-all relative group ${cfg.border}`}>
+                                <div className="flex items-start justify-between mb-2">
+                                  <p className="font-bold text-slate-800 text-sm leading-tight">{item.producto}</p>
+                                  <Edit2 size={12} className="text-slate-300 group-hover:text-slate-500 transition-colors shrink-0 ml-1" />
+                                </div>
                                 <p className={`text-2xl font-black ${item.cantidad === 0 ? 'text-slate-400' : cfg.text}`}>
                                   {item.unidad === 'kg' || item.unidad === 'lt'
                                     ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
@@ -299,7 +466,6 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
                       <div className="text-center py-16 text-slate-400">
                         <p className="text-4xl mb-4">🍔</p>
                         <p className="font-bold text-lg">No hay stock de producción todavía</p>
-                        <p className="text-sm">Aparecerá aquí cuando se confirmen producciones</p>
                       </div>
                     )}
                   </div>
@@ -310,6 +476,16 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
         )}
 
       </div>
+
+      {/* Edit Modal */}
+      {editItem && (
+        <EditModal
+          item={editItem}
+          operador={operador}
+          onClose={() => setEditItem(null)}
+          onSaved={fetchAll}
+        />
+      )}
     </div>
   );
 }
