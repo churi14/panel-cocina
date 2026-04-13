@@ -15,7 +15,7 @@ export type Recipe = {
   unit: string;
   ingredients: Ingredient[];
   warning?: string;
-  recipeType?: 'percent' | 'fixed' | 'verdura' | 'fraccion';
+  recipeType?: 'percent' | 'fixed' | 'verdura' | 'fraccion' | 'fiambre' | 'empanado';
   stockOrigen?: 'stock' | 'stock_produccion';
   stockNombre?: string;
   potes?: { id: string; label: string; capacidadKg: number }[]; // 'percent' = todo en % del ingrediente base
