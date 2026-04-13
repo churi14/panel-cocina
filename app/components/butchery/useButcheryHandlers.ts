@@ -104,12 +104,17 @@ export function createButcheryHandlers(s: Setters) {
 
   const handleFinishBatchStep1 = (batchId: number) => {
     const now = Date.now();
+    const updated: ButcheryProduction[] = [];
     s.setButcheryProductions(prev => prev.map(p => {
       if (p.batchId !== batchId || p.status !== 'step1_running') return p;
-      return { ...p, status: 'step2_pending' as const, endTime: now,
+      const upd = { ...p, status: 'step2_pending' as const, endTime: now,
         durationSeconds: (now - p.startTime) / 1000,
         endTimeFormatted: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+      updated.push(upd);
+      return upd;
     }));
+    // ✅ Persistir en Supabase para que no vuelva al recargar
+    if (updated.length > 0) saveProduccionesMany(updated);
     s.setFinishingBatchId(null);
   };
 
