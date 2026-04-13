@@ -750,8 +750,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     </div>
   ) : null;
 
-  const elapsedTime = finishingProd ? currentTime - finishingProd.startTime : 0;
-
 
   const formatTimer = (ms: number) => {
     const s = Math.floor(ms / 1000);
