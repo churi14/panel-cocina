@@ -276,6 +276,14 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       id: 'verdura_morron', name: 'Morrón preparado', category: 'Verduras',
       baseYield: 0, unit: 'kg', recipeType: 'verdura', ingredients: []
     },
+    {
+      id: 'verdura_ajo', name: 'Ajo preparado', category: 'Verduras',
+      baseYield: 0, unit: 'kg', recipeType: 'verdura', ingredients: []
+    },
+    {
+      id: 'verdura_verdeo', name: 'Cebolla de verdeo', category: 'Verduras',
+      baseYield: 0, unit: 'kg', recipeType: 'verdura', ingredients: []
+    },
 
     // ── MILANESAS ─────────────────────────────────────────────────────────────
     {
@@ -309,7 +317,8 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
     { id: 'fiambre_cheddar_liq',    name: 'Cheddar Líquido',      category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
     { id: 'fiambre_cheddar_burger', name: 'Cheddar para Burger',  category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
     { id: 'fiambre_provoleta',      name: 'Provoleta',            category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
-    { id: 'fiambre_muzza',          name: 'Queso Muzza',          category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_muzza_sanguch',    name: 'Queso Muzza para Sanguchería', category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
+    { id: 'fiambre_muzza_mila',       name: 'Queso Muzza para Mila al Plato', category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
     { id: 'fiambre_tybo',           name: 'Queso Tybo',           category: 'Fiambres', baseYield: 0, unit: 'kg', recipeType: 'fiambre', ingredients: [] },
 
     // ── EMPANADO MILANESA ─────────────────────────────────────────────────────

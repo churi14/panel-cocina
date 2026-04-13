@@ -156,11 +156,13 @@ async function deductStockForFraccion(
 
 // ─── Stock map verduras: nombre en stock ──────────────────────────────────────
 const VERDURA_STOCK_MAP: Record<string, string> = {
-  'verdura_tomate_rodajas': 'TOMATE',
-  'verdura_lechuga':        'LECHUGA',
+  'verdura_tomate_rodajas':   'TOMATE',
+  'verdura_lechuga':          'LECHUGA',
   'verdura_cebolla_brunoise': 'CEBOLLA',
   'verdura_cebolla_rodajas':  'CEBOLLA',
   'verdura_morron':           'MORRON',
+  'verdura_ajo':              'AJO',
+  'verdura_verdeo':           'CEBOLLA DE VERDEO',
 };
 const VERDURA_PROD_MAP: Record<string, string> = {
   'verdura_tomate_rodajas':   'Tomate cortado',
@@ -168,6 +170,8 @@ const VERDURA_PROD_MAP: Record<string, string> = {
   'verdura_cebolla_brunoise': 'Cebolla brunoise',
   'verdura_cebolla_rodajas':  'Cebolla rodajas',
   'verdura_morron':           'Morrón preparado',
+  'verdura_ajo':              'Ajo preparado',
+  'verdura_verdeo':           'Cebolla de verdeo',
 };
 
 // ─── Stock map fiambres ───────────────────────────────────────────────────────
@@ -178,7 +182,8 @@ const FIAMBRE_STOCK_MAP: Record<string, string> = {
   'fiambre_cheddar_liq':    'CHEDDAR LIQUIDO',
   'fiambre_cheddar_burger': 'CHEDDAR PARA BURGUER',
   'fiambre_provoleta':      'PROVOLETA',
-  'fiambre_muzza':          'QUESO MUZZA',
+  'fiambre_muzza_sanguch':  'QUESO MUZZA',
+  'fiambre_muzza_mila':     'QUESO MUZZA',
   'fiambre_tybo':           'QUESO TYBO',
 };
 const FIAMBRE_PROD_MAP: Record<string, string> = {
@@ -188,7 +193,8 @@ const FIAMBRE_PROD_MAP: Record<string, string> = {
   'fiambre_cheddar_liq':    'Cheddar Líquido',
   'fiambre_cheddar_burger': 'Cheddar para Burger',
   'fiambre_provoleta':      'Provoleta',
-  'fiambre_muzza':          'Queso Muzza',
+  'fiambre_muzza_sanguch':  'Queso Muzza para Sanguchería',
+  'fiambre_muzza_mila':     'Queso Muzza para Mila al Plato',
   'fiambre_tybo':           'Queso Tybo',
 };
 const FIAMBRE_UNIDAD_MAP: Record<string, string> = {
