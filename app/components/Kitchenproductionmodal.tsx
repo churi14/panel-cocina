@@ -443,6 +443,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [empanadoMenjunjeKg, setEmpanadoMenjunjeKg] = useState('');
   const [empanadoSalieronKg, setEmpanadoSalieronKg] = useState('');
   const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
+  const [empanadoCorteStock, setEmpanadoCorteStock] = useState(''); // ej: "Milanesa - Tapa de Nalga"
+  const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
 
   const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
   const activeRecipeName = finishingProd?.recipeName ?? '';
@@ -469,7 +471,23 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     if (isMilanesaRecipe && !showMenjunjeModal) { setShowMenjunjeModal(true); return; }
     setShowMenjunjeModal(false);
     // Empanado: pedir kg menjunje y kg salidos
-    if (isEmpanadoRecipe && !showEmpanadoModal) { setShowEmpanadoModal(true); return; }
+    if (isEmpanadoRecipe && !showEmpanadoModal) {
+      const { data } = await supabase.from('stock_produccion')
+        .select('producto, cantidad')
+        .eq('categoria', 'milanesa')
+        .gt('cantidad', 0)
+        .order('producto');
+      const filtered = (data ?? [])
+        .filter((s: any) => !s.producto.toLowerCase().includes('jugo') && !s.producto.toLowerCase().includes('empanada'))
+        .map((s: any) => ({
+          ...s,
+          producto: s.producto.toLowerCase().includes('nalga feteada') ? 'Milanesa - Nalga' : s.producto,
+        }));
+      setEmpanadoStocks(filtered);
+      setEmpanadoCorteStock('');
+      setShowEmpanadoModal(true);
+      return;
+    }
     setShowEmpanadoModal(false);
     // Salsa: pedir kg producidos
     if (isSalsaRecipe && !showSalsaModal) { setShowSalsaModal(true); return; }
@@ -557,9 +575,13 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
       const mKg  = parseFloat(empanadoMenjunjeKg);
       const sKg  = parseFloat(empanadoSalieronKg);
       const tipo = empanadoTipo === 'pollo' ? 'Pollo' : 'Carne';
-      const prodNombre = `Milanesa Empanada - ${tipo}`;
-      // Descontar menjunje
-      const menjNombre = empanadoTipo === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne';
+      // Nombre específico por corte si eligieron uno, sino genérico
+      const corteLabel = empanadoCorteStock
+        ? empanadoCorteStock.replace('Milanesa - ', '')
+        : tipo;
+      const prodNombre = `Milanesa de ${tipo} Empanada - ${corteLabel}`;
+      // Descontar menjunje — buscar por el stock específico seleccionado o por tipo genérico
+      const menjNombre = empanadoCorteStock || (empanadoTipo === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
       const { data: menjData } = await supabase.from('stock_produccion')
         .select('id, cantidad').ilike('producto', menjNombre).maybeSingle();
       if (menjData) {
@@ -695,6 +717,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setShowEmpanadoModal(false);
     setEmpanadoMenjunjeKg('');
     setEmpanadoSalieronKg('');
+    setEmpanadoCorteStock('');
     setSelectedMenjunjeStock('');
     onClose();
   };
@@ -729,17 +752,34 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
         <h3 className="font-black text-lg text-slate-800">🥩 Empanado de Milanesa</h3>
+
+        {/* Stock selector — muestra el menjunje disponible por corte */}
         <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">Tipo</p>
-          <div className="flex gap-2">
-            {(['carne','pollo'] as const).map(t => (
-              <button key={t} onClick={() => setEmpanadoTipo(t)}
-                className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${empanadoTipo === t ? 'bg-rose-600 text-white' : 'border border-slate-200 text-slate-500 hover:border-rose-400'}`}>
-                {t === 'carne' ? '🥩 Carne' : '🍗 Pollo'}
-              </button>
-            ))}
-          </div>
+          <p className="text-xs font-black text-slate-400 uppercase mb-2">¿De qué menjunje empanaste?</p>
+          {empanadoStocks.length > 0 ? (
+            <div className="space-y-1 max-h-36 overflow-y-auto">
+              {empanadoStocks.map(s => (
+                <button key={s.producto}
+                  onClick={() => {
+                    setEmpanadoCorteStock(s.producto);
+                    setEmpanadoTipo(s.producto.toLowerCase().includes('pollo') ? 'pollo' : 'carne');
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all border
+                    ${empanadoCorteStock === s.producto
+                      ? 'bg-rose-50 border-rose-400 text-rose-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-rose-300'}`}>
+                  <span>{s.producto}</span>
+                  <span className="float-right text-xs opacity-60 font-normal">{s.cantidad.toFixed(2)} kg disp.</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-rose-500 bg-rose-50 rounded-lg px-3 py-2 border border-rose-200">
+              ⚠️ Sin menjunje disponible. Hacé menjunje primero.
+            </p>
+          )}
         </div>
+
         <div>
           <p className="text-xs font-black text-slate-400 uppercase mb-2">Kg de menjunje usados</p>
           <div className="relative">
@@ -757,10 +797,15 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
               className="w-full p-3 border-2 rounded-xl text-2xl font-black text-center outline-none border-amber-200 text-amber-600 focus:border-amber-500" />
             <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
           </div>
+          {empanadoCorteStock && empanadoMenjunjeKg && empanadoSalieronKg && (
+            <p className="text-xs text-slate-400 mt-1.5">
+              → Guardará como <span className="font-black text-rose-600">Milanesa de {empanadoTipo === 'pollo' ? 'Pollo' : 'Carne'} Empanada — {empanadoCorteStock.replace('Milanesa - ','')}</span>
+            </p>
+          )}
         </div>
         <div className="flex gap-3">
           <button onClick={() => setShowEmpanadoModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50">Cancelar</button>
-          <button onClick={handleFinish} disabled={!empanadoMenjunjeKg || !empanadoSalieronKg}
+          <button onClick={handleFinish} disabled={!empanadoMenjunjeKg || !empanadoSalieronKg || !empanadoCorteStock}
             className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed">
             Guardar
           </button>
