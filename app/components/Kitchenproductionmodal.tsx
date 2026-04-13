@@ -339,11 +339,21 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     return () => clearInterval(timer);
   }, []);
 
-  const handleProductSelect = (r: Recipe) => {
+  const handleProductSelect = async (r: Recipe) => {
     setSelectedProduct(r);
     setTargetUnits(r.baseYield || 0);
     setBaseQtyKg('');
     setCheckedIngredients(new Set());
+    setSelectedMenjunjeStock('');
+    // Si es menjunje, fetch stocks disponibles
+    if (r.id.startsWith('menjunje_')) {
+      const { data } = await supabase.from('stock_produccion')
+        .select('producto, cantidad')
+        .eq('categoria', 'milanesa')
+        .gt('cantidad', 0)
+        .order('producto');
+      setMenjunjeStocks(data ?? []);
+    }
     setView('recipe');
   };
 
@@ -410,6 +420,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [showMenjunjeModal, setShowMenjunjeModal] = useState(false);
   const [menjunjeCorte, setMenjunjeCorte]         = useState('');
   const [menjunjeStocks, setMenjunjeStocks]       = useState<{producto: string; cantidad: number}[]>([]);
+  const [selectedMenjunjeStock, setSelectedMenjunjeStock] = useState('');
   const [menjunjeKg, setMenjunjeKg]               = useState('');
   const [milanesaKgSalieron, setMilanesaKgSalieron] = useState('');
   const [milanesaUnidades, setMilanesaUnidades]     = useState('');
@@ -678,6 +689,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setShowEmpanadoModal(false);
     setEmpanadoMenjunjeKg('');
     setEmpanadoSalieronKg('');
+    setSelectedMenjunjeStock('');
     onClose();
   };
 
@@ -1119,6 +1131,45 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                         <tbody className="divide-y divide-slate-100">
                           {selectedProduct.ingredients.map((ing: any, idx: number) => {
                             const isChecked = checkedIngredients.has(idx);
+                            // Special: menjunje first ingredient = dynamic milanesa stock selector
+                            const isMenjunjeStockIngredient = idx === 0 && selectedProduct.id.startsWith('menjunje_');
+                            if (isMenjunjeStockIngredient) {
+                              return (
+                                <tr key={idx} className="border-b border-slate-100">
+                                  <td className="py-3 pl-6">
+                                    {selectedMenjunjeStock
+                                      ? <CheckSquare className="text-green-500" size={20} />
+                                      : <Square className="text-slate-300" size={20} />}
+                                  </td>
+                                  <td colSpan={2} className="py-3 pr-4">
+                                    <p className="text-xs font-black text-slate-400 uppercase mb-2">Elegí el stock de carne cruda</p>
+                                    {menjunjeStocks.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {menjunjeStocks.map(s => (
+                                          <button key={s.producto}
+                                            onClick={() => {
+                                              setSelectedMenjunjeStock(s.producto);
+                                              // auto-check this ingredient
+                                              setCheckedIngredients(prev => { const n = new Set(prev); n.add(0); return n; });
+                                            }}
+                                            className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all border
+                                              ${selectedMenjunjeStock === s.producto
+                                                ? 'bg-rose-50 border-rose-400 text-rose-700'
+                                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-rose-300'}`}>
+                                            <span>{s.producto}</span>
+                                            <span className="float-right text-xs opacity-60 font-normal">{s.cantidad.toFixed(2)} kg disp.</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-rose-500 font-bold bg-rose-50 rounded-lg px-3 py-2 border border-rose-200">
+                                        ⚠️ Sin stock de milanesa. Producí primero en Carnicería.
+                                      </p>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            }
                             return (
                               <tr key={idx} onClick={() => toggleCheck(idx)}
                                 className={`cursor-pointer transition-colors ${isChecked ? 'bg-green-50/50' : 'hover:bg-slate-50'}`}>
