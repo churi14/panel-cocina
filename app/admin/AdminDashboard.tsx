@@ -62,8 +62,32 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
 
   useEffect(() => {
     fetchMovements();
+
+    // Cargar actividad reciente al montar (últimas 2hs) para que no aparezca vacío al refrescar
+    supabase
+      .from('produccion_eventos')
+      .select('*')
+      .gte('fecha', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString())
+      .order('fecha', { ascending: false })
+      .limit(20)
+      .then(({ data: recientes }) => {
+        if (!recientes || recientes.length === 0) return;
+        setNotifications(recientes.map(e => {
+          const emoji = e.kind === 'lomito' ? '🥩' : e.kind === 'burger' ? '🍔' : e.kind === 'cocina' ? '🍳' : '🥪';
+          const tipo = e.tipo === 'inicio_paso1' ? 'INICIO' : e.tipo === 'inicio_cocina' ? 'INICIO COCINA' : e.tipo === 'fin_cocina' ? 'FIN COCINA' : 'FINALIZADO';
+          return {
+            id: e.id ?? Date.now() + Math.random(),
+            message: `${emoji} ${tipo} — ${e.corte ?? ''}${e.peso_kg ? ' ' + e.peso_kg + 'kg' : ''} (${e.kind ?? ''})${e.operador && e.operador !== 'Sistema' ? ' · ' + e.operador : ''}`,
+            type: (e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso',
+            time: new Date(e.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+        }));
+      });
+
+    // Canal único por sesión para evitar conflictos entre dispositivos
+    const channelId = `admin_realtime_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('admin_realtime')
+      .channel(channelId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stock_movements' }, (payload) => {
         const m = payload.new as Movement;
         setMovements(prev => [m, ...prev]);
