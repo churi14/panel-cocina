@@ -28,11 +28,12 @@ const KITCHEN_CATEGORIES = [
 
 // ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
 
-async function saveCocinaProduccion(id: number, recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number, operadorCocina: string) {
+async function saveCocinaProduccion(id: number, recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number, operadorCocina: string, recipeId?: string) {
   try {
     await supabase.from('cocina_produccion_activa').insert({
       id,
       recipe_name: recipeName,
+      recipe_id: recipeId ?? null,
       target_units: targetUnits,
       unit,
       base_qty_kg: baseQtyKg,
