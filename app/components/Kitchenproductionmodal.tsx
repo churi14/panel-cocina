@@ -345,6 +345,20 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     return () => clearInterval(timer);
   }, []);
 
+  // Mobile keyboard fix — scroll input into view when focused
+  useEffect(() => {
+    const handler = (e: FocusEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 350); // wait for keyboard to appear
+      }
+    };
+    document.addEventListener('focusin', handler);
+    return () => document.removeEventListener('focusin', handler);
+  }, []);
+
   const handleProductSelect = async (r: Recipe) => {
     setSelectedProduct(r);
     setTargetUnits(r.baseYield || 0);
@@ -422,7 +436,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setBaseQtyKg('');
 
     // Persistir en Supabase y notificar al admin
-    await saveCocinaProduccion(now, selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador);
+    await saveCocinaProduccion(now, selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador, selectedProduct.id);
   };
 
   // ── Produccion activa seleccionada para finalizar ────────────────────────
