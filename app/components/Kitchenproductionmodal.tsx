@@ -750,9 +750,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
             value={salsaKgProducidos}
             onChange={e => setSalsaKgProducidos(e.target.value)}
             placeholder="0"
-            autoFocus
             onClick={e => e.stopPropagation()}
-            onFocus={e => e.currentTarget.select()}
+           
             style={{width:'100%',padding:'16px',border:'2px solid #fecaca',borderRadius:'12px',fontSize:'30px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#dc2626',boxSizing:'border-box'}}
           />
           <span style={{position:'absolute',right:'16px',top:'50%',transform:'translateY(-50%)',fontSize:'14px',fontWeight:'700',color:'#94a3b8'}}>KG</span>
@@ -811,7 +810,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           <div className="relative">
             <input type="number" inputMode="decimal" step="0.5" value={empanadoMenjunjeKg}
               onChange={e => setEmpanadoMenjunjeKg(e.target.value)} placeholder="0"
-              onClick={e => e.stopPropagation()} onFocus={e => e.currentTarget.select()}
+              onClick={e => e.stopPropagation()}
               style={{width:'100%',padding:'12px',border:'2px solid #fecdd3',borderRadius:'12px',fontSize:'24px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#e11d48',boxSizing:'border-box'}} />
             <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
           </div>
@@ -821,7 +820,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           <div className="relative">
             <input type="number" inputMode="decimal" step="0.5" value={empanadoSalieronKg}
               onChange={e => setEmpanadoSalieronKg(e.target.value)} placeholder="0"
-              onClick={e => e.stopPropagation()} onFocus={e => e.currentTarget.select()}
+              onClick={e => e.stopPropagation()}
               style={{width:'100%',padding:'12px',border:'2px solid #fde68a',borderRadius:'12px',fontSize:'24px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#d97706',boxSizing:'border-box'}} />
             <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
           </div>

@@ -32,21 +32,24 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [stockProd, setStockProd]               = useState<any[]>([]);
   const [produccionEventos, setProduccionEventos] = useState<any[]>([]);
   const [prodHistorial, setProdHistorial]       = useState<any[]>([]);
+  const [cocinaActiva, setCocinaActiva]         = useState<any[]>([]);
   const [stats, setStats]                       = useState({ ingresos: 0, egresos: 0, operadores: 0, hoy: 0 });
 
   const fetchMovements = async () => {
     setLoading(true);
-    const [{ data: stockData }, { data: prodData }, { data: eventosData }, { data: histData }, { data }] = await Promise.all([
+    const [{ data: stockData }, { data: prodData }, { data: eventosData }, { data: histData }, { data }, { data: cocinaData }] = await Promise.all([
       supabase.from('stock').select('*').order('categoria').order('nombre'),
       supabase.from('stock_produccion').select('*').order('categoria').order('producto'),
       supabase.from('produccion_eventos').select('*').order('fecha', { ascending: false }).limit(200),
       supabase.from('producciones_activas').select('*').order('start_time', { ascending: false }).limit(100),
       supabase.from('stock_movements').select('*').order('fecha', { ascending: false }).limit(200),
+      supabase.from('cocina_produccion_activa').select('*').eq('status', 'running').order('start_time', { ascending: false }),
     ]);
     setStock(stockData ?? []);
     setStockProd(prodData ?? []);
     setProduccionEventos(eventosData ?? []);
     setProdHistorial(histData ?? []);
+    setCocinaActiva(cocinaData ?? []);
     const m = (data ?? []) as Movement[];
     setMovements(m);
     const today = new Date().toISOString().slice(0, 10);
@@ -184,7 +187,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
 
       {/* CONTENT */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        {activeTab === 'dashboard'  && <TabDashboard   movements={movements} notifications={notifications} stats={stats} setNotifications={setNotifications} setActiveTab={setActiveTab} />}
+        {activeTab === 'dashboard'  && <TabDashboard   movements={movements} notifications={notifications} stats={stats} setNotifications={setNotifications} setActiveTab={setActiveTab} cocinaActiva={cocinaActiva} prodHistorial={prodHistorial} />}
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp} />}
         {activeTab === 'reports'    && <TabReportes    movements={movements} />}
         {activeTab === 'stock'      && <TabStock       stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />}

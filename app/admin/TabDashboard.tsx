@@ -9,9 +9,11 @@ type Props = {
   stats: { ingresos: number; egresos: number; operadores: number; hoy: number };
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
   setActiveTab: (tab: any) => void;
+  cocinaActiva?: any[];
+  prodHistorial?: any[];
 };
 
-export default function TabDashboard({ movements, notifications, stats, setNotifications, setActiveTab }: Props) {
+export default function TabDashboard({ movements, notifications, stats, setNotifications, setActiveTab, cocinaActiva = [], prodHistorial = [] }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -30,6 +32,52 @@ export default function TabDashboard({ movements, notifications, stats, setNotif
           </div>
         ))}
       </div>
+
+      {/* Producciones activas ahora */}
+      {(cocinaActiva.length > 0 || prodHistorial.filter((p: any) => ['step1_running','step2_running','step2_pending'].includes(p.status)).length > 0) && (
+        <div className="bg-slate-900 border border-green-500/40 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+          <div className="px-6 py-3 border-b border-slate-800 flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <h2 className="font-black text-green-400 text-sm uppercase">Producciones activas ahora</h2>
+          </div>
+          <div className="divide-y divide-slate-800">
+            {cocinaActiva.map((p: any) => (
+              <div key={p.id} className="px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🍳</span>
+                  <div>
+                    <p className="font-black text-white text-sm">{p.recipe_name}</p>
+                    <p className="text-xs text-slate-400">{p.operador ?? '—'} · Cocina General</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-green-400 bg-green-500/10 px-2 py-1 rounded-full">EN CURSO</span>
+                  <p className="text-xs text-slate-500 mt-1">{Math.floor((Date.now() - p.start_time) / 60000)}m</p>
+                </div>
+              </div>
+            ))}
+            {prodHistorial.filter((p: any) => ['step1_running','step2_running','step2_pending'].includes(p.status)).map((p: any) => (
+              <div key={p.id} className="px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{p.kind === 'burger' ? '🍔' : p.kind === 'milanesa' ? '🥪' : '🥩'}</span>
+                  <div>
+                    <p className="font-black text-white text-sm">{p.type_name ?? p.cut}</p>
+                    <p className="text-xs text-slate-400">Carnicería · {p.kind?.toUpperCase()}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`text-xs font-black px-2 py-1 rounded-full ${
+                    p.status === 'step1_running' ? 'text-rose-400 bg-rose-500/10' : 'text-amber-400 bg-amber-500/10'
+                  }`}>
+                    {p.status === 'step1_running' ? 'PASO 1' : p.status === 'step2_running' ? 'PASO 2' : 'P2 PENDIENTE'}
+                  </span>
+                  <p className="text-xs text-slate-500 mt-1">{p.weight_kg} kg</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Notificaciones en tiempo real */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
