@@ -163,7 +163,6 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
 
   const catConfig = selectedCat ?? CATEGORIES[0];
 
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -234,7 +233,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                   placeholder="Buscar producto..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  autoFocus
+                 
                   className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-400 transition-colors"
                 />
               </div>
@@ -378,7 +377,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                       placeholder="0,00"
                       value={cantidad}
                       onChange={e => setCantidad(e.target.value)}
-                      autoFocus
+                     
                       className={`w-full p-5 bg-slate-50 border-2 rounded-2xl text-5xl font-black text-center outline-none transition-all
                         ${cantidad ? 'border-blue-400 bg-white text-blue-600' : 'border-red-200 text-blue-600 focus:border-blue-400 focus:bg-white'}`}
                     />

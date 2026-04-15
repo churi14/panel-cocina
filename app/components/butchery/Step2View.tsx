@@ -106,7 +106,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                 type="number" inputMode="decimal"
                 step={unit === 'kg' ? '0.01' : '1'}
                 placeholder={unit === 'kg' ? '0,00' : '0'}
-                value={quantity} onChange={e => setQuantity(e.target.value)} autoFocus
+                value={quantity} onChange={e => setQuantity(e.target.value)}
                 className="w-full p-5 text-5xl font-black text-center text-blue-600 bg-blue-50 border-2 border-blue-200 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-blue-300 uppercase">{unit}</span>

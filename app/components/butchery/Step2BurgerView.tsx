@@ -59,7 +59,7 @@ function BigInput({ label, sublabel, value, onChange, unit, color = 'blue', auto
       <div className="relative">
         <input
           type="number" inputMode="decimal" step="0.001" placeholder="0,000"
-          value={value} onChange={e => onChange(e.target.value)} autoFocus={autoFocus}
+          value={value} onChange={e => onChange(e.target.value)}
           className={`w-full p-4 text-5xl font-black text-center border-2 rounded-2xl outline-none transition-all ${colors[color]}`}
         />
         <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-slate-300">{unit}</span>
@@ -200,7 +200,7 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
             label="🥩 Carne neta limpia"
             sublabel="Peso real de carne limpia pesada"
             value={carneNeta} onChange={setCarneNeta}
-            unit="KG" color="blue" autoFocus required
+            unit="KG" color="blue" required
           />
 
           <BigInput
@@ -346,7 +346,7 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
               <div className="relative">
                 <input
                   type="number" inputMode="numeric" placeholder="0"
-                  value={medallones} onChange={e => setMedallones(e.target.value)} autoFocus
+                  value={medallones} onChange={e => setMedallones(e.target.value)}
                   className="w-full p-5 text-6xl font-black text-center border-2 border-green-200 bg-green-50 text-green-600 rounded-2xl outline-none focus:border-green-500 focus:bg-white transition-all"
                 />
                 <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-green-300">u</span>

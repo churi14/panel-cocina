@@ -116,7 +116,6 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
   const qty = parseFloat(cantidad.replace(',', '.'));
   const newStock = selectedProduct ? Math.max(0, selectedProduct.cantidad - (qty || 0)) : 0;
 
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -185,7 +184,7 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text" placeholder="Buscar producto..." value={search}
-                  onChange={e => setSearch(e.target.value)} autoFocus
+                  onChange={e => setSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-orange-400 transition-colors"
                 />
               </div>
@@ -235,7 +234,7 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
                     placeholder="0,00"
                     value={cantidad}
                     onChange={e => { setCantidad(e.target.value); setError(''); }}
-                    autoFocus
+                   
                     className="w-full p-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-5xl font-black text-center text-orange-600 outline-none focus:border-orange-400 focus:bg-white transition-all"
                   />
                   <p className="text-xs text-center text-slate-400 mt-1">{selectedProduct.unidad}</p>
