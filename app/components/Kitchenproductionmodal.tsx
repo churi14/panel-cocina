@@ -735,11 +735,11 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   // ── Modal salsa kg producidos ────────────────────────────────────────────
   const SalsaModal = () => showSalsaModal && finishingProd ? (
-    <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)'}}
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}
       onClick={e => e.stopPropagation()}>
-      <div style={{background:'white',borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',padding:'24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))'}}
+      <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}
         onClick={e => e.stopPropagation()}>
-        <div style={{width:'40px',height:'4px',background:'#e2e8f0',borderRadius:'999px',margin:'0 auto 16px'}} />
+        
         <h3 className="font-black text-lg text-slate-800">🫙 {finishingProd.recipeName}</h3>
         <p className="text-slate-500 text-sm">¿Cuántos kg salieron de esta tanda?</p>
         <div className="relative">
@@ -771,11 +771,11 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   // ── Modal empanado milanesa ───────────────────────────────────────────────
   const EmpanadoModal = () => showEmpanadoModal && finishingProd ? (
-    <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)'}}
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}
       onClick={e => e.stopPropagation()}>
-      <div style={{background:'white',borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',padding:'24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))'}}
+      <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}
         onClick={e => e.stopPropagation()}>
-        <div style={{width:'40px',height:'4px',background:'#e2e8f0',borderRadius:'999px',margin:'0 auto 16px'}} />
+        
         <h3 className="font-black text-lg text-slate-800">🥩 Empanado de Milanesa</h3>
 
         {/* Stock selector — muestra el menjunje disponible por corte */}
