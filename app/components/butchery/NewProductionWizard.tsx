@@ -264,8 +264,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                         type="number" inputMode="decimal" step="0.01" placeholder="0,00"
                         value={entry.weight}
                         onChange={e => setWeight(entry.type, e.target.value)}
-                        autoFocus={idx === 0}
-                        className={`w-full px-5 py-4 text-3xl font-black text-center rounded-xl outline-none transition-all
+                                                className={`w-full px-5 py-4 text-3xl font-black text-center rounded-xl outline-none transition-all
                           ${isValid
                             ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'} focus:opacity-90`
                             : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
