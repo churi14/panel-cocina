@@ -17,13 +17,13 @@ function formatQty(grams: number): string {
 }
 
 const KITCHEN_CATEGORIES = [
-  { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200',  hover: 'hover:border-amber-400',  icon: <Wheat   size={48} className="text-amber-600 mb-4" /> },
-  { id: 'Salsas',      label: 'Salsas',       border: 'border-red-200',    hover: 'hover:border-red-400',    icon: <Droplet size={48} className="text-red-600 mb-4" /> },
-  { id: 'Fraccionar',  label: 'Fraccionar',   border: 'border-purple-200', hover: 'hover:border-purple-400', icon: <Droplet size={48} className="text-purple-600 mb-4" /> },
-  { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',   hover: 'hover:border-rose-400',   icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
-  { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200',  hover: 'hover:border-green-400',  icon: <Carrot  size={48} className="text-green-600 mb-4" /> },
-  { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={48} className="text-yellow-600 mb-4" /> },
-  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
+  { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200',  hover: 'hover:border-amber-400',  icon: <Wheat   size={36} className="text-amber-600 mb-4" /> },
+  { id: 'Salsas',      label: 'Salsas',       border: 'border-red-200',    hover: 'hover:border-red-400',    icon: <Droplet size={36} className="text-red-600 mb-4" /> },
+  { id: 'Fraccionar',  label: 'Fraccionar',   border: 'border-purple-200', hover: 'hover:border-purple-400', icon: <Droplet size={36} className="text-purple-600 mb-4" /> },
+  { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',   hover: 'hover:border-rose-400',   icon: <ChefHat size={36} className="text-rose-600 mb-4" /> },
+  { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200',  hover: 'hover:border-green-400',  icon: <Carrot  size={36} className="text-green-600 mb-4" /> },
+  { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={36} className="text-yellow-600 mb-4" /> },
+  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={36} className="text-blue-600 mb-4" /> },
 ];
 
 // ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
@@ -1082,9 +1082,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
           {/* VISTA NUEVA PRODUCCION */}
           {!!operador && modalView === 'new' && (
-            <div className="flex gap-8 h-full">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-8 h-full">
               {/* LEFT: Planificación */}
-              <div className="w-1/3 bg-white p-6 rounded-2xl border border-slate-200 flex flex-col shadow-sm">
+              <div className="w-full md:w-1/3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 flex flex-col shadow-sm shrink-0">
                 <h3 className="font-bold text-slate-400 uppercase text-xs mb-6 tracking-wider">Planificación</h3>
 
                 {(isVerdura || isFiambre) ? (
@@ -1141,7 +1141,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
               </div>
 
               {/* RIGHT: Categorías / Productos / Receta */}
-              <div className="w-2/3 flex flex-col">
+              <div className="w-full md:w-2/3 flex flex-col min-h-0">
                 {(isVerdura || isFiambre) ? (
                   <div className="bg-white rounded-2xl border border-green-200 flex-1 flex items-center justify-center shadow-sm p-6">
                     <div className="text-center text-slate-400">
@@ -1152,10 +1152,10 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                 <div className="bg-white rounded-2xl border border-slate-200 flex-1 flex flex-col overflow-hidden shadow-sm">
                   {/* Categorías */}
                   {view === 'category' && !selectedProduct && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-6">
+                    <div className="grid grid-cols-2 gap-3 p-4">
                       {KITCHEN_CATEGORIES.map(cat => (
                         <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setView('product'); }}
-                          className={`bg-white p-8 rounded-2xl border-2 ${cat.border} ${cat.hover} flex flex-col items-center transition-all active:scale-95`}>
+                          className={`bg-white p-4 md:p-8 rounded-2xl border-2 ${cat.border} ${cat.hover} flex flex-col items-center transition-all active:scale-95`}>
                           {cat.icon}
                           <span className="font-bold text-slate-700">{cat.label}</span>
                         </button>
