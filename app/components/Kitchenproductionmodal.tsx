@@ -735,10 +735,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   // ── Modal salsa kg producidos ────────────────────────────────────────────
   const SalsaModal = () => showSalsaModal && finishingProd ? (
-    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}
-      onClick={e => e.stopPropagation()}>
-      <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}
-        onClick={e => e.stopPropagation()}>
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}>
+      <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}>
         
         <h3 className="font-black text-lg text-slate-800">🫙 {finishingProd.recipeName}</h3>
         <p className="text-slate-500 text-sm">¿Cuántos kg salieron de esta tanda?</p>
@@ -750,16 +748,14 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
             value={salsaKgProducidos}
             onChange={e => setSalsaKgProducidos(e.target.value)}
             placeholder="0"
-            onClick={e => e.stopPropagation()}
-           
             style={{width:'100%',padding:'16px',border:'2px solid #fecaca',borderRadius:'12px',fontSize:'30px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#dc2626',boxSizing:'border-box'}}
           />
           <span style={{position:'absolute',right:'16px',top:'50%',transform:'translateY(-50%)',fontSize:'14px',fontWeight:'700',color:'#94a3b8'}}>KG</span>
         </div>
         <div className="flex gap-3">
-          <button onClick={e => { e.stopPropagation(); setShowSalsaModal(false); }}
+          <button onClick={() => setShowSalsaModal(false)}
             className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500">Cancelar</button>
-          <button onClick={e => { e.stopPropagation(); handleFinish(); }}
+          <button onClick={() => handleFinish()}
             disabled={!salsaKgProducidos || parseFloat(salsaKgProducidos) <= 0}
             className="flex-1 py-3 bg-red-600 text-white font-black rounded-xl disabled:opacity-40 disabled:cursor-not-allowed">
             Guardar
@@ -771,10 +767,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   // ── Modal empanado milanesa ───────────────────────────────────────────────
   const EmpanadoModal = () => showEmpanadoModal && finishingProd ? (
-    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}
-      onClick={e => e.stopPropagation()}>
-      <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}
-        onClick={e => e.stopPropagation()}>
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}>
+      <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}>
         
         <h3 className="font-black text-lg text-slate-800">🥩 Empanado de Milanesa</h3>
 
@@ -810,7 +804,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           <div className="relative">
             <input type="number" inputMode="decimal" step="0.5" value={empanadoMenjunjeKg}
               onChange={e => setEmpanadoMenjunjeKg(e.target.value)} placeholder="0"
-              onClick={e => e.stopPropagation()}
               style={{width:'100%',padding:'12px',border:'2px solid #fecdd3',borderRadius:'12px',fontSize:'24px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#e11d48',boxSizing:'border-box'}} />
             <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
           </div>
@@ -820,7 +813,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           <div className="relative">
             <input type="number" inputMode="decimal" step="0.5" value={empanadoSalieronKg}
               onChange={e => setEmpanadoSalieronKg(e.target.value)} placeholder="0"
-              onClick={e => e.stopPropagation()}
               style={{width:'100%',padding:'12px',border:'2px solid #fde68a',borderRadius:'12px',fontSize:'24px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#d97706',boxSizing:'border-box'}} />
             <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
           </div>
@@ -831,8 +823,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           )}
         </div>
         <div className="flex gap-3">
-          <button onClick={e => { e.stopPropagation(); setShowEmpanadoModal(false); }} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500">Cancelar</button>
-          <button onClick={e => { e.stopPropagation(); handleFinish(); }} disabled={!empanadoMenjunjeKg || !empanadoSalieronKg || !empanadoCorteStock}
+          <button onClick={() => setShowEmpanadoModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500">Cancelar</button>
+          <button onClick={() => handleFinish()} disabled={!empanadoMenjunjeKg || !empanadoSalieronKg || !empanadoCorteStock}
             className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed">
             Guardar
           </button>
