@@ -163,17 +163,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
 
   const catConfig = selectedCat ?? CATEGORIES[0];
 
-  // Mobile keyboard fix
-  useEffect(() => {
-    const handler = (e: FocusEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
-      }
-    };
-    document.addEventListener('focusin', handler);
-    return () => document.removeEventListener('focusin', handler);
-  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">

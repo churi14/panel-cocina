@@ -346,19 +346,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     return () => clearInterval(timer);
   }, []);
 
-  // Mobile keyboard fix — scroll input into view when focused
-  useEffect(() => {
-    const handler = (e: FocusEvent) => {
-      const el = e.target as HTMLElement;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-        setTimeout(() => {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 350); // wait for keyboard to appear
-      }
-    };
-    document.addEventListener('focusin', handler);
-    return () => document.removeEventListener('focusin', handler);
-  }, []);
+  // Mobile keyboard: handled via sheet layout and autoFocus
 
   const handleProductSelect = async (r: Recipe) => {
     setSelectedProduct(r);
@@ -747,11 +735,11 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   // ── Modal salsa kg producidos ────────────────────────────────────────────
   const SalsaModal = () => showSalsaModal && finishingProd ? (
-    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60"
+    <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)'}}
       onClick={e => e.stopPropagation()}>
-      <div className="bg-white rounded-t-3xl md:rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+      <div style={{background:'white',borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',padding:'24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))'}}
         onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto md:hidden mb-2" />
+        <div style={{width:'40px',height:'4px',background:'#e2e8f0',borderRadius:'999px',margin:'0 auto 16px'}} />
         <h3 className="font-black text-lg text-slate-800">🫙 {finishingProd.recipeName}</h3>
         <p className="text-slate-500 text-sm">¿Cuántos kg salieron de esta tanda?</p>
         <div className="relative">
@@ -784,11 +772,11 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   // ── Modal empanado milanesa ───────────────────────────────────────────────
   const EmpanadoModal = () => showEmpanadoModal && finishingProd ? (
-    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60"
+    <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)'}}
       onClick={e => e.stopPropagation()}>
-      <div className="bg-white rounded-t-3xl md:rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+      <div style={{background:'white',borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',padding:'24px',paddingBottom:'max(24px, env(safe-area-inset-bottom))'}}
         onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto md:hidden mb-2" />
+        <div style={{width:'40px',height:'4px',background:'#e2e8f0',borderRadius:'999px',margin:'0 auto 16px'}} />
         <h3 className="font-black text-lg text-slate-800">🥩 Empanado de Milanesa</h3>
 
         {/* Stock selector — muestra el menjunje disponible por corte */}

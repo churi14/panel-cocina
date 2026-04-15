@@ -265,6 +265,8 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { fetchAll(); }, []);
 
+
+
   const categories = [...new Set(items.map(i => i.categoria))].sort();
   const alertCount = items.filter(i => isLow(i.cantidad, i.categoria) || isExpiringSoon(i.fecha_vencimiento)).length;
 
