@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import { Users, Plus, X, Check, RefreshCw, Eye, EyeOff, ShieldCheck, Edit2, Bell, Send } from 'lucide-react';
+import { Users, Plus, X, Check, RefreshCw, Eye, EyeOff, ShieldCheck, Edit2, Bell, Send, Trash2 } from 'lucide-react';
 
 type Rol = 'admin' | 'operador' | 'administrativa';
 
@@ -38,6 +38,8 @@ export default function TabUsuarios() {
   const [notifSent, setNotifSent]   = useState(false);
   const [error, setError]           = useState('');
   const [success, setSuccess]       = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<Usuario | null>(null);
+  const [deleting, setDeleting]     = useState(false);
 
   // Form state
   const [nombre, setNombre]         = useState('');
@@ -151,6 +153,27 @@ export default function TabUsuarios() {
     await fetchUsuarios();
   };
 
+  const handleDelete = async (u: Usuario) => {
+    setDeleting(true);
+    try {
+      // Delete via API (needs service role to delete auth user)
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: u.id }),
+      });
+      if (!res.ok) {
+        // Fallback: just delete the profile row
+        await supabase.from('perfiles').delete().eq('id', u.id);
+      }
+      setDeleteConfirm(null);
+      await fetchUsuarios();
+    } catch (e) {
+      console.error(e);
+    }
+    setDeleting(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -219,6 +242,10 @@ export default function TabUsuarios() {
                     ? 'hover:bg-slate-800 text-slate-400 hover:text-amber-400'
                     : 'hover:bg-slate-800 text-slate-600 hover:text-green-400'}`}>
                   {u.activo ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+                <button onClick={() => setDeleteConfirm(u)}
+                  className="p-2 hover:bg-red-500/10 rounded-xl text-slate-600 hover:text-red-400 transition-colors" title="Eliminar">
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
@@ -328,6 +355,40 @@ export default function TabUsuarios() {
               <button onClick={handleSave} disabled={saving}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving ? <><RefreshCw size={16} className="animate-spin" /> Guardando...</> : <><Check size={16} /> {editingUser ? 'Guardar cambios' : 'Crear usuario'}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmación Eliminar */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-slate-900 border border-red-500/40 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="w-14 h-14 bg-red-500/15 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Trash2 size={24} className="text-red-400" />
+              </div>
+              <h3 className="font-black text-white text-lg">¿Eliminar usuario?</h3>
+              <p className="text-slate-400 text-sm mt-1">
+                Vas a eliminar a <span className="font-black text-white">{deleteConfirm.nombre}</span>.
+                Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="bg-slate-800 rounded-xl px-4 py-3 text-sm text-slate-400">
+              <p><span className="text-slate-300 font-bold">Email:</span> {deleteConfirm.email}</p>
+              <p><span className="text-slate-300 font-bold">Rol:</span> {ROL_CONFIG[deleteConfirm.rol].label}</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 border border-slate-700 rounded-xl text-slate-400 font-bold text-sm hover:bg-slate-800 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={() => handleDelete(deleteConfirm)} disabled={deleting}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {deleting ? <><RefreshCw size={14} className="animate-spin" /> Eliminando...</> : <><Trash2 size={14} /> Eliminar</>}
               </button>
             </div>
           </div>
