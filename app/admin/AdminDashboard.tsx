@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
+import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
   RefreshCw, BarChart3, Activity, ChefHat, Users, Award
@@ -139,7 +140,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
 
       {/* TOP BAR */}
-      <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between shrink-0">
+      <header id="admin-tour-header" className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <img src="/icons/icon-admin-192.png" alt="La Cocina" className="w-9 h-9 rounded-xl object-cover" />
           <h1 className="font-black text-lg">La Cocina <span className="text-slate-400 font-normal text-sm">Admin</span></h1>
@@ -177,7 +178,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       {/* NAV */}
       <nav className="bg-slate-900 border-b border-slate-800 flex gap-1 overflow-x-auto scrollbar-hide px-2 md:px-8">
         {TABS.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+          <button key={tab.id} id={`admin-tour-tab-${tab.id}`} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-3 md:px-5 py-3 text-xs md:text-sm font-bold border-b-2 transition-all whitespace-nowrap shrink-0
               ${activeTab === tab.id ? 'border-white text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
             {tab.icon} {tab.label}
@@ -199,6 +200,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'proyeccion' && <TabProyeccion />}
       </main>
 
+      <AdminTour />
     </div>
   );
 }
