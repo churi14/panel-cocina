@@ -1301,10 +1301,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           )}
         </div>
       </div>
-      <SalsaModal />
-      <EmpanadoModal />
-    </div>
-
       {/* ── SALSA MODAL ── */}
       {showSalsaModal && finishingProd && (
         <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}>
@@ -1367,5 +1363,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           </div>
         </div>
       )}
+    </div>
   );
 }
