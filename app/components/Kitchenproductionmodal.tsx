@@ -23,7 +23,6 @@ const KITCHEN_CATEGORIES = [
   { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',   hover: 'hover:border-rose-400',   icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
   { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200',  hover: 'hover:border-green-400',  icon: <Carrot  size={48} className="text-green-600 mb-4" /> },
   { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={48} className="text-yellow-600 mb-4" /> },
-  { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={48} className="text-yellow-600 mb-4" /> },
   { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
 ];
 
@@ -451,18 +450,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
   const [empanadoCorteStock, setEmpanadoCorteStock] = useState('');
   const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
-  const [menjunjeStocks, setMenjunjeStocks]         = useState<{producto: string; cantidad: number}[]>([]);
-  const [selectedMenjunjeStock, setSelectedMenjunjeStock] = useState('');
   // Salsa kg modal
-  const [showSalsaModal, setShowSalsaModal]         = useState(false);
-  const [salsaKgProducidos, setSalsaKgProducidos]   = useState('');
   // Empanado modal
-  const [showEmpanadoModal, setShowEmpanadoModal]   = useState(false);
-  const [empanadoMenjunjeKg, setEmpanadoMenjunjeKg] = useState('');
-  const [empanadoSalieronKg, setEmpanadoSalieronKg] = useState('');
-  const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
-  const [empanadoCorteStock, setEmpanadoCorteStock] = useState(''); // ej: "Milanesa - Tapa de Nalga"
-  const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
 
   const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
   const activeRecipeName = finishingProd?.recipeName ?? '';
@@ -778,95 +767,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   const elapsedTime = finishingProd ? currentTime - finishingProd.startTime : 0;
 
-  // ── Modal salsa kg producidos ────────────────────────────────────────────
-  const SalsaModal = () => showSalsaModal && finishingProd ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <h3 className="font-black text-lg text-slate-800">🫙 {finishingProd.recipeName}</h3>
-        <p className="text-slate-500 text-sm">¿Cuántos kg salieron de esta tanda?</p>
-        <div className="relative">
-          <input type="number" inputMode="decimal" step="0.1" value={salsaKgProducidos}
-            onChange={e => setSalsaKgProducidos(e.target.value)} placeholder="0"
-            className="w-full p-4 border-2 rounded-xl text-3xl font-black text-center outline-none border-red-200 text-red-600 focus:border-red-500" />
-          <span className="absolute right-4 top-5 text-sm font-bold text-slate-300">KG</span>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowSalsaModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50">Cancelar</button>
-          <button onClick={handleFinish} disabled={!salsaKgProducidos || parseFloat(salsaKgProducidos) <= 0}
-            className="flex-1 py-3 bg-red-600 text-white font-black rounded-xl hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed">
-            Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
 
-  // ── Modal empanado milanesa ───────────────────────────────────────────────
-  const EmpanadoModal = () => showEmpanadoModal && finishingProd ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <h3 className="font-black text-lg text-slate-800">🥩 Empanado de Milanesa</h3>
-
-        {/* Stock selector — muestra el menjunje disponible por corte */}
-        <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">¿De qué menjunje empanaste?</p>
-          {empanadoStocks.length > 0 ? (
-            <div className="space-y-1 max-h-36 overflow-y-auto">
-              {empanadoStocks.map(s => (
-                <button key={s.producto}
-                  onClick={() => {
-                    setEmpanadoCorteStock(s.producto);
-                    setEmpanadoTipo(s.producto.toLowerCase().includes('pollo') ? 'pollo' : 'carne');
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all border
-                    ${empanadoCorteStock === s.producto
-                      ? 'bg-rose-50 border-rose-400 text-rose-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-rose-300'}`}>
-                  <span>{s.producto}</span>
-                  <span className="float-right text-xs opacity-60 font-normal">{s.cantidad.toFixed(2)} kg disp.</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-rose-500 bg-rose-50 rounded-lg px-3 py-2 border border-rose-200">
-              ⚠️ Sin menjunje disponible. Hacé menjunje primero.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">Kg de menjunje usados</p>
-          <div className="relative">
-            <input type="number" inputMode="decimal" step="0.5" value={empanadoMenjunjeKg}
-              onChange={e => setEmpanadoMenjunjeKg(e.target.value)} placeholder="0"
-              className="w-full p-3 border-2 rounded-xl text-2xl font-black text-center outline-none border-rose-200 text-rose-600 focus:border-rose-500" />
-            <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">Kg de milanesa empanada que salieron</p>
-          <div className="relative">
-            <input type="number" inputMode="decimal" step="0.5" value={empanadoSalieronKg}
-              onChange={e => setEmpanadoSalieronKg(e.target.value)} placeholder="0"
-              className="w-full p-3 border-2 rounded-xl text-2xl font-black text-center outline-none border-amber-200 text-amber-600 focus:border-amber-500" />
-            <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
-          </div>
-          {empanadoCorteStock && empanadoMenjunjeKg && empanadoSalieronKg && (
-            <p className="text-xs text-slate-400 mt-1.5">
-              → Guardará como <span className="font-black text-rose-600">Milanesa de {empanadoTipo === 'pollo' ? 'Pollo' : 'Carne'} Empanada — {empanadoCorteStock.replace('Milanesa - ','')}</span>
-            </p>
-          )}
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowEmpanadoModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50">Cancelar</button>
-          <button onClick={handleFinish} disabled={!empanadoMenjunjeKg || !empanadoSalieronKg || !empanadoCorteStock}
-            className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed">
-            Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
 
 
   const formatTimer = (ms: number) => {
