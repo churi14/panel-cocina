@@ -34,50 +34,83 @@ export default function TabDashboard({ movements, notifications, stats, setNotif
       </div>
 
       {/* Producciones activas ahora */}
-      {(cocinaActiva.length > 0 || prodHistorial.filter((p: any) => ['step1_running','step2_running','step2_pending'].includes(p.status)).length > 0) && (
-        <div className="bg-slate-900 border border-green-500/40 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(34,197,94,0.1)]">
-          <div className="px-6 py-3 border-b border-slate-800 flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <h2 className="font-black text-green-400 text-sm uppercase">Producciones activas ahora</h2>
-          </div>
-          <div className="divide-y divide-slate-800">
-            {cocinaActiva.map((p: any) => (
-              <div key={p.id} className="px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">🍳</span>
-                  <div>
-                    <p className="font-black text-white text-sm">{p.recipe_name}</p>
-                    <p className="text-xs text-slate-400">{p.operador ?? '—'} · Cocina General</p>
-                  </div>
+      {(() => {
+        const carnActivas = prodHistorial.filter((p: any) => ['step1_running','step2_running','step2_pending'].includes(p.status));
+        const total = cocinaActiva.length + carnActivas.length;
+        if (total === 0) return null;
+
+        const kindCfg: Record<string, {emoji: string; color: string; bg: string}> = {
+          lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10'   },
+          burger:   { emoji: '🍔', color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
+          milanesa: { emoji: '🥪', color: 'text-amber-400',  bg: 'bg-amber-500/10'  },
+        };
+        const statusCfg: Record<string, {label: string; color: string; bg: string}> = {
+          step1_running:  { label: 'PASO 1',      color: 'text-rose-400',   bg: 'bg-rose-500/15'   },
+          step2_running:  { label: 'PASO 2',      color: 'text-amber-400',  bg: 'bg-amber-500/15'  },
+          step2_pending:  { label: 'P2 PENDIENTE',color: 'text-amber-300',  bg: 'bg-amber-500/10'  },
+        };
+
+        return (
+          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-green-500/30" style={{boxShadow:'0 0 30px rgba(34,197,94,0.08)'}}>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                  <div className="w-3 h-3 bg-green-500 rounded-full absolute inset-0 animate-ping opacity-40" />
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-black text-green-400 bg-green-500/10 px-2 py-1 rounded-full">EN CURSO</span>
-                  <p className="text-xs text-slate-500 mt-1">{Math.floor((Date.now() - p.start_time) / 60000)}m</p>
-                </div>
+                <h2 className="font-black text-green-400 text-sm uppercase tracking-wider">Producciones activas ahora</h2>
               </div>
-            ))}
-            {prodHistorial.filter((p: any) => ['step1_running','step2_running','step2_pending'].includes(p.status)).map((p: any) => (
-              <div key={p.id} className="px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{p.kind === 'burger' ? '🍔' : p.kind === 'milanesa' ? '🥪' : '🥩'}</span>
-                  <div>
-                    <p className="font-black text-white text-sm">{p.type_name ?? p.cut}</p>
-                    <p className="text-xs text-slate-400">Carnicería · {p.kind?.toUpperCase()}</p>
+              <span className="text-xs font-black text-slate-500 bg-slate-800 px-3 py-1 rounded-full">{total} en curso</span>
+            </div>
+
+            {/* Grid de producciones */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-800/50">
+              {/* Cocina General */}
+              {cocinaActiva.map((p: any) => {
+                const mins = Math.floor((Date.now() - p.start_time) / 60000);
+                const hrs  = Math.floor(mins / 60);
+                const timer = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+                return (
+                  <div key={p.id} className="bg-slate-900 px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0 text-lg">🍳</div>
+                      <div className="min-w-0">
+                        <p className="font-black text-white text-sm truncate">{p.recipe_name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{p.operador ?? '—'} · Cocina General</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="inline-block text-xs font-black text-green-400 bg-green-500/15 px-2.5 py-1 rounded-full">EN CURSO</span>
+                      <p className="text-xs text-slate-500 mt-1 font-mono">{timer}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <span className={`text-xs font-black px-2 py-1 rounded-full ${
-                    p.status === 'step1_running' ? 'text-rose-400 bg-rose-500/10' : 'text-amber-400 bg-amber-500/10'
-                  }`}>
-                    {p.status === 'step1_running' ? 'PASO 1' : p.status === 'step2_running' ? 'PASO 2' : 'P2 PENDIENTE'}
-                  </span>
-                  <p className="text-xs text-slate-500 mt-1">{p.weight_kg} kg</p>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+              {/* Carnicería */}
+              {carnActivas.map((p: any) => {
+                const cfg = kindCfg[p.kind] ?? { emoji: '🥩', color: 'text-slate-400', bg: 'bg-slate-500/10' };
+                const sCfg = statusCfg[p.status] ?? { label: p.status, color: 'text-slate-400', bg: 'bg-slate-500/10' };
+                return (
+                  <div key={p.id} className="bg-slate-900 px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-xl ${cfg.bg} flex items-center justify-center shrink-0 text-lg`}>{cfg.emoji}</div>
+                      <div className="min-w-0">
+                        <p className="font-black text-white text-sm truncate">{p.type_name ?? p.cut}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Carnicería · {p.kind?.toUpperCase()}</p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`inline-block text-xs font-black px-2.5 py-1 rounded-full ${sCfg.color} ${sCfg.bg}`}>{sCfg.label}</span>
+                      <p className="text-xs text-slate-500 mt-1 font-mono">{p.weight_kg} kg</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Notificaciones en tiempo real */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
