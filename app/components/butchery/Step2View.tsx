@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, Package, Trash2, Scale, ChevronRight, Flame } from 'lucide-react';
+import { supabase } from '../../supabase';
 import { ButcheryProduction } from '../../types';
 import { getCut, formatWeight, formatGrams } from './cuts';
 import { FinishStep2Overlay } from './Overlays';
