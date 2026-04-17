@@ -132,12 +132,14 @@ export function createButcheryHandlers(s: Setters) {
     const prod = step2Queue[step2Index];
     if (!prod) return;
     await deductStockByName(prod.typeName, prod.weightKg, prod.kind ?? 'lomito');
-    await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', prod.typeName, prod.weightKg,
-      `Finalizo paso 2 - ${quantity} ${unit} de ${prod.typeName} - ${operador}`, operador, wasteKg);
-    await PushEvents.finProduccion(prod.kind ?? 'lomito', prod.typeName, quantity, unit, operador);
+    // Normalizar: Tapa de Nalga y Nalga Feteada → Nalga
+    const corteNorm = (prod.typeName ?? '').toLowerCase().includes('nalga') ? 'Nalga' : prod.typeName;
+    await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', corteNorm, prod.weightKg,
+      `Finalizo paso 2 - ${quantity} ${unit} de ${corteNorm} - ${operador}`, operador, wasteKg);
+    await PushEvents.finProduccion(prod.kind ?? 'lomito', corteNorm, quantity, unit, operador);
     const kindLabel = prod.kind ?? 'lomito';
-    if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Lomito - ${prod.typeName}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
-    else if (kindLabel === 'milanesa') await addToStockProduccion({ producto: `Milanesa - ${prod.typeName}`, categoria: 'milanesa', cantidad: parseFloat((prod.weightKg - wasteKg).toFixed(3)), unidad: 'kg' });
+    if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Lomito - ${corteNorm}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
+    else if (kindLabel === 'milanesa') await addToStockProduccion({ producto: `Milanesa - ${corteNorm}`, categoria: 'milanesa', cantidad: parseFloat((prod.weightKg - wasteKg).toFixed(3)), unidad: 'kg' });
     const now = Date.now(); const netWeight = prod.weightKg - wasteKg;
     const avgGrams = unit === 'unid' && quantity > 0 ? (netWeight / quantity) * 1000 : 0;
     s.setButcheryRecords(prev => [...prev, {

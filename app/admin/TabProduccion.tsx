@@ -169,8 +169,14 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
         const diasOrdenados = Object.entries(porDia).sort((a, b) => a[0].localeCompare(b[0]));
         const maxKg = Math.max(...diasOrdenados.map(([, v]) => v), 1);
 
-        const totalKg = eventos.reduce((s, e) => s + (e.peso_kg ?? 0), 0);
-        const promDiario = diasOrdenados.length > 0 ? (totalKg / diasOrdenados.length).toFixed(1) : '—';
+        const totalKgIn = eventos.reduce((s, e) => s + (e.peso_kg ?? 0), 0);
+        // Parse quantity from detalle: "Finalizo paso 2 - 60 unid de Lomo - op"
+        const totalUnidOut = eventos.reduce((s, e) => {
+          const m = (e.detalle ?? '').match(/Finalizo paso 2 - (\d+(?:\.\d+)?)\s*(unid|u|kg)/i);
+          return s + (m ? parseFloat(m[1]) : 0);
+        }, 0);
+        const outUnit = eventos.some(e => /unid|u/.test(e.detalle ?? '')) ? 'u' : selectedProdItem.unidad;
+        const promDiario = diasOrdenados.length > 0 ? (totalKgIn / diasOrdenados.length).toFixed(1) : '—';
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -197,11 +203,12 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
 
               <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: 'Total producido', value: `${totalKg.toFixed(1)} ${selectedProdItem.unidad}` },
+                    { label: 'Kg procesados (entrada)', value: `${totalKgIn.toFixed(1)} kg` },
+                    { label: totalUnidOut > 0 ? 'Unidades producidas (salida)' : 'Total producido', value: totalUnidOut > 0 ? `${Math.round(totalUnidOut)} ${outUnit}` : `${totalKgIn.toFixed(1)} ${selectedProdItem.unidad}` },
                     { label: 'Producciones',    value: `${eventos.length}` },
-                    { label: 'Promedio/día',    value: `${promDiario}` },
+                    { label: 'Prom. kg/día',    value: `${promDiario} kg` },
                   ].map((k, i) => (
                     <div key={i} className="bg-slate-800 rounded-xl p-3 text-center">
                       <p className={`text-xl font-black ${cfg.color}`}>{k.value}</p>
