@@ -7,7 +7,7 @@ import { CUTS, PRODUCTION_KINDS, ProductionKind, ProductionKindConfig, getCutsBy
 import { StartConfirmOverlay } from './Overlays';
 import { supabase } from '../../supabase';
 
-type WeightEntry = { type: ButcheryProductionType; weight: string };
+type WeightEntry = { type: ButcheryProductionType; weight: string; carneLinpiaName?: string };
 
 export function NewProductionWizard({ onStart, onCancel }: {
   onStart: (entries: { type: ButcheryProductionType; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => void | Promise<void>;
@@ -21,6 +21,10 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const [tipVisible, setTipVisible]     = useState(() => typeof window !== 'undefined' ? !localStorage.getItem('wizard_tip_seen') : true);
   const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
   const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
+  const [selectedCarnesMulti, setSelectedCarnesMulti] = useState<string[]>([]); // burger multi-select
+
+  const toggleCarneMulti = (producto: string) =>
+    setSelectedCarnesMulti(prev => prev.includes(producto) ? prev.filter(x => x !== producto) : [...prev, producto]);
 
   const kindConfig = selectedKind ? PRODUCTION_KINDS.find(k => k.id === selectedKind)! : null;
   const availableCuts = selectedKind === 'limpieza'
@@ -36,6 +40,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setWeights([]);
     setCarnesLimpias([]);
     setSelectedCarneLinpia('');
+    setSelectedCarnesMulti([]);
     setTipVisible(!localStorage.getItem('wizard_tip_seen'));
     // Para lomito/milanesa: fetch carnes limpias del stock_produccion
     // Lista fija de todos los cortes posibles
@@ -76,10 +81,13 @@ export function NewProductionWizard({ onStart, onCancel }: {
   };
 
   const handleGoToWeights = () => {
-    if (selectedKind !== 'limpieza' && selectedCarneLinpia) {
-      // Para carne limpia: usar 'lomo' como tipo genérico pero con nombre del stock
+    if (selectedKind === 'burger' && selectedCarnesMulti.length > 0) {
+      // Burger: un peso por cada corte seleccionado
       const fakeType = 'lomo' as ButcheryProductionType;
-      setWeights([{ type: fakeType, weight: '' }]);
+      setWeights(selectedCarnesMulti.map(p => ({ type: fakeType, weight: '', carneLinpiaName: p })));
+    } else if (selectedKind !== 'limpieza' && selectedCarneLinpia) {
+      const fakeType = 'lomo' as ButcheryProductionType;
+      setWeights([{ type: fakeType, weight: '', carneLinpiaName: selectedCarneLinpia }]);
     } else {
       setWeights(selected.map(type => ({
         type,
@@ -102,8 +110,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
       weights.map(w => ({
         type: w.type,
         weight: parseFloat(w.weight.replace(',', '.')),
-        // Para carne limpia: override del nombre para usar en stock
-        ...(selectedCarneLinpia ? { carneLinpiaName: selectedCarneLinpia } : {}),
+        carneLinpiaName: (w as any).carneLinpiaName ?? (selectedCarneLinpia || undefined),
       })),
       selectedKind
     );
@@ -221,27 +228,41 @@ export function NewProductionWizard({ onStart, onCancel }: {
               })}
             </div>
           ) : carnesLimpias.length > 0 ? (
-            // LOMITO / MILANESA / BURGER: mostrar carne limpia disponible
-            <div className="max-w-2xl mx-auto w-full space-y-3">
-              <p className="text-center text-sm font-bold text-slate-400 mb-2">
-                {selectedKind === 'burger' ? 'Carne limpia burger disponible' : 'Carne limpia disponible en stock'}
+            // LOMITO / MILANESA: selección simple | BURGER: selección múltiple
+            <div className="max-w-2xl mx-auto w-full space-y-2">
+              <p className="text-center text-xs font-bold text-slate-400 mb-3 uppercase tracking-wide">
+                {selectedKind === 'burger' ? 'Seleccioná los cortes a usar (puede ser más de uno)' : 'Elegí el corte a procesar'}
               </p>
-              {carnesLimpias.map(c => (
-                <button key={c.producto}
-                  onClick={() => setSelectedCarneLinpia(c.producto)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all font-bold
-                    ${selectedCarneLinpia === c.producto
-                      ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🥩</span>
-                    <span className="text-base font-black">{c.producto}</span>
-                  </div>
-                  <span className={`text-sm font-black ${Number(c.cantidad) > 0 ? 'text-slate-400' : 'text-slate-300'}`}>
-                    {Number(c.cantidad) > 0 ? `${Number(c.cantidad).toFixed(3)} kg disp.` : 'Sin stock'}
-                  </span>
-                </button>
-              ))}
+              {carnesLimpias.map(c => {
+                // Nombre corto: "Lomo_L", "Cuadril_L", etc.
+                const corteLabel = c.producto
+                  .replace('Carne Limpia Burger - ', '')
+                  .replace(' Limpia', '');
+                const isSelectedMulti = selectedCarnesMulti.includes(c.producto);
+                const isSelectedSingle = selectedCarneLinpia === c.producto;
+                const isSelected = selectedKind === 'burger' ? isSelectedMulti : isSelectedSingle;
+                const onClick = () => selectedKind === 'burger'
+                  ? toggleCarneMulti(c.producto)
+                  : setSelectedCarneLinpia(c.producto);
+                return (
+                  <button key={c.producto} onClick={onClick}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold
+                      ${isSelected
+                        ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
+                        ${isSelected ? 'bg-green-500 border-green-500' : 'border-slate-300'}`}>
+                        {isSelected && <span className="text-white text-xs font-black">✓</span>}
+                      </div>
+                      <span className="text-base font-black">{corteLabel}<span className="text-green-600 font-black">_L</span></span>
+                    </div>
+                    <span className={`text-sm font-bold ${Number(c.cantidad) > 0 ? 'text-slate-500' : 'text-slate-300'}`}>
+                      {Number(c.cantidad) > 0 ? `${Number(c.cantidad).toFixed(2)} kg` : 'Sin stock'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             // Sin carne limpia disponible
@@ -252,20 +273,26 @@ export function NewProductionWizard({ onStart, onCancel }: {
             </div>
           )}
 
-          {(selected.length > 0 || selectedCarneLinpia) && (
-            <div className="mt-8 max-w-4xl mx-auto w-full">
+          {(selected.length > 0 || selectedCarneLinpia || selectedCarnesMulti.length > 0) && (
+            <div className="mt-4 max-w-4xl mx-auto w-full">
               <div className={`border rounded-2xl px-6 py-4 flex items-center justify-between flex-wrap gap-3 bg-slate-50`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-black text-slate-500 uppercase">Seleccionados:</span>
                   {selectedKind === 'limpieza' ? selected.map(id => (
-                    <span key={id} className={`text-white text-xs font-bold px-3 py-1 rounded-full ${kindConfig.color}`}>
-                      {getCutLabel(id)}
+                    <span key={id} className={`text-white text-xs font-bold px-3 py-1 rounded-full ${kindConfig.color}`}>{getCutLabel(id)}</span>
+                  )) : selectedKind === 'burger' ? selectedCarnesMulti.map(p => (
+                    <span key={p} className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">
+                      {p.replace('Carne Limpia Burger - ', '')}_L
                     </span>
                   )) : selectedCarneLinpia ? (
-                    <span className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">{selectedCarneLinpia}</span>
+                    <span className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">
+                      {selectedCarneLinpia.replace(' Limpia', '')}_L
+                    </span>
                   ) : null}
                 </div>
-                <span className={`text-2xl font-black ${kindConfig.textColor}`}>{selectedKind === 'limpieza' ? selected.length : selectedCarneLinpia ? 1 : 0}</span>
+                <span className={`text-2xl font-black ${kindConfig.textColor}`}>
+                  {selectedKind === 'limpieza' ? selected.length : selectedKind === 'burger' ? selectedCarnesMulti.length : selectedCarneLinpia ? 1 : 0}
+                </span>
               </div>
             </div>
           )}
@@ -274,7 +301,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
         <div className="mt-auto pt-6 space-y-3 max-w-4xl mx-auto w-full">
           <button
             onClick={handleGoToWeights}
-            disabled={selectedKind === 'limpieza' ? selected.length === 0 : !selectedCarneLinpia}
+            disabled={selectedKind === 'limpieza' ? selected.length === 0 : selectedKind === 'burger' ? selectedCarnesMulti.length === 0 : !selectedCarneLinpia}
             className={`w-full py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
               ${selected.length > 0 ? `${kindConfig.color} text-white hover:opacity-90 shadow-lg` : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
