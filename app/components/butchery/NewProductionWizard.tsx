@@ -263,15 +263,38 @@ export function NewProductionWizard({ onStart, onCancel }: {
                       <input
                         type="number" inputMode="decimal" step="0.01" placeholder="0,00"
                         value={entry.weight}
-                        onChange={e => setWeight(entry.type, e.target.value)}
-                       
+                        onChange={e => {
+                          const val = e.target.value;
+                          const num = parseFloat(val.replace(',', '.'));
+                          // Auto-corregir: si parece gramos (>500 sin decimal), convertir a kg
+                          if (num > 500 && !val.includes('.') && !val.includes(',')) {
+                            setWeight(entry.type, (num / 1000).toFixed(3));
+                          } else {
+                            setWeight(entry.type, val);
+                          }
+                        }}
                         className={`w-full px-5 py-4 text-3xl font-black text-center rounded-xl outline-none transition-all
-                          ${isValid
-                            ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'} focus:opacity-90`
-                            : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
+                          ${parsed > 200
+                            ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
+                            : isValid
+                              ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'} focus:opacity-90`
+                              : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
                       />
                       <span className={`absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black ${isValid ? 'text-slate-400' : 'text-slate-300'}`}>KG</span>
                     </div>
+                    {parsed > 200 && (
+                      <div className="mt-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 flex items-center gap-2">
+                        <span className="text-amber-500 text-lg">⚠️</span>
+                        <div>
+                          <p className="text-xs font-black text-amber-700">¿Pusiste gramos en vez de kilos?</p>
+                          <p className="text-xs text-amber-600">{parsed.toFixed(0)} kg parece mucho. Si querías poner {parsed.toFixed(0)}g, son <strong>{(parsed/1000).toFixed(3)} kg</strong>.</p>
+                        </div>
+                        <button onClick={() => setWeight(entry.type, (parsed/1000).toFixed(3))}
+                          className="ml-auto px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-lg whitespace-nowrap transition-all">
+                          Convertir a {(parsed/1000).toFixed(3)} kg
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -49,6 +49,18 @@ export async function addToStockProduccion({
         });
       if (insertError) console.error('Error insertando stock_produccion:', insertError);
     }
+
+    // Registrar ingreso en stock_movements para visibilidad en admin
+    await supabase.from('stock_movements').insert({
+      nombre: producto,
+      categoria: categoria,
+      tipo: 'ingreso',
+      cantidad,
+      unidad,
+      motivo: `Producción finalizada`,
+      operador: 'Sistema',
+      fecha: new Date().toISOString(),
+    });
   } catch (e) {
     console.error('Error en addToStockProduccion:', e);
   }
