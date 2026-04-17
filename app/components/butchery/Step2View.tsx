@@ -138,10 +138,9 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
             {carnesLimpias.map(c => (
               <button key={c.producto}
                 onClick={() => setSelectedCarneLinpia(c.producto)}
-                className={\`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm
-                  \${selectedCarneLinpia === c.producto
-                    ? 'border-green-500 bg-green-50 text-green-800'
-                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}\`}>
+                className={selectedCarneLinpia === c.producto
+                  ? 'w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm border-green-500 bg-green-50 text-green-800'
+                  : 'w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}>
                 <span>{c.producto}</span>
                 <span className="text-xs font-black text-slate-400">{typeof c.cantidad === 'number' ? c.cantidad.toFixed(3) : c.cantidad} kg disp.</span>
               </button>
