@@ -1,7 +1,7 @@
 import { ButcheryProductionType } from '../../types';
 
 // --- TIPOS DE PRODUCCIÓN (pantalla inicial) ---
-export type ProductionKind = 'lomito' | 'burger' | 'milanesa';
+export type ProductionKind = 'limpieza' | 'lomito' | 'burger' | 'milanesa';
 
 export type ProductionKindConfig = {
   id: ProductionKind;
@@ -14,6 +14,15 @@ export type ProductionKindConfig = {
 };
 
 export const PRODUCTION_KINDS: ProductionKindConfig[] = [
+  {
+    id: 'limpieza',
+    label: 'LIMPIEZA',
+    emoji: '🔪',
+    color: 'bg-slate-700',
+    borderColor: 'border-slate-500',
+    textColor: 'text-slate-700',
+    description: 'Limpieza de carne — genera carne limpia y grasa',
+  },
   {
     id: 'lomito',
     label: 'LOMITO',
@@ -105,3 +114,8 @@ export function formatTimer(ms: number): string {
 }
 export function formatWeight(kg: number): string { return kg.toFixed(3).replace(/\.?0+$/, '').replace('.', ','); }
 export function formatGrams(gr: number): string   { return gr.toFixed(0); }
+
+export function getCarneLinpiaName(corte: string, destino: 'burger' | 'carne_limpia'): string {
+  const norm = corte.toLowerCase().includes('nalga') ? 'Nalga' : corte;
+  return destino === 'burger' ? `Carne Limpia Burger - ${norm}` : `${norm} Limpia`;
+}

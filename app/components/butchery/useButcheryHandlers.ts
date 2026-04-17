@@ -1,5 +1,5 @@
 import { ButcheryProduction, ButcheryProductionType, ButcheryRecord } from '../../types';
-import { getCutLabel, CUTS, ProductionKind } from './cuts';
+import { getCutLabel, CUTS, ProductionKind, getCarneLinpiaName } from './cuts';
 import { supabase } from '../../supabase';
 import { PushEvents, checkAndNotifyStock } from '../pushEvents';
 import { addToStockProduccion } from './stockProduccion';
@@ -202,5 +202,42 @@ export function createButcheryHandlers(s: Setters) {
     s.setStep2Queue([]); s.setStep2Index(0); s.setView('list');
   };
 
-  return { handleStartProductions, handleFinishBatchStep1, handleGoToBatchStep2, handleFinishStep2, handleFinishBurgerBlend, handleBackFromStep2 };
+
+  const handleFinishLimpieza = async (prod: ButcheryProduction, params: {
+    carneLinpiaKg: number;
+    grasaKg: number;
+    desperdicioKg: number;
+    destino: 'burger' | 'carne_limpia';
+  }) => {
+    const corteNorm = prod.typeName.toLowerCase().includes('nalga') ? 'Nalga' : prod.typeName;
+
+    // 1. Descontar carne cruda del stock materias primas
+    await deductStockByName(corteNorm, prod.weightKg, 'limpieza');
+
+    // 2. Agregar carne limpia a stock_produccion
+    const productoCarne = getCarneLinpiaName(corteNorm, params.destino);
+    if (params.carneLinpiaKg > 0) {
+      await addToStockProduccion({ producto: productoCarne, categoria: 'lomito', cantidad: params.carneLinpiaKg, unidad: 'kg' });
+    }
+
+    // 3. Grasa → stock_produccion
+    if (params.grasaKg > 0) {
+      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'caja', cantidad: params.grasaKg, unidad: 'kg' });
+    }
+
+    // 4. Log + push
+    await logProduccionEvento('fin_paso2', 'limpieza', corteNorm, prod.weightKg,
+      `Limpieza ${corteNorm}: ${params.carneLinpiaKg}kg → ${productoCarne} | ${params.grasaKg}kg grasa | ${params.desperdicioKg}kg desperdicio`,
+      operador, params.desperdicioKg);
+    await fetch('/api/push', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ title:`🔪 Limpieza · ${operador}`, body:`${corteNorm}: ${params.carneLinpiaKg}kg → ${productoCarne}`, tag:'limpieza-fin', url:'/admin' }) });
+
+    markProduccionDone(prod.id);
+
+    s.setButcheryProductions(prev => prev.map(p =>
+      p.id === prod.id ? { ...p, status: 'step2_done' as const } : p
+    ));
+  };
+
+  return { handleStartProductions, handleFinishBatchStep1, handleGoToBatchStep2, handleFinishStep2, handleFinishBurgerBlend, handleBackFromStep2, handleFinishLimpieza };
 }

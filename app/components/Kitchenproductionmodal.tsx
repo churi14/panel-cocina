@@ -355,24 +355,18 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setSelectedMenjunjeStock('');
     // Si es menjunje, fetch stocks disponibles
     if (r.id.startsWith('menjunje_')) {
+      // Buscar carne limpia disponible (no burger)
       const { data } = await supabase.from('stock_produccion')
         .select('producto, cantidad')
-        .eq('categoria', 'milanesa')
+        .ilike('producto', '% Limpia')
         .gt('cantidad', 0)
         .order('producto');
-      const filtered = (data ?? [])
-        .filter((s: any) => !s.producto.toLowerCase().includes('jugo') && !s.producto.toLowerCase().includes('empanada'))
-        .map((s: any) => ({
-          ...s,
-          producto: (s.producto.toLowerCase().includes('nalga') || s.producto.toLowerCase().includes('tapa de nalga'))
-            ? 'Milanesa - Nalga' : s.producto,
-        }));
-      // Merge duplicates after renaming
       const merged: {producto: string; cantidad: number}[] = [];
-      for (const item of filtered) {
-        const ex = merged.find(m => m.producto === item.producto);
+      for (const item of (data ?? [])) {
+        const norm = item.producto.toLowerCase().includes('nalga') ? 'Nalga Limpia' : item.producto;
+        const ex = merged.find(m => m.producto === norm);
         if (ex) ex.cantidad += item.cantidad;
-        else merged.push({...item});
+        else merged.push({...item, producto: norm});
       }
       setMenjunjeStocks(merged);
     }
@@ -488,23 +482,18 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setShowMenjunjeModal(false);
     // Empanado: pedir kg menjunje y kg salidos
     if (isEmpanadoRecipe && !showEmpanadoModal) {
+      // Buscar carne limpia disponible para empanado
       const { data } = await supabase.from('stock_produccion')
         .select('producto, cantidad')
-        .eq('categoria', 'milanesa')
+        .ilike('producto', '% Limpia')
         .gt('cantidad', 0)
         .order('producto');
-      const filtered = (data ?? [])
-        .filter((s: any) => !s.producto.toLowerCase().includes('jugo') && !s.producto.toLowerCase().includes('empanada'))
-        .map((s: any) => ({
-          ...s,
-          producto: (s.producto.toLowerCase().includes('nalga') || s.producto.toLowerCase().includes('tapa de nalga'))
-            ? 'Milanesa - Nalga' : s.producto,
-        }));
       const mergedEmp: {producto: string; cantidad: number}[] = [];
-      for (const item of filtered) {
-        const ex = mergedEmp.find(m => m.producto === item.producto);
+      for (const item of (data ?? [])) {
+        const norm = item.producto.toLowerCase().includes('nalga') ? 'Nalga Limpia' : item.producto;
+        const ex = mergedEmp.find(m => m.producto === norm);
         if (ex) ex.cantidad += item.cantidad;
-        else mergedEmp.push({...item});
+        else mergedEmp.push({...item, producto: norm});
       }
       setEmpanadoStocks(mergedEmp);
       setEmpanadoCorteStock('');

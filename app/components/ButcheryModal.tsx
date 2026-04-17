@@ -9,6 +9,7 @@ import { ProductionCard } from './butchery/ProductionCard';
 import { NewProductionWizard } from './butchery/NewProductionWizard';
 import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView } from './butchery/Step2BurgerView';
+import LimpiezaView from './butchery/LimpiezaView';
 import { groupByBatch, createButcheryHandlers } from './butchery/useButcheryHandlers';
 
 const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
@@ -40,7 +41,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
   const {
     handleStartProductions, handleFinishBatchStep1, handleGoToBatchStep2,
-    handleFinishStep2, handleFinishBurgerBlend, handleBackFromStep2,
+    handleFinishStep2, handleFinishBurgerBlend, handleBackFromStep2, handleFinishLimpieza,
   } = createButcheryHandlers({
     operador, step2Queue, step2Index,
     setButcheryProductions, setButcheryRecords,
@@ -64,7 +65,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 animate-in fade-in zoom-in-95 duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-white rounded-2xl w-full max-w-6xl h-[92vh] md:h-[92vh] flex flex-col shadow-2xl overflow-hidden">
 
         {/* HEADER */}
         <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
@@ -149,21 +150,21 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                         )}
                         {allReady && !someRunning && <span className="text-xs font-bold text-green-600">✓ Listo para paso 2</span>}
                       </div>
-                      <div className="p-4 space-y-3">
+                      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {batch.map(prod => <ProductionCard key={prod.id} production={prod} />)}
                       </div>
                       <div className="px-4 pb-4 space-y-2">
                         {someRunning && (
                           <button onClick={() => setFinishingBatchId(batchId)}
-                            className="w-full py-4 bg-green-600 text-white font-black text-lg rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                            className="w-full py-3 bg-green-600 text-white font-black text-base rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                             <CheckCircle2 size={20} /> FINALIZAR PASO 1
                             {batch.length > 1 && ` — ${runningCount} CORTE${runningCount > 1 ? 'S' : ''}`}
                           </button>
                         )}
                         {allReady && (
                           <button onClick={() => handleGoToBatchStep2(batch)}
-                            className="w-full py-4 bg-green-600 text-white font-black text-lg rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                            AVANZAR A PASO 2{batch.length > 1 && ` — ${batch.length} CORTES`} <ChevronRight size={20} />
+                            className="w-full py-3 bg-green-600 text-white font-black text-base rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                            {batch[0]?.kind === 'limpieza' ? 'FINALIZAR LIMPIEZA' : 'AVANZAR A PASO 2'}{batch.length > 1 && ` — ${batch.length} CORTES`} <ChevronRight size={20} />
                           </button>
                         )}
                       </div>
@@ -226,7 +227,19 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           )}
 
           {!!operador && view === 'step2' && step2Queue.length > 0 && (
-            step2Queue[0]?.kind === 'burger' ? (
+            step2Queue[0]?.kind === 'limpieza' && currentStep2Prod ? (
+              <LimpiezaView
+                key={currentStep2Prod.id}
+                production={currentStep2Prod}
+                onFinish={async (params) => {
+                  await handleFinishLimpieza(currentStep2Prod, params);
+                  const next = step2Index + 1;
+                  if (next < step2Queue.length) { setStep2Index(next); }
+                  else { setStep2Queue([]); setStep2Index(0); setView('list'); }
+                }}
+                onBack={handleBackFromStep2}
+              />
+            ) : step2Queue[0]?.kind === 'burger' ? (
               <Step2BurgerView
                 key={step2Queue.map(p => p.id).join('-')}
                 productions={step2Queue}

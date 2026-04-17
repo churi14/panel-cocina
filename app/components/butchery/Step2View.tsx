@@ -22,6 +22,22 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const [grasaKg, setGrasaKg]     = useState('');
   const [showGrasa, setShowGrasa] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
+  const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
+
+  // Fetch carne limpia disponible según el kind
+  useEffect(() => {
+    const fetchCarnesLimpias = async () => {
+      const { data } = await supabase
+        .from('stock_produccion')
+        .select('producto, cantidad')
+        .ilike('producto', kindLabel === 'burger' ? 'Carne Limpia Burger%' : '% Limpia')
+        .gt('cantidad', 0)
+        .order('producto');
+      setCarnesLimpias(data ?? []);
+    };
+    fetchCarnesLimpias();
+  }, [kindLabel]);
 
   const qty   = parseFloat(quantity.replace(',', '.'))  || 0;
   // En modo KG: desperdicio = bruto - cantidad producida
@@ -89,6 +105,50 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
           <span className="font-bold text-blue-600">{cut.stockDestino}</span>
         </div>
       </div>
+
+      {/* Selector carne limpia */}
+      {carnesLimpias.length > 0 && (
+        <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 mb-2">
+          <h4 className="font-black text-slate-700 mb-3 text-sm uppercase tracking-wide">
+            🥩 ELEGÍ EL STOCK DE CARNE {kindLabel === 'burger' ? 'LIMPIA BURGER' : 'LIMPIA'}
+          </h4>
+          <div className="space-y-2">
+            {carnesLimpias.map(c => (
+              <button key={c.producto}
+                onClick={() => setSelectedCarneLinpia(c.producto)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm
+                  ${selectedCarneLinpia === c.producto
+                    ? 'border-green-500 bg-green-50 text-green-800'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}`}>
+                <span>{c.producto}</span>
+                <span className="text-xs font-black text-slate-400">{c.cantidad.toFixed ? c.cantidad.toFixed(3) : c.cantidad} kg disp.</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Selector carne limpia */}
+      {carnesLimpias.length > 0 && (
+        <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 mb-2">
+          <h4 className="font-black text-slate-700 mb-3 text-sm uppercase tracking-wide">
+            🥩 Elegí el stock de carne limpia
+          </h4>
+          <div className="space-y-2">
+            {carnesLimpias.map(c => (
+              <button key={c.producto}
+                onClick={() => setSelectedCarneLinpia(c.producto)}
+                className={\`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm
+                  \${selectedCarneLinpia === c.producto
+                    ? 'border-green-500 bg-green-50 text-green-800'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}\`}>
+                <span>{c.producto}</span>
+                <span className="text-xs font-black text-slate-400">{typeof c.cantidad === 'number' ? c.cantidad.toFixed(3) : c.cantidad} kg disp.</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* INPUTS */}
