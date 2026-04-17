@@ -1,10 +1,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
-import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
+import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User , Trash2 } from 'lucide-react';
 import { Movement, formatFecha } from './types';
 import { supabase } from '../supabase';
-import { Trash2, AlertTriangle } from 'lucide-react';
 
 type Props = {
   stock: any[];
