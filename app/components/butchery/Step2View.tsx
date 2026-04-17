@@ -122,7 +122,6 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-blue-300 uppercase">{unit}</span>
             </div>
           </div>
-          </div>
 
           {/* DESPERDICIOS */}
           <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm">
