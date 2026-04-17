@@ -17,21 +17,28 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const cut = getCut(production.type);
   const [unit, setUnit]           = useState<'unid' | 'kg'>(cut.defaultUnit);
   const [quantity, setQuantity]   = useState('');
+  const [pesoFinalKg, setPesoFinalKg] = useState(''); // solo modo UNID
   const [wasteKg, setWasteKg]     = useState('');
   const [grasaKg, setGrasaKg]     = useState('');
   const [showGrasa, setShowGrasa] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const qty   = parseFloat(quantity.replace(',', '.'))  || 0;
-  // En modo KG: desperdicio se calcula automático = bruto - cantidad
-  const wasteAuto = unit === 'kg' && qty > 0 ? Math.max(0, parseFloat((production.weightKg - qty).toFixed(3))) : null;
+  // En modo KG: desperdicio = bruto - cantidad producida
+  // En modo UNID: desperdicio = bruto - pesoFinalKg (si lo ingresaron)
+  const pesoFinal = parseFloat(pesoFinalKg.replace(',', '.')) || 0;
+  const wasteAuto = unit === 'kg' && qty > 0
+    ? Math.max(0, parseFloat((production.weightKg - qty).toFixed(3)))
+    : unit === 'unid' && pesoFinal > 0
+      ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
+      : null;
   const waste = wasteAuto !== null ? wasteAuto : (parseFloat(wasteKg.replace(',', '.')) || 0);
   const grasa = parseFloat(grasaKg.replace(',', '.'))   || 0;
 
   const netWeight = Math.max(0, production.weightKg - waste);
   const avgGrams  = unit === 'unid' && qty > 0 ? (netWeight / qty) * 1000 : 0;
   const grasaPct  = grasa > 0 ? ((grasa / production.weightKg) * 100).toFixed(1) : null;
-  const canFinish = qty > 0 && waste >= 0 && waste <= production.weightKg && (unit === 'unid' || qty <= production.weightKg);
+  const canFinish = qty > 0;
   const isLastInBatch = currentIndex === totalInBatch - 1;
 
   // Si unidad es KG: auto-calcula desperdicio = bruto - cantidad
@@ -39,7 +46,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const handleUnitChange = (newUnit: 'unid' | 'kg') => {
     setUnit(newUnit);
     setQuantity('');
-    setWasteKg(''); // reset manual waste when switching
+    setWasteKg('');
+    setPesoFinalKg('');
   };
 
   return (
@@ -114,6 +122,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-blue-300 uppercase">{unit}</span>
             </div>
           </div>
+          </div>
 
           {/* DESPERDICIOS */}
           <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm">
@@ -140,15 +149,38 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                 )}
               </div>
             ) : (
-              // Modo UNID: desperdicio manual
-              <div className="relative">
-                <input
-                  type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                  value={wasteKg}
-                  onChange={e => setWasteKg(e.target.value)}
-                  className="w-full p-5 text-5xl font-black text-center border-2 rounded-2xl outline-none transition-all text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white"
-                />
-                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-red-300">KG</span>
+              // Modo UNID: campo peso final → desperdicio automático
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-black text-slate-400 uppercase mb-2">Peso total que salió (kg)</p>
+                  <div className="relative">
+                    <input
+                      type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+                      value={pesoFinalKg}
+                      onChange={e => setPesoFinalKg(e.target.value)}
+                      className="w-full p-4 text-3xl font-black text-center border-2 rounded-2xl outline-none transition-all text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">KG</span>
+                  </div>
+                </div>
+                {pesoFinal > 0 ? (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 text-center">
+                    <p className="text-3xl font-black text-red-600">{waste.toFixed(3).replace('.', ',')} kg</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Desperdicio automático ({production.weightKg} − {pesoFinal} kg)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="number" inputMode="decimal" step="0.01" placeholder="O ingresá el desperdicio manual"
+                      value={wasteKg}
+                      onChange={e => setWasteKg(e.target.value)}
+                      className="w-full p-4 text-2xl font-black text-center border-2 rounded-2xl outline-none transition-all text-red-400 bg-red-50 border-red-100 focus:border-red-400 focus:bg-white"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">KG</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
