@@ -222,7 +222,7 @@ export function createButcheryHandlers(s: Setters) {
 
     // 3. Grasa → stock_produccion
     if (params.grasaKg > 0) {
-      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'caja', cantidad: params.grasaKg, unidad: 'kg' });
+      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'lomito', cantidad: params.grasaKg, unidad: 'kg' });
     }
 
     // 4. Log + push
