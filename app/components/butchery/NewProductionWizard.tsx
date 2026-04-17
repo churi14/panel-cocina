@@ -100,6 +100,8 @@ export function NewProductionWizard({ onStart, onCancel }: {
 
   const setWeight = (type: ButcheryProductionType, val: string) =>
     setWeights(prev => prev.map(w => w.type === type ? { ...w, weight: val } : w));
+  const setWeightByIdx = (idx: number, val: string) =>
+    setWeights(prev => prev.map((w, i) => i === idx ? { ...w, weight: val } : w));
 
   const allValid = weights.length > 0 &&
     weights.every(w => w.weight && parseFloat(w.weight.replace(',', '.')) > 0);
@@ -321,7 +323,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     <div className="flex flex-col h-full">
       {showConfirm && (
         <StartConfirmOverlay
-          entries={weights.map(w => ({ label: getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
+          entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','') + '_L' : getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
           onConfirm={handleConfirm}
           onCancel={() => setShowConfirm(false)}
         />
@@ -355,7 +357,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
             const parsed = parseFloat(entry.weight.replace(',', '.'));
             const isValid = entry.weight !== '' && parsed > 0;
             return (
-              <div key={entry.type} className={`bg-white rounded-2xl border-2 p-6 transition-all ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
+              <div key={idx} className={`bg-white rounded-2xl border-2 p-6 transition-all ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 transition-all
                     ${isValid ? `${kindConfig?.color ?? 'bg-rose-600'} text-white` : 'bg-slate-200 text-slate-400'}`}>
@@ -364,8 +366,14 @@ export function NewProductionWizard({ onStart, onCancel }: {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <span className="text-lg font-black text-slate-800">{cut.label}</span>
-                        <span className="ml-2 text-xs font-bold text-slate-400">→ {cut.stockDestino}</span>
+                        <span className="text-lg font-black text-slate-800">
+                          {entry.carneLinpiaName
+                            ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '')}<span className="text-green-600 font-black">_L</span></>
+                            : cut.label}
+                        </span>
+                        <span className="ml-2 text-xs font-bold text-slate-400">
+                          → {entry.carneLinpiaName ?? cut.stockDestino}
+                        </span>
                       </div>
                       <span className="text-2xl">{cut.emoji}</span>
                     </div>
@@ -376,11 +384,10 @@ export function NewProductionWizard({ onStart, onCancel }: {
                         onChange={e => {
                           const val = e.target.value;
                           const num = parseFloat(val.replace(',', '.'));
-                          // Auto-corregir: si parece gramos (>500 sin decimal), convertir a kg
                           if (num > 500 && !val.includes('.') && !val.includes(',')) {
-                            setWeight(entry.type, (num / 1000).toFixed(3));
+                            setWeightByIdx(idx, (num / 1000).toFixed(3));
                           } else {
-                            setWeight(entry.type, val);
+                            setWeightByIdx(idx, val);
                           }
                         }}
                         className={`w-full px-5 py-4 text-3xl font-black text-center rounded-xl outline-none transition-all
@@ -399,7 +406,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                           <p className="text-xs font-black text-amber-700">¿Pusiste gramos en vez de kilos?</p>
                           <p className="text-xs text-amber-600">{parsed.toFixed(0)} kg parece mucho. Si querías poner {parsed.toFixed(0)}g, son <strong>{(parsed/1000).toFixed(3)} kg</strong>.</p>
                         </div>
-                        <button onClick={() => setWeight(entry.type, (parsed/1000).toFixed(3))}
+                        <button onClick={() => setWeights(prev => prev.map((w, i) => i === idx ? { ...w, weight: (parsed/1000).toFixed(3) } : w))}
                           className="ml-auto px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-lg whitespace-nowrap transition-all">
                           Convertir a {(parsed/1000).toFixed(3)} kg
                         </button>
