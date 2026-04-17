@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown, User } from 'lucide-react';
 import { Movement, formatFecha } from './types';
 import { supabase } from '../supabase';
+import { Trash2, AlertTriangle } from 'lucide-react';
 
 type Props = {
   stock: any[];
@@ -26,6 +27,12 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [umbralMedio, setUmbralMedio]               = useState('');
   const [umbralCritico, setUmbralCritico]           = useState('');
   const [savingUmbrales, setSavingUmbrales]         = useState(false);
+  // Edición de movimientos
+  const [editingMovement, setEditingMovement]       = useState<any | null>(null);
+  const [editMovQty, setEditMovQty]                 = useState('');
+  const [editMovMotivo, setEditMovMotivo]           = useState('');
+  const [savingMovement, setSavingMovement]         = useState(false);
+  const [deleteMovConfirm, setDeleteMovConfirm]     = useState<any | null>(null);
   // Umbrales personales (por usuario logueado)
   const [miCritico, setMiCritico]                   = useState('');
   const [miMedio, setMiMedio]                       = useState('');
@@ -491,6 +498,45 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               .filter(m => m.nombre === selectedStockItem.nombre)
               .slice(0, 30);
 
+            const handleEditMovement = async () => {
+              if (!editingMovement) return;
+              setSavingMovement(true);
+              const newQty = parseFloat(String(editMovQty).replace(',', '.'));
+              const diff = newQty - editingMovement.cantidad;
+              // Update movement record
+              await supabase.from('stock_movements').update({
+                cantidad: newQty,
+                motivo: (editMovMotivo.trim() || editingMovement.motivo) + ' [editado]',
+              }).eq('id', editingMovement.id);
+              // Fix stock quantity
+              if (diff !== 0) {
+                const stockDiff = editingMovement.tipo === 'ingreso' ? diff : -diff;
+                const newStockQty = parseFloat((Number(selectedStockItem.cantidad) + stockDiff).toFixed(3));
+                await supabase.from('stock').update({
+                  cantidad: newStockQty,
+                  fecha_actualizacion: new Date().toISOString().slice(0, 10),
+                }).eq('id', selectedStockItem.id);
+              }
+              setSavingMovement(false);
+              setEditingMovement(null);
+              await fetchMovements();
+            };
+
+            const handleDeleteMovement = async (m: any) => {
+              setSavingMovement(true);
+              // Revertir el efecto en stock
+              const revert = m.tipo === 'ingreso' ? -m.cantidad : m.cantidad;
+              const newStockQty = parseFloat((Number(selectedStockItem.cantidad) + revert).toFixed(3));
+              await supabase.from('stock').update({
+                cantidad: newStockQty,
+                fecha_actualizacion: new Date().toISOString().slice(0, 10),
+              }).eq('id', selectedStockItem.id);
+              await supabase.from('stock_movements').delete().eq('id', m.id);
+              setSavingMovement(false);
+              setDeleteMovConfirm(null);
+              await fetchMovements();
+            };
+
             const handleSaveUmbrales = async () => {
               setSavingUmbrales(true);
               await supabase.from('stock').update({
@@ -752,20 +798,31 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                               <th className="px-4 py-2.5 text-left">Tipo</th>
                               <th className="px-4 py-2.5 text-left">Motivo</th>
                               <th className="px-4 py-2.5 text-right">Cantidad</th>
+                              <th className="px-4 py-2.5 text-center w-16"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-800">
                             {itemMovements.map(m => (
-                              <tr key={m.id} className="hover:bg-slate-800/40">
-                                <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{formatFecha(m.fecha)}</td>
+                              <tr key={m.id} className="hover:bg-slate-800/40 group">
+                                <td className="px-4 py-2.5 text-slate-400 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
                                 <td className="px-4 py-2.5">
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-black ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                                     {m.tipo}
                                   </span>
                                 </td>
-                                <td className="px-4 py-2.5 text-slate-300 text-xs truncate max-w-[140px]">{m.motivo ?? '—'}</td>
+                                <td className="px-4 py-2.5 text-slate-300 text-xs truncate max-w-[120px]">{m.motivo ?? '—'}</td>
                                 <td className="px-4 py-2.5 text-right font-black text-white">
                                   {m.tipo === 'egreso' ? '-' : '+'}{m.cantidad} {m.unidad}
+                                </td>
+                                <td className="px-2 py-2.5 text-center">
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => { setEditingMovement(m); setEditMovQty(String(m.cantidad)); setEditMovMotivo(m.motivo ?? ''); }}
+                                      className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400 text-xs" title="Editar">✏️</button>
+                                    <button onClick={() => setDeleteMovConfirm(m)}
+                                      className="p-1 hover:bg-red-500/10 rounded text-slate-600 hover:text-red-400" title="Eliminar y revertir">
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
