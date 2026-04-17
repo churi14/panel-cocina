@@ -65,7 +65,7 @@ type Setters = {
 export function createButcheryHandlers(s: Setters) {
   const { operador, step2Queue, step2Index } = s;
 
-  const handleStartProductions = async (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => {
+  const handleStartProductions = async (entries: { type: ButcheryProductionType; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => {
     // Solo notificar si hay stock negativo — no bloquear producción
     for (const e of entries) {
       const corteNombre = getCutLabel(e.type);
@@ -87,8 +87,11 @@ export function createButcheryHandlers(s: Setters) {
     }
     const now = Date.now();
     const newProds: ButcheryProduction[] = entries.map((e, i) => ({
-      id: now + i, batchId: now, type: e.type, typeName: getCutLabel(e.type),
-      cut: getCutLabel(e.type), weightKg: e.weight, kind,
+      id: now + i, batchId: now, type: e.type,
+      typeName: e.carneLinpiaName
+        ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
+        : getCutLabel(e.type),
+      cut: e.carneLinpiaName ?? getCutLabel(e.type), weightKg: e.weight, kind,
       startTime: now, status: 'step1_running' as const, date: new Date().toLocaleDateString(),
       startTimeFormatted: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }));
@@ -96,9 +99,12 @@ export function createButcheryHandlers(s: Setters) {
     s.setView('list');
     saveProduccionesMany(newProds);
     entries.forEach(e => {
-      logProduccionEvento('inicio_paso1', kind, getCutLabel(e.type), e.weight,
-        `Inicio paso 1 - ${getCutLabel(e.type)} ${e.weight}kg - ${operador}`, operador);
-      PushEvents.inicioProduccion(kind, getCutLabel(e.type), e.weight, operador);
+      const nombreCorte = e.carneLinpiaName
+        ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
+        : getCutLabel(e.type);
+      logProduccionEvento('inicio_paso1', kind, nombreCorte, e.weight,
+        `Inicio paso 1 - ${nombreCorte} ${e.weight}kg - ${operador}`, operador);
+      PushEvents.inicioProduccion(kind, nombreCorte, e.weight, operador);
     });
   };
 
