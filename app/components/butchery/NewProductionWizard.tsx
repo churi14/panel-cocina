@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Play, Check } from 'lucide-react';
 import { ButcheryProductionType } from '../../types';
 import { CUTS, PRODUCTION_KINDS, ProductionKind, ProductionKindConfig, getCutsByKind, getCutLabel, getCut, formatWeight } from './cuts';
 import { StartConfirmOverlay } from './Overlays';
+import { supabase } from '../../supabase';
 
 type WeightEntry = { type: ButcheryProductionType; weight: string };
 
 export function NewProductionWizard({ onStart, onCancel }: {
-  onStart: (entries: { type: ButcheryProductionType; weight: number }[], kind: ProductionKind) => void | Promise<void>;
+  onStart: (entries: { type: ButcheryProductionType; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [step, setStep] = useState<'kind' | 'select' | 'weights'>('kind');
@@ -18,26 +19,56 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const [weights, setWeights]           = useState<WeightEntry[]>([]);
   const [showConfirm, setShowConfirm]   = useState(false);
   const [tipVisible, setTipVisible]     = useState(() => typeof window !== 'undefined' ? !localStorage.getItem('wizard_tip_seen') : true);
+  const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
+  const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
 
   const kindConfig = selectedKind ? PRODUCTION_KINDS.find(k => k.id === selectedKind)! : null;
-  const availableCuts = selectedKind ? getCutsByKind(selectedKind) : [];
+  const availableCuts = selectedKind === 'limpieza'
+    ? CUTS.filter(c => c.id !== 'grasa_pella' && c.id !== 'not_burger') // todos los cortes de carne
+    : selectedKind ? getCutsByKind(selectedKind) : [];
 
   const toggleCut = (id: ButcheryProductionType) =>
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  const handleSelectKind = (kind: ProductionKind) => {
+  const handleSelectKind = async (kind: ProductionKind) => {
     setSelectedKind(kind);
     setSelected([]);
     setWeights([]);
+    setCarnesLimpias([]);
+    setSelectedCarneLinpia('');
     setTipVisible(!localStorage.getItem('wizard_tip_seen'));
+    // Para lomito/milanesa: fetch carnes limpias del stock_produccion
+    if (kind === 'lomito' || kind === 'milanesa') {
+      const { data } = await supabase
+        .from('stock_produccion')
+        .select('producto, cantidad')
+        .ilike('producto', '% Limpia')
+        .gt('cantidad', 0)
+        .order('producto');
+      setCarnesLimpias(data ?? []);
+    } else if (kind === 'burger') {
+      const { data } = await supabase
+        .from('stock_produccion')
+        .select('producto, cantidad')
+        .ilike('producto', 'Carne Limpia Burger%')
+        .gt('cantidad', 0)
+        .order('producto');
+      setCarnesLimpias(data ?? []);
+    }
     setStep('select');
   };
 
   const handleGoToWeights = () => {
-    setWeights(selected.map(type => ({
-      type,
-      weight: weights.find(w => w.type === type)?.weight ?? '',
-    })));
+    if (selectedKind !== 'limpieza' && selectedCarneLinpia) {
+      // Para carne limpia: usar 'lomo' como tipo genérico pero con nombre del stock
+      const fakeType = 'lomo' as ButcheryProductionType;
+      setWeights([{ type: fakeType, weight: '' }]);
+    } else {
+      setWeights(selected.map(type => ({
+        type,
+        weight: weights.find(w => w.type === type)?.weight ?? '',
+      })));
+    }
     setTipVisible(!localStorage.getItem('wizard_tip_seen'));
     setStep('weights');
   };
@@ -51,7 +82,12 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const handleConfirm = () => {
     if (!selectedKind) return;
     onStart(
-      weights.map(w => ({ type: w.type, weight: parseFloat(w.weight.replace(',', '.')) })),
+      weights.map(w => ({
+        type: w.type,
+        weight: parseFloat(w.weight.replace(',', '.')),
+        // Para carne limpia: override del nombre para usar en stock
+        ...(selectedCarneLinpia ? { carneLinpiaName: selectedCarneLinpia } : {}),
+      })),
       selectedKind
     );
   };
@@ -145,44 +181,72 @@ export function NewProductionWizard({ onStart, onCancel }: {
             <p>• Cuando tengas los que vas a usar, tocá <strong>INGRESAR PESOS</strong>.</p>
           </TipBox>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
-            {availableCuts.map(cut => {
-              const isSelected = selected.includes(cut.id);
-              return (
-                <button
-                  key={cut.id}
-                  onClick={() => toggleCut(cut.id)}
-                  className={`relative border-2 rounded-2xl p-6 flex flex-col items-center gap-3 transition-all active:scale-95
-                    ${isSelected
-                      ? `${kindConfig.borderColor} bg-slate-50 shadow-lg`
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'}`}
-                >
-                  <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
-                    ${isSelected ? `${kindConfig.color} border-transparent` : 'border-slate-300 bg-white'}`}>
-                    {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
+          {selectedKind === 'limpieza' ? (
+            // LIMPIEZA: mostrar cortes crudos de la lista
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
+              {availableCuts.map(cut => {
+                const isSelected = selected.includes(cut.id);
+                return (
+                  <button
+                    key={cut.id}
+                    onClick={() => toggleCut(cut.id)}
+                    className={`relative border-2 rounded-2xl p-6 flex flex-col items-center gap-3 transition-all active:scale-95
+                      ${isSelected ? `${kindConfig.borderColor} bg-slate-50 shadow-lg` : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'}`}
+                  >
+                    <div className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
+                      ${isSelected ? `${kindConfig.color} border-transparent` : 'border-slate-300 bg-white'}`}>
+                      {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
+                    </div>
+                    <span className={`text-4xl transition-transform ${isSelected ? 'scale-110' : ''}`}>{cut.emoji}</span>
+                    <span className={`text-sm font-black text-center leading-tight ${isSelected ? kindConfig.textColor : 'text-slate-700'}`}>{cut.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : carnesLimpias.length > 0 ? (
+            // LOMITO / MILANESA / BURGER: mostrar carne limpia disponible
+            <div className="max-w-2xl mx-auto w-full space-y-3">
+              <p className="text-center text-sm font-bold text-slate-400 mb-2">
+                {selectedKind === 'burger' ? 'Carne limpia burger disponible' : 'Carne limpia disponible en stock'}
+              </p>
+              {carnesLimpias.map(c => (
+                <button key={c.producto}
+                  onClick={() => setSelectedCarneLinpia(c.producto)}
+                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all font-bold
+                    ${selectedCarneLinpia === c.producto
+                      ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🥩</span>
+                    <span className="text-base font-black">{c.producto}</span>
                   </div>
-                  <span className={`text-4xl transition-transform ${isSelected ? 'scale-110' : ''}`}>{cut.emoji}</span>
-                  <span className={`text-sm font-black text-center leading-tight
-                    ${isSelected ? kindConfig.textColor : 'text-slate-700'}`}>
-                    {cut.label}
-                  </span>
+                  <span className="text-sm font-black text-slate-400">{Number(c.cantidad).toFixed(3)} kg disp.</span>
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            // Sin carne limpia disponible
+            <div className="max-w-2xl mx-auto w-full text-center py-16">
+              <p className="text-6xl mb-4">🔪</p>
+              <h4 className="text-xl font-black text-slate-600 mb-2">No hay carne limpia disponible</h4>
+              <p className="text-slate-400 text-sm">Primero hacé una <strong>LIMPIEZA</strong> de carne para generar stock limpio.</p>
+            </div>
+          )}
 
-          {selected.length > 0 && (
+          {(selected.length > 0 || selectedCarneLinpia) && (
             <div className="mt-8 max-w-4xl mx-auto w-full">
               <div className={`border rounded-2xl px-6 py-4 flex items-center justify-between flex-wrap gap-3 bg-slate-50`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-black text-slate-500 uppercase">Seleccionados:</span>
-                  {selected.map(id => (
+                  {selectedKind === 'limpieza' ? selected.map(id => (
                     <span key={id} className={`text-white text-xs font-bold px-3 py-1 rounded-full ${kindConfig.color}`}>
                       {getCutLabel(id)}
                     </span>
-                  ))}
+                  )) : selectedCarneLinpia ? (
+                    <span className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">{selectedCarneLinpia}</span>
+                  ) : null}
                 </div>
-                <span className={`text-2xl font-black ${kindConfig.textColor}`}>{selected.length}</span>
+                <span className={`text-2xl font-black ${kindConfig.textColor}`}>{selectedKind === 'limpieza' ? selected.length : selectedCarneLinpia ? 1 : 0}</span>
               </div>
             </div>
           )}
@@ -191,7 +255,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
         <div className="mt-auto pt-6 space-y-3 max-w-4xl mx-auto w-full">
           <button
             onClick={handleGoToWeights}
-            disabled={selected.length === 0}
+            disabled={selectedKind === 'limpieza' ? selected.length === 0 : !selectedCarneLinpia}
             className={`w-full py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
               ${selected.length > 0 ? `${kindConfig.color} text-white hover:opacity-90 shadow-lg` : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
