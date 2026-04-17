@@ -459,18 +459,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
   const [empanadoCorteStock, setEmpanadoCorteStock] = useState('');
   const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
-  const [menjunjeStocks, setMenjunjeStocks]         = useState<{producto: string; cantidad: number}[]>([]);
-  const [selectedMenjunjeStock, setSelectedMenjunjeStock] = useState('');
   // Salsa kg modal
-  const [showSalsaModal, setShowSalsaModal]         = useState(false);
-  const [salsaKgProducidos, setSalsaKgProducidos]   = useState('');
   // Empanado modal
-  const [showEmpanadoModal, setShowEmpanadoModal]   = useState(false);
-  const [empanadoMenjunjeKg, setEmpanadoMenjunjeKg] = useState('');
-  const [empanadoSalieronKg, setEmpanadoSalieronKg] = useState('');
-  const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
-  const [empanadoCorteStock, setEmpanadoCorteStock] = useState(''); // ej: "Milanesa - Tapa de Nalga"
-  const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
 
   const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
   const activeRecipeName = finishingProd?.recipeName ?? '';
