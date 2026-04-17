@@ -38,22 +38,39 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setSelectedCarneLinpia('');
     setTipVisible(!localStorage.getItem('wizard_tip_seen'));
     // Para lomito/milanesa: fetch carnes limpias del stock_produccion
+    // Lista fija de todos los cortes posibles
+    const TODOS_CORTES = [
+      'Lomo', 'Cuadril', 'Cuadrada', 'Nalga', 'Tapa de Asado',
+      'Bife de Chorizo', 'Vacío', 'Picaña', 'Ojo de Bife', 'Roast Beef', 'Pollo',
+    ];
+
     if (kind === 'lomito' || kind === 'milanesa') {
+      // Buscar stock existente
       const { data } = await supabase
         .from('stock_produccion')
         .select('producto, cantidad')
         .ilike('producto', '% Limpia')
-        .gt('cantidad', 0)
-        .order('producto');
-      setCarnesLimpias(data ?? []);
+        .not('producto', 'ilike', 'Carne Limpia Burger%');
+      const stockMap: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => { stockMap[r.producto] = Number(r.cantidad); });
+      // Mostrar todos los cortes, con stock 0 si no existe
+      const todos = TODOS_CORTES.map(c => ({
+        producto: `${c} Limpia`,
+        cantidad: stockMap[`${c} Limpia`] ?? 0,
+      }));
+      setCarnesLimpias(todos);
     } else if (kind === 'burger') {
       const { data } = await supabase
         .from('stock_produccion')
         .select('producto, cantidad')
-        .ilike('producto', 'Carne Limpia Burger%')
-        .gt('cantidad', 0)
-        .order('producto');
-      setCarnesLimpias(data ?? []);
+        .ilike('producto', 'Carne Limpia Burger%');
+      const stockMap: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => { stockMap[r.producto] = Number(r.cantidad); });
+      const todos = TODOS_CORTES.map(c => ({
+        producto: `Carne Limpia Burger - ${c}`,
+        cantidad: stockMap[`Carne Limpia Burger - ${c}`] ?? 0,
+      }));
+      setCarnesLimpias(todos);
     }
     setStep('select');
   };
@@ -220,7 +237,9 @@ export function NewProductionWizard({ onStart, onCancel }: {
                     <span className="text-2xl">🥩</span>
                     <span className="text-base font-black">{c.producto}</span>
                   </div>
-                  <span className="text-sm font-black text-slate-400">{Number(c.cantidad).toFixed(3)} kg disp.</span>
+                  <span className={`text-sm font-black ${Number(c.cantidad) > 0 ? 'text-slate-400' : 'text-slate-300'}`}>
+                    {Number(c.cantidad) > 0 ? `${Number(c.cantidad).toFixed(3)} kg disp.` : 'Sin stock'}
+                  </span>
                 </button>
               ))}
             </div>
