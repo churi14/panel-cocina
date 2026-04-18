@@ -122,15 +122,15 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
 
           {/* Vista lista */}
           {!!operador && view === 'list' && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-3">
               {activeProductions.length > 0 ? (
-                Array.from(activeBatches.entries()).map(([batchId, batch]) => {
+                Array.from(activeBatches.entries()).sort(([a],[b])=>b-a).map(([batchId, batch]) => {
                   const someRunning = batchAllStep1Running(batch);
                   const allReady = batchAllStep1Done(batch);
                   const runningCount = batch.filter(p => p.status === 'step1_running').length;
                   return (
                     <div key={batchId} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                      <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                      <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {batch[0]?.kind && (
                             <span className={`text-sm font-black text-white px-4 py-1.5 rounded-full uppercase
@@ -150,24 +150,26 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                         )}
                         {allReady && !someRunning && <span className="text-xs font-bold text-green-600">✓ Listo para paso 2</span>}
                       </div>
-                      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                         {batch.map(prod => <ProductionCard key={prod.id} production={prod} />)}
                       </div>
-                      <div className="px-4 pb-4 space-y-2">
-                        {someRunning && (
-                          <button onClick={() => setFinishingBatchId(batchId)}
-                            className="w-full py-3 bg-green-600 text-white font-black text-base rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                            <CheckCircle2 size={20} /> FINALIZAR PASO 1
-                            {batch.length > 1 && ` — ${runningCount} CORTE${runningCount > 1 ? 'S' : ''}`}
-                          </button>
-                        )}
-                        {allReady && (
-                          <button onClick={() => handleGoToBatchStep2(batch)}
-                            className="w-full py-3 bg-green-600 text-white font-black text-base rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                            {batch[0]?.kind === 'limpieza' ? 'FINALIZAR LIMPIEZA' : 'AVANZAR A PASO 2'}{batch.length > 1 && ` — ${batch.length} CORTES`} <ChevronRight size={20} />
-                          </button>
-                        )}
-                      </div>
+                      {/* Botón acción full width abajo - más visible */}
+                      {(someRunning || allReady) && (
+                        <div className="px-3 pb-3">
+                          {someRunning && (
+                            <button onClick={() => setFinishingBatchId(batchId)}
+                              className="w-full py-2.5 bg-green-600 text-white font-black text-sm rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                              <CheckCircle2 size={16} /> FINALIZAR PASO 1{batch.length > 1 && ` (${runningCount})`}
+                            </button>
+                          )}
+                          {allReady && (
+                            <button onClick={() => handleGoToBatchStep2(batch)}
+                              className="w-full py-2.5 bg-green-600 text-white font-black text-sm rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                              {batch[0]?.kind === 'limpieza' ? '🔪 FINALIZAR LIMPIEZA' : '⚡ AVANZAR A PASO 2'} <ChevronRight size={16} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
