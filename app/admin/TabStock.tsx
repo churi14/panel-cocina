@@ -802,7 +802,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           </thead>
                           <tbody className="divide-y divide-slate-800">
                             {itemMovements.map(m => (
-                              <tr key={m.id} className="hover:bg-slate-800/40 group">
+                              <tr key={m.id} className="hover:bg-slate-800/40">
                                 <td className="px-4 py-2.5 text-slate-400 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
                                 <td className="px-4 py-2.5">
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-black ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -813,12 +813,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                 <td className="px-4 py-2.5 text-right font-black text-white">
                                   {m.tipo === 'egreso' ? '-' : '+'}{m.cantidad} {m.unidad}
                                 </td>
-                                <td className="px-2 py-2.5 text-center">
-                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <td className="px-2 py-2.5 text-center whitespace-nowrap">
+                                  <div className="flex gap-1 justify-center">
                                     <button onClick={() => { setEditingMovement(m); setEditMovQty(String(m.cantidad)); setEditMovMotivo(m.motivo ?? ''); }}
-                                      className="p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-blue-400 text-xs" title="Editar">✏️</button>
+                                      className="px-2 py-1 bg-slate-700 hover:bg-blue-600 rounded-lg text-slate-300 hover:text-white text-xs font-bold transition-all" title="Editar">
+                                      ✏️
+                                    </button>
                                     <button onClick={() => setDeleteMovConfirm(m)}
-                                      className="p-1 hover:bg-red-500/10 rounded text-slate-600 hover:text-red-400" title="Eliminar y revertir">
+                                      className="px-2 py-1 bg-slate-700 hover:bg-red-600 rounded-lg text-slate-400 hover:text-white transition-all" title="Eliminar y revertir">
                                       <Trash2 size={11} />
                                     </button>
                                   </div>

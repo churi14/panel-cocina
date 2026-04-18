@@ -29,45 +29,47 @@ export function ProductionCard({ production }: {
 
   return (
     <div className={`rounded-2xl border-2 overflow-hidden ${cardBorder}`}>
-      <div className={`px-5 py-3 flex items-center justify-between ${headerBg}`}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🥩</span>
-          <div>
-            <h3 className="text-white font-black text-base">{production.typeName}</h3>
-            <p className="text-white/75 text-xs font-medium">{formatWeight(production.weightKg)} KG</p>
+      {/* Header compacto */}
+      <div className={`px-3 py-2 flex items-center justify-between ${headerBg}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-lg shrink-0">🥩</span>
+          <div className="min-w-0">
+            <h3 className="text-white font-black text-sm leading-tight truncate">{production.typeName}</h3>
+            <p className="text-white/75 text-xs">{formatWeight(production.weightKg)} KG</p>
           </div>
         </div>
-        <div>
+        <div className="shrink-0 ml-2">
           {isStep1Running && (
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse"/>
-              <span className="text-white/80 text-xs font-bold uppercase">Paso 1 en curso</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"/>
+              <span className="text-white/80 text-[10px] font-bold uppercase hidden sm:inline">PASO 1</span>
             </div>
           )}
           {isStep1Done && (
-            <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
-              LISTO → PASO 2
+            <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              ✓ P2
             </span>
           )}
           {isStep2Running && (
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse"/>
-              <span className="text-white/80 text-xs font-bold uppercase">Paso 2</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"/>
+              <span className="text-white/80 text-[10px] font-bold uppercase">PASO 2</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="px-5 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Timer size={18} className={timerColor} />
-          <span className={`text-3xl font-mono font-black tracking-wider ${timerColor}`}>
+      {/* Timer compacto */}
+      <div className="px-3 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Timer size={14} className={timerColor} />
+          <span className={`text-xl font-mono font-black tracking-wide ${timerColor}`}>
             {formatTimer(elapsed)}
           </span>
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-[10px] text-slate-400 text-right">
           {production.startTimeFormatted}
-          {production.endTimeFormatted && ` → ${production.endTimeFormatted}`}
+          {production.endTimeFormatted && <><br/>→ {production.endTimeFormatted}</>}
         </p>
       </div>
     </div>
