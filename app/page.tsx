@@ -343,8 +343,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       ingredients: [
         { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
         { name: 'Ajo',       qty: 1.5, unit: '%' },
-        { name: 'Sal',       qty: 0.5, unit: '%' },
-        { name: 'Orégano',   qty: 0.3, unit: '%' },
+        { name: 'Limón',     qty: 1,   unit: '%' },
       ]},
     { id: 'salsa_spread', name: 'Salsa Spread', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
@@ -363,8 +362,6 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       ingredients: [
         { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
         { name: 'Ajo',       qty: 8,   unit: '%' },
-        { name: 'Limón',     qty: 1,   unit: '%' },
-        { name: 'Sal',       qty: 0.5, unit: '%' },
       ]},
     { id: 'salsa_criolla', name: 'Criolla', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
