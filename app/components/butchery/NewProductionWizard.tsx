@@ -187,6 +187,11 @@ export function NewProductionWizard({ onStart, onCancel }: {
     );
   }
 
+  // Variable para el botón de continuar
+  const listo = selectedKind === 'limpieza' ? selected.length > 0
+    : selectedKind === 'burger' ? selectedCarnesMulti.length > 0
+    : selectedCarneLinpia !== '';
+
   // ─── PASO 2: seleccionar cortes ───
   if (step === 'select' && kindConfig) {
     return (
@@ -303,12 +308,12 @@ export function NewProductionWizard({ onStart, onCancel }: {
         <div className="mt-auto pt-6 space-y-3 max-w-4xl mx-auto w-full">
           <button
             onClick={handleGoToWeights}
-            disabled={selectedKind === 'limpieza' ? selected.length === 0 : selectedKind === 'burger' ? selectedCarnesMulti.length === 0 : !selectedCarneLinpia}
+            disabled={!listo}
             className={`w-full py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
-              ${selected.length > 0 ? `${kindConfig.color} text-white hover:opacity-90 shadow-lg` : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+              ${listo ? `${kindConfig.color} text-white hover:opacity-90 shadow-lg` : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
             <ChevronRight size={28} />
-            INGRESAR PESOS {selected.length > 0 && `(${selected.length} corte${selected.length > 1 ? 's' : ''})`}
+            INGRESAR PESOS
           </button>
           <button onClick={() => setStep('kind')} className="w-full py-4 text-slate-400 font-bold text-lg hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
             ← VOLVER
