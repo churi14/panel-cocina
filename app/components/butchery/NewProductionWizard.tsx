@@ -149,7 +149,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
   // ─── PASO 1: elegir tipo ───
   if (step === 'kind') {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-1 flex flex-col justify-center">
           <TipBox>
             <p className="font-black mb-1">¿Cómo funciona?</p>
@@ -334,26 +334,29 @@ export function NewProductionWizard({ onStart, onCancel }: {
         />
       )}
 
-      <button onClick={() => setStep('select')} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold text-lg mb-6 px-2 py-2 self-start rounded-xl hover:bg-slate-100 active:scale-95 transition-all">
+      <button onClick={() => setStep('select')} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold text-sm mb-3 px-2 py-1.5 self-start rounded-xl hover:bg-slate-100 active:scale-95 transition-all">
         <ChevronLeft size={24} /> VOLVER A CORTES
       </button>
 
       {kindConfig && (
-        <div className="text-center mb-6">
-          <span className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-white font-black text-lg mb-3 ${kindConfig.color}`}>
+        <div className="text-center mb-3">
+          <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-white font-black text-sm mb-2 ${kindConfig.color}`}>
             {kindConfig.emoji} {kindConfig.label}
           </span>
-          <h3 className="text-2xl font-black text-slate-800 mb-1">Ingresá el peso de cada corte</h3>
-          <p className="text-slate-400 text-sm">Peso bruto antes del procesamiento</p>
+          <h3 className="text-xl font-black text-slate-800 mb-0.5">Ingresá el peso de cada corte</h3>
+          <p className="text-slate-400 text-xs">Peso bruto antes del procesamiento</p>
         </div>
       )}
-      <TipBox>
-        <p className="font-black mb-1">Cómo pesar la carne:</p>
-        <p>1. Poné el corte en la báscula <strong>antes de limpiarlo o cortarlo</strong>.</p>
-        <p>2. Ingresá el número que muestra la báscula (en kg, con decimales).</p>
-        <p>3. Cuando todos los campos estén completos, tocá <strong>EMPEZAR</strong>.</p>
-        <p className="mt-1 text-amber-700">⚠️ Es el peso bruto — con todo, sin limpiar. El sistema calcula el desperdicio después.</p>
-      </TipBox>
+      {/* Tip solo en desktop */}
+      <div className="hidden md:block">
+        <TipBox>
+          <p className="font-black mb-1">Cómo pesar la carne:</p>
+          <p>1. Poné el corte en la báscula <strong>antes de limpiarlo o cortarlo</strong>.</p>
+          <p>2. Ingresá el número que muestra la báscula (en kg, con decimales).</p>
+          <p>3. Cuando todos los campos estén completos, tocá <strong>EMPEZAR</strong>.</p>
+          <p className="mt-1 text-amber-700">⚠️ Es el peso bruto — con todo, sin limpiar.</p>
+        </TipBox>
+      </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-4 max-w-2xl mx-auto w-full">
@@ -362,7 +365,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
             const parsed = parseFloat(entry.weight.replace(',', '.'));
             const isValid = entry.weight !== '' && parsed > 0;
             return (
-              <div key={idx} className={`bg-white rounded-2xl border-2 p-6 transition-all ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
+              <div key={idx} className={`bg-white rounded-2xl border-2 p-3 md:p-6 transition-all ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 transition-all
                     ${isValid ? `${kindConfig?.color ?? 'bg-rose-600'} text-white` : 'bg-slate-200 text-slate-400'}`}>
