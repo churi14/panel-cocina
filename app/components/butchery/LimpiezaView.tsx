@@ -20,6 +20,7 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
   const [grasaKg, setGrasaKg]             = useState('');
   const [carneLinpiaKg, setCarneLinpiaKg] = useState('');
   const [destino, setDestino]             = useState<Destino | null>(null);
+  const [submitting, setSubmitting]       = useState(false);
 
   const grasa       = parseFloat(grasaKg.replace(',', '.'))       || 0;
   const carne       = parseFloat(carneLinpiaKg.replace(',', '.')) || 0;
@@ -143,11 +144,15 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
         )}
 
         <button
-          onClick={() => destino && onFinish({ carneLinpiaKg: carne, grasaKg: grasa, desperdicioKg: desperdicio, destino })}
-          disabled={!canFinish}
+          onClick={async () => {
+            if (!destino || submitting) return;
+            setSubmitting(true);
+            await onFinish({ carneLinpiaKg: carne, grasaKg: grasa, desperdicioKg: desperdicio, destino });
+          }}
+          disabled={!canFinish || submitting}
           className={`w-full py-5 rounded-2xl font-black text-xl transition-all flex items-center justify-center gap-3
-            ${canFinish ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-          <CheckCircle2 size={24} /> Confirmar limpieza
+            ${canFinish && !submitting ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <CheckCircle2 size={24} /> {submitting ? 'Guardando...' : 'Confirmar limpieza'}
         </button>
       </div>
     </div>
