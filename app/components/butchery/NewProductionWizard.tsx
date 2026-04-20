@@ -18,7 +18,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const [selected, setSelected]         = useState<ButcheryProductionType[]>([]);
   const [weights, setWeights]           = useState<WeightEntry[]>([]);
   const [showConfirm, setShowConfirm]   = useState(false);
-  const [tipVisible, setTipVisible]     = useState(() => typeof window !== 'undefined' ? !localStorage.getItem('wizard_tip_seen') : true);
+  const [tipVisible, setTipVisible]     = useState(false); // collapsed by default, open with 'Ver ayuda'
   const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
   const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
   const [selectedCarnesMulti, setSelectedCarnesMulti] = useState<string[]>([]); // burger multi-select
@@ -149,37 +149,37 @@ export function NewProductionWizard({ onStart, onCancel }: {
   // ─── PASO 1: elegir tipo ───
   if (step === 'kind') {
     return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="flex-1 flex flex-col justify-center">
-          <TipBox>
-            <p className="font-black mb-1">¿Cómo funciona?</p>
-            <p><strong>LOMITO</strong> → cuando vas a hacer bifes para sándwiches de lomito.</p>
-            <p><strong>BURGER</strong> → cuando vas a hacer medallones de hamburguesa.</p>
-            <p><strong>MILANESA</strong> → cuando vas a empanar milanesas.</p>
-            <p className="mt-1 text-amber-700">Tocá el que corresponde para arrancar.</p>
-          </TipBox>
-          <div className="text-center mb-12">
-            <h3 className="text-xl md:text-3xl font-black text-slate-800 mb-2">¿Qué vas a producir?</h3>
-            <p className="text-slate-400 text-sm md:text-lg">Elegí el tipo de producción</p>
-          </div>
+      <div className="flex flex-col h-full overflow-y-auto">
+        <TipBox>
+          <p className="font-black mb-1">¿Cómo funciona?</p>
+          <p><strong>LIMPIEZA</strong> → cuando vas a limpiar la carne cruda.</p>
+          <p><strong>LOMITO</strong> → cuando vas a hacer bifes para sándwiches.</p>
+          <p><strong>BURGER</strong> → cuando vas a hacer medallones.</p>
+          <p><strong>MILANESA</strong> → cuando vas a empanar milanesas.</p>
+          <p className="mt-1 text-amber-700">Tocá el que corresponde para arrancar.</p>
+        </TipBox>
 
-          <div className="grid grid-cols-3 gap-3 md:gap-6 max-w-3xl mx-auto w-full px-2">
-            {PRODUCTION_KINDS.map(kind => (
-              <button
-                key={kind.id}
-                onClick={() => handleSelectKind(kind.id)}
-                className={`bg-white border-2 border-slate-200 hover:${kind.borderColor} rounded-2xl p-4 md:p-10 flex flex-col items-center gap-2 md:gap-5 transition-all active:scale-95 hover:shadow-xl group`}
-              >
-                <span className="text-4xl md:text-7xl group-hover:scale-110 transition-transform">{kind.emoji}</span>
-                <span className={`text-sm md:text-3xl font-black ${kind.textColor} text-center leading-tight`}>{kind.label}</span>
-                <span className="text-[10px] md:text-xs text-slate-400 font-medium text-center hidden md:block">{kind.description}</span>
-              </button>
-            ))}
-          </div>
+        <div className="text-center mb-4">
+          <h3 className="text-xl md:text-3xl font-black text-slate-800 mb-1">¿Qué vas a producir?</h3>
+          <p className="text-slate-400 text-sm">Elegí el tipo de producción</p>
         </div>
 
-        <div className="mt-auto pt-6 max-w-3xl mx-auto w-full">
-          <button onClick={onCancel} className="w-full py-4 text-slate-400 font-bold text-lg hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto w-full px-2 mb-4">
+          {PRODUCTION_KINDS.map(kind => (
+            <button
+              key={kind.id}
+              onClick={() => handleSelectKind(kind.id)}
+              className={`bg-white border-2 border-slate-200 hover:${kind.borderColor} rounded-2xl p-4 flex flex-col items-center gap-2 transition-all active:scale-95 hover:shadow-xl group`}
+            >
+              <span className="text-4xl group-hover:scale-110 transition-transform">{kind.emoji}</span>
+              <span className={`text-sm font-black ${kind.textColor} text-center leading-tight`}>{kind.label}</span>
+              <span className="text-[10px] text-slate-400 font-medium text-center">{kind.description}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="max-w-3xl mx-auto w-full mt-auto">
+          <button onClick={onCancel} className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
             CANCELAR
           </button>
         </div>
