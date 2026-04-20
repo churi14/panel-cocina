@@ -16,7 +16,9 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   onBack: () => void;
 }) {
   const cut = getCut(production.type);
-  const [unit, setUnit]             = useState<'unid' | 'kg'>(cut.defaultUnit);
+  // Milanesa siempre se maneja por KG
+  const defaultUnit: 'unid' | 'kg' = kindLabel === 'milanesa' ? 'kg' : cut.defaultUnit;
+  const [unit, setUnit]             = useState<'unid' | 'kg'>(defaultUnit);
   const [quantity, setQuantity]     = useState('');
   const [pesoFinalKg, setPesoFinalKg] = useState('');
   const [wasteKg, setWasteKg]       = useState('');
@@ -119,8 +121,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
         <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mb-1">
           PASO 2 — {kindLabel ? kindLabel.toUpperCase() : 'Registrar producción'}
         </p>
-        <h2 className="text-5xl font-black text-slate-900 mb-1">{cut.label}</h2>
-        {kindLabel && kindLabel.toLowerCase() !== 'lomito' && (
+        <h2 className="text-5xl font-black text-slate-900 mb-1">{production.typeName || cut.label}</h2>
+        {kindLabel && (
           <p className="text-sm font-bold text-slate-400 mb-2">para {kindDisplay}</p>
         )}
         <div className="flex items-center justify-center gap-3 text-base flex-wrap mt-1">
