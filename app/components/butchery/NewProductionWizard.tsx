@@ -358,7 +358,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
         </TipBox>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="space-y-4 max-w-2xl mx-auto w-full">
           {weights.map((entry, idx) => {
             const cut = getCut(entry.type);
@@ -366,13 +366,13 @@ export function NewProductionWizard({ onStart, onCancel }: {
             const isValid = entry.weight !== '' && parsed > 0;
             return (
               <div key={idx} className={`bg-white rounded-2xl border-2 p-3 md:p-6 transition-all ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 transition-all
                     ${isValid ? `${kindConfig?.color ?? 'bg-rose-600'} text-white` : 'bg-slate-200 text-slate-400'}`}>
                     {isValid ? <Check size={18} strokeWidth={3} /> : idx + 1}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-1">
                       <div>
                         <span className="text-lg font-black text-slate-800">
                           {entry.carneLinpiaName
@@ -398,7 +398,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                             setWeightByIdx(idx, val);
                           }
                         }}
-                        className={`w-full px-5 py-4 text-3xl font-black text-center rounded-xl outline-none transition-all
+                        className={`w-full px-3 py-3 text-3xl font-black text-center rounded-xl outline-none transition-all
                           ${parsed > 200
                             ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
                             : isValid
@@ -428,17 +428,17 @@ export function NewProductionWizard({ onStart, onCancel }: {
         </div>
       </div>
 
-      <div className="mt-6 max-w-2xl mx-auto w-full space-y-3">
+      <div className="mt-3 max-w-2xl mx-auto w-full space-y-2">
         <button
           onClick={() => setShowConfirm(true)}
           disabled={!allValid}
-          className={`w-full py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
+          className={`w-full py-4 rounded-2xl font-black text-xl transition-all flex items-center justify-center gap-3
             ${allValid ? `${kindConfig?.color ?? 'bg-rose-600'} text-white hover:opacity-90 shadow-lg` : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
         >
-          <Play size={28} fill="currentColor" />
+          <Play size={22} fill="currentColor" />
           EMPEZAR {weights.length} PRODUCCIÓN{weights.length > 1 ? 'ES' : ''}
         </button>
-        <button onClick={onCancel} className="w-full py-4 text-slate-400 font-bold text-lg hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+        <button onClick={onCancel} className="w-full py-2.5 text-slate-400 font-bold text-base hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
           CANCELAR
         </button>
       </div>
