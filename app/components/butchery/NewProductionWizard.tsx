@@ -325,7 +325,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
 
   // ─── PASO 3: ingresar pesos ───
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {showConfirm && (
         <StartConfirmOverlay
           entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','') + '_L' : getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
@@ -334,94 +334,67 @@ export function NewProductionWizard({ onStart, onCancel }: {
         />
       )}
 
-      <button onClick={() => setStep('select')} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold text-sm mb-3 px-2 py-1.5 self-start rounded-xl hover:bg-slate-100 active:scale-95 transition-all">
-        <ChevronLeft size={24} /> VOLVER A CORTES
-      </button>
-
-      {kindConfig && (
-        <div className="text-center mb-3">
-          <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-white font-black text-sm mb-2 ${kindConfig.color}`}>
+      {/* Header ultra compacto */}
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <button onClick={() => setStep('select')} className="flex items-center gap-1 text-slate-500 font-bold text-sm px-2 py-1 rounded-xl hover:bg-slate-100 active:scale-95 transition-all">
+          <ChevronLeft size={18} /> Cortes
+        </button>
+        {kindConfig && (
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-white font-black text-xs ${kindConfig.color}`}>
             {kindConfig.emoji} {kindConfig.label}
           </span>
-          <h3 className="text-xl font-black text-slate-800 mb-0.5">Ingresá el peso de cada corte</h3>
-          <p className="text-slate-400 text-xs">Peso bruto antes del procesamiento</p>
-        </div>
-      )}
-      {/* Tip solo en desktop */}
-      <div className="hidden md:block">
-        <TipBox>
-          <p className="font-black mb-1">Cómo pesar la carne:</p>
-          <p>1. Poné el corte en la báscula <strong>antes de limpiarlo o cortarlo</strong>.</p>
-          <p>2. Ingresá el número que muestra la báscula (en kg, con decimales).</p>
-          <p>3. Cuando todos los campos estén completos, tocá <strong>EMPEZAR</strong>.</p>
-          <p className="mt-1 text-amber-700">⚠️ Es el peso bruto — con todo, sin limpiar.</p>
-        </TipBox>
+        )}
+        <div className="w-16" />
       </div>
 
+      <p className="text-center font-black text-slate-700 text-base mb-2 shrink-0">Ingresá el peso de cada corte</p>
+
+      {/* Cards de peso — scroll si hay muchas */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="space-y-4 max-w-2xl mx-auto w-full">
+        <div className="space-y-2 max-w-2xl mx-auto w-full">
           {weights.map((entry, idx) => {
             const cut = getCut(entry.type);
             const parsed = parseFloat(entry.weight.replace(',', '.'));
             const isValid = entry.weight !== '' && parsed > 0;
             return (
-              <div key={idx} className={`bg-white rounded-2xl border-2 p-3 md:p-6 transition-all ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
-                <div className="flex items-center gap-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 transition-all
-                    ${isValid ? `${kindConfig?.color ?? 'bg-rose-600'} text-white` : 'bg-slate-200 text-slate-400'}`}>
-                    {isValid ? <Check size={18} strokeWidth={3} /> : idx + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <div>
-                        <span className="text-lg font-black text-slate-800">
-                          {entry.carneLinpiaName
-                            ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '')}<span className="text-green-600 font-black">_L</span></>
-                            : cut.label}
-                        </span>
-                        <span className="ml-2 text-xs font-bold text-slate-400">
-                          → {entry.carneLinpiaName ?? cut.stockDestino}
-                        </span>
-                      </div>
-                      <span className="text-2xl">{cut.emoji}</span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                        value={entry.weight}
-                        onChange={e => {
-                          const val = e.target.value;
-                          const num = parseFloat(val.replace(',', '.'));
-                          if (num > 500 && !val.includes('.') && !val.includes(',')) {
-                            setWeightByIdx(idx, (num / 1000).toFixed(3));
-                          } else {
-                            setWeightByIdx(idx, val);
-                          }
-                        }}
-                        className={`w-full px-3 py-3 text-3xl font-black text-center rounded-xl outline-none transition-all
-                          ${parsed > 200
-                            ? 'bg-amber-50 border-2 border-amber-400 text-amber-700'
-                            : isValid
-                              ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'} focus:opacity-90`
-                              : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
-                      />
-                      <span className={`absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black ${isValid ? 'text-slate-400' : 'text-slate-300'}`}>KG</span>
-                    </div>
-                    {parsed > 200 && (
-                      <div className="mt-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 flex items-center gap-2">
-                        <span className="text-amber-500 text-lg">⚠️</span>
-                        <div>
-                          <p className="text-xs font-black text-amber-700">¿Pusiste gramos en vez de kilos?</p>
-                          <p className="text-xs text-amber-600">{parsed.toFixed(0)} kg parece mucho. Si querías poner {parsed.toFixed(0)}g, son <strong>{(parsed/1000).toFixed(3)} kg</strong>.</p>
-                        </div>
-                        <button onClick={() => setWeights(prev => prev.map((w, i) => i === idx ? { ...w, weight: (parsed/1000).toFixed(3) } : w))}
-                          className="ml-auto px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-lg whitespace-nowrap transition-all">
-                          Convertir a {(parsed/1000).toFixed(3)} kg
-                        </button>
-                      </div>
-                    )}
-                  </div>
+              <div key={idx} className={`bg-white rounded-2xl border-2 px-3 py-2 transition-all flex items-center gap-3
+                ${isValid ? (kindConfig ? kindConfig.borderColor : 'border-rose-300') : 'border-slate-200'}`}>
+                {/* Indicador */}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0
+                  ${isValid ? `${kindConfig?.color ?? 'bg-rose-600'} text-white` : 'bg-slate-200 text-slate-400'}`}>
+                  {isValid ? <Check size={14} strokeWidth={3} /> : idx + 1}
                 </div>
+                {/* Nombre */}
+                <div className="shrink-0 w-28">
+                  <p className="font-black text-slate-800 text-sm leading-tight">
+                    {entry.carneLinpiaName
+                      ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '')}<span className="text-green-600">_L</span></>
+                      : cut.label}
+                  </p>
+                  <p className="text-xs text-slate-400 truncate">{cut.emoji}</p>
+                </div>
+                {/* Input */}
+                <div className="flex-1 relative">
+                  <input
+                    type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+                    value={entry.weight}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const num = parseFloat(val.replace(',', '.'));
+                      if (num > 500 && !val.includes('.') && !val.includes(',')) {
+                        setWeightByIdx(idx, (num / 1000).toFixed(3));
+                      } else {
+                        setWeightByIdx(idx, val);
+                      }
+                    }}
+                    className={`w-full px-3 py-3 text-2xl font-black text-center rounded-xl outline-none transition-all
+                      ${isValid
+                        ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'}`
+                        : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
+                  />
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black ${isValid ? 'text-slate-400' : 'text-slate-300'}`}>KG</span>
+                </div>
+
               </div>
             );
           })}
