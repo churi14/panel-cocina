@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
 
@@ -21,6 +21,7 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
   const [carneLinpiaKg, setCarneLinpiaKg] = useState('');
   const [destino, setDestino]             = useState<Destino | null>(null);
   const [submitting, setSubmitting]       = useState(false);
+  const submittingRef                     = useRef(false);
 
   const grasa       = parseFloat(grasaKg.replace(',', '.'))       || 0;
   const carne       = parseFloat(carneLinpiaKg.replace(',', '.')) || 0;
@@ -145,7 +146,8 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
 
         <button
           onClick={async () => {
-            if (!destino || submitting) return;
+            if (!destino || submittingRef.current) return;
+            submittingRef.current = true;
             setSubmitting(true);
             await onFinish({ carneLinpiaKg: carne, grasaKg: grasa, desperdicioKg: desperdicio, destino });
           }}

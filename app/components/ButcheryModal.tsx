@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Beef, X, Plus, ChevronLeft, Download, FileText, CheckCircle2, ChevronRight } from 'lucide-react';
 import { ButcheryProduction, ButcheryRecord } from '../types';
 import { CUTS } from './butchery/cuts';
@@ -27,6 +27,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const [step2Queue, setStep2Queue] = useState<ButcheryProduction[]>([]);
   const [step2Index, setStep2Index] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const activeProductions = butcheryProductions.filter(p => p.status !== 'step2_done');
   const activeBatches = groupByBatch(activeProductions);
@@ -233,7 +234,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                 key={currentStep2Prod.id}
                 production={currentStep2Prod}
                 onFinish={async (params) => {
-                  if (submitting) return;
+                  if (submittingRef.current) return;
+                  submittingRef.current = true;
                   setSubmitting(true);
                   await handleFinishLimpieza(currentStep2Prod, params);
                   const next = step2Index + 1;
@@ -249,7 +251,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                 productions={step2Queue}
                 step2StartTime={step2Queue[0]?.step2StartTime ?? Date.now()}
                 onFinish={async (result) => {
-                  if (submitting) return;
+                  if (submittingRef.current) return;
+                  submittingRef.current = true;
                   setSubmitting(true);
                   await handleFinishBurgerBlend(result);
                   setSubmitting(false);
@@ -264,7 +267,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                 currentIndex={step2Index}
                 kindLabel={currentStep2Prod.kind}
                 onFinish={async (...args: Parameters<typeof handleFinishStep2>) => {
-                  if (submitting) return;
+                  if (submittingRef.current) return;
+                  submittingRef.current = true;
                   setSubmitting(true);
                   await handleFinishStep2(...args);
                   setSubmitting(false);
@@ -280,7 +284,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
         <FinishStep1Overlay
           productions={finishingBatch}
           onConfirm={async () => {
-            if (submitting) return;
+            if (submittingRef.current) return;
+            submittingRef.current = true;
             setSubmitting(true);
             await handleFinishBatchStep1(finishingBatchId);
             setSubmitting(false);
