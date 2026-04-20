@@ -16,56 +16,75 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   onBack: () => void;
 }) {
   const cut = getCut(production.type);
-  const [unit, setUnit]           = useState<'unid' | 'kg'>(cut.defaultUnit);
-  const [quantity, setQuantity]   = useState('');
-  const [pesoFinalKg, setPesoFinalKg] = useState(''); // solo modo UNID
-  const [wasteKg, setWasteKg]     = useState('');
-  const [grasaKg, setGrasaKg]     = useState('');
-  const [showGrasa, setShowGrasa] = useState(false);
+  const [unit, setUnit]             = useState<'unid' | 'kg'>(cut.defaultUnit);
+  const [quantity, setQuantity]     = useState('');
+  const [pesoFinalKg, setPesoFinalKg] = useState('');
+  const [wasteKg, setWasteKg]       = useState('');
+  const [wasteMode, setWasteMode]   = useState<'peso' | 'desperdicio'>('peso');
+  const [grasaKg, setGrasaKg]       = useState('');
+  const [showGrasa, setShowGrasa]   = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
   const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
 
-  // Fetch carne limpia disponible según el kind
+  // Fetch SOLO el stock del corte seleccionado
   useEffect(() => {
     const fetchCarnesLimpias = async () => {
-      const { data } = await supabase
+      const typeName = production.typeName;
+      let query = supabase
         .from('stock_produccion')
         .select('producto, cantidad')
-        .ilike('producto', kindLabel === 'burger' ? 'Carne Limpia Burger%' : '% Limpia')
         .gt('cantidad', 0)
         .order('producto');
+
+      if (kindLabel === 'burger') {
+        query = query.ilike('producto', `Carne Limpia Burger - ${typeName}%`);
+      } else {
+        query = query.eq('producto', `${typeName} Limpia`);
+      }
+
+      const { data } = await query;
       setCarnesLimpias(data ?? []);
+      if (data && data.length === 1) {
+        setSelectedCarneLinpia(data[0].producto);
+      }
     };
     fetchCarnesLimpias();
-  }, [kindLabel]);
+  }, [kindLabel, production.typeName]);
 
-  const qty   = parseFloat(quantity.replace(',', '.'))  || 0;
-  // En modo KG: desperdicio = bruto - cantidad producida
-  // En modo UNID: desperdicio = bruto - pesoFinalKg (si lo ingresaron)
+  const qty       = parseFloat(quantity.replace(',', '.'))    || 0;
   const pesoFinal = parseFloat(pesoFinalKg.replace(',', '.')) || 0;
-  const wasteAuto = unit === 'kg' && qty > 0
-    ? Math.max(0, parseFloat((production.weightKg - qty).toFixed(3)))
-    : unit === 'unid' && pesoFinal > 0
-      ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
-      : null;
-  const waste = wasteAuto !== null ? wasteAuto : (parseFloat(wasteKg.replace(',', '.')) || 0);
-  const grasa = parseFloat(grasaKg.replace(',', '.'))   || 0;
 
-  const netWeight = Math.max(0, production.weightKg - waste);
-  const avgGrams  = unit === 'unid' && qty > 0 ? (netWeight / qty) * 1000 : 0;
-  const grasaPct  = grasa > 0 ? ((grasa / production.weightKg) * 100).toFixed(1) : null;
-  const canFinish = qty > 0;
+  const wasteAuto =
+    unit === 'kg' && qty > 0
+      ? Math.max(0, parseFloat((production.weightKg - qty).toFixed(3)))
+      : unit === 'unid' && wasteMode === 'peso' && pesoFinal > 0
+        ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
+        : null;
+
+  const waste =
+    unit === 'unid' && wasteMode === 'desperdicio'
+      ? (parseFloat(wasteKg.replace(',', '.')) || 0)
+      : (wasteAuto !== null ? wasteAuto : 0);
+
+  const grasa      = parseFloat(grasaKg.replace(',', '.')) || 0;
+  const netWeight  = Math.max(0, production.weightKg - waste);
+  const avgGrams   = unit === 'unid' && qty > 0 ? (netWeight / qty) * 1000 : 0;
+  const grasaPct   = grasa > 0 ? ((grasa / production.weightKg) * 100).toFixed(1) : null;
+  const canFinish  = qty > 0;
   const isLastInBatch = currentIndex === totalInBatch - 1;
 
-  // Si unidad es KG: auto-calcula desperdicio = bruto - cantidad
-  // Al cambiar de unidad, limpiar campos
   const handleUnitChange = (newUnit: 'unid' | 'kg') => {
     setUnit(newUnit);
     setQuantity('');
     setWasteKg('');
     setPesoFinalKg('');
+    setWasteMode('peso');
   };
+
+  const kindDisplay = kindLabel
+    ? kindLabel.charAt(0).toUpperCase() + kindLabel.slice(1).toLowerCase()
+    : '';
 
   return (
     <div className="max-w-4xl mx-auto w-full">
@@ -95,11 +114,16 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
         )}
       </div>
 
-      {/* TÍTULO GRANDE */}
+      {/* TÍTULO */}
       <div className="text-center mb-8">
-        <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mb-2">PASO 2 — {kindLabel ? kindLabel.toUpperCase() : 'Registrar producción'}</p>
-        <h2 className="text-5xl font-black text-slate-900 mb-3">{cut.label}</h2>
-        <div className="flex items-center justify-center gap-3 text-base flex-wrap">
+        <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mb-1">
+          PASO 2 — {kindLabel ? kindLabel.toUpperCase() : 'Registrar producción'}
+        </p>
+        <h2 className="text-5xl font-black text-slate-900 mb-1">{cut.label}</h2>
+        {kindLabel && kindLabel.toLowerCase() !== 'lomito' && (
+          <p className="text-sm font-bold text-slate-400 mb-2">para {kindDisplay}</p>
+        )}
+        <div className="flex items-center justify-center gap-3 text-base flex-wrap mt-1">
           <span className="text-slate-500">Peso bruto:</span>
           <span className="font-black text-slate-700">{formatWeight(production.weightKg)} kg</span>
           <span className="text-slate-300">·</span>
@@ -107,12 +131,13 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
         </div>
       </div>
 
-      {/* Selector carne limpia */}
+      {/* Stock de carne limpia — SOLO el del corte elegido */}
       {carnesLimpias.length > 0 && (
-        <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 mb-2">
-          <h4 className="font-black text-slate-700 mb-3 text-sm uppercase tracking-wide">
-            🥩 ELEGÍ EL STOCK DE CARNE {kindLabel === 'burger' ? 'LIMPIA BURGER' : 'LIMPIA'}
+        <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 mb-4">
+          <h4 className="font-black text-slate-700 mb-1 text-sm uppercase tracking-wide">
+            🥩 Stock de carne limpia a usar
           </h4>
+          <p className="text-xs text-slate-400 mb-3">Stock que se va a consumir en esta producción</p>
           <div className="space-y-2">
             {carnesLimpias.map(c => (
               <button key={c.producto}
@@ -122,28 +147,9 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                     ? 'border-green-500 bg-green-50 text-green-800'
                     : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}`}>
                 <span>{c.producto}</span>
-                <span className="text-xs font-black text-slate-400">{c.cantidad.toFixed ? c.cantidad.toFixed(3) : c.cantidad} kg disp.</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Selector carne limpia */}
-      {carnesLimpias.length > 0 && (
-        <div className="bg-white border-2 border-slate-200 rounded-3xl p-5 mb-2">
-          <h4 className="font-black text-slate-700 mb-3 text-sm uppercase tracking-wide">
-            🥩 Elegí el stock de carne limpia
-          </h4>
-          <div className="space-y-2">
-            {carnesLimpias.map(c => (
-              <button key={c.producto}
-                onClick={() => setSelectedCarneLinpia(c.producto)}
-                className={selectedCarneLinpia === c.producto
-                  ? 'w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm border-green-500 bg-green-50 text-green-800'
-                  : 'w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold text-sm border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}>
-                <span>{c.producto}</span>
-                <span className="text-xs font-black text-slate-400">{typeof c.cantidad === 'number' ? c.cantidad.toFixed(3) : c.cantidad} kg disp.</span>
+                <span className={`text-xs font-black ${selectedCarneLinpia === c.producto ? 'text-green-600' : 'text-slate-400'}`}>
+                  {typeof c.cantidad === 'number' ? c.cantidad.toFixed(3) : c.cantidad} kg disp.
+                </span>
               </button>
             ))}
           </div>
@@ -154,7 +160,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
         {/* INPUTS */}
         <div className="space-y-5">
 
-          {/* CANTIDAD con toggle unid/kg */}
+          {/* CANTIDAD */}
           <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -194,8 +200,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                 <p className="text-xs text-slate-400">Grasa, packaging, hueso, etc.</p>
               </div>
             </div>
+
             {unit === 'kg' ? (
-              // Modo KG: desperdicio automático
               <div className="relative">
                 <div className="w-full p-5 text-5xl font-black text-center border-2 rounded-2xl bg-red-50 border-red-200 text-red-600 select-none">
                   {waste > 0 ? waste.toFixed(3).replace('.', ',') : <span className="text-red-300">—</span>}
@@ -203,48 +209,69 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                 <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-red-300">KG</span>
                 {qty > 0 && (
                   <p className="text-xs text-slate-400 text-center mt-2">
-                    Calculado automáticamente ({production.weightKg} kg bruto − {qty} kg producidos)
+                    Auto: {production.weightKg} − {qty} kg
                   </p>
                 )}
               </div>
             ) : (
-              // Modo UNID: campo peso final → desperdicio automático
               <div className="space-y-3">
-                <div>
-                  <p className="text-xs font-black text-slate-400 uppercase mb-2">Peso total que salió (kg)</p>
-                  <div className="relative">
-                    <input
-                      type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                      value={pesoFinalKg}
-                      onChange={e => setPesoFinalKg(e.target.value)}
-                      className="w-full p-4 text-3xl font-black text-center border-2 rounded-2xl outline-none transition-all text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white"
-                    />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">KG</span>
-                  </div>
+                {/* Toggle: peso total vs desperdicio directo */}
+                <div className="flex bg-slate-100 rounded-xl p-1">
+                  <button
+                    onClick={() => { setWasteMode('peso'); setWasteKg(''); }}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1.5
+                      ${wasteMode === 'peso' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
+                    ⚖️ Peso total salido
+                  </button>
+                  <button
+                    onClick={() => { setWasteMode('desperdicio'); setPesoFinalKg(''); }}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1.5
+                      ${wasteMode === 'desperdicio' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
+                    🗑️ Desperdicio directo
+                  </button>
                 </div>
-                {pesoFinal > 0 ? (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 text-center">
-                    <p className="text-3xl font-black text-red-600">{waste.toFixed(3).replace('.', ',')} kg</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Desperdicio automático ({production.weightKg} − {pesoFinal} kg)
-                    </p>
+
+                {wasteMode === 'peso' ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-black text-slate-400 uppercase">Peso total que salió (kg)</p>
+                    <div className="relative">
+                      <input
+                        type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+                        value={pesoFinalKg} onChange={e => setPesoFinalKg(e.target.value)}
+                        className="w-full p-4 text-4xl font-black text-center border-2 rounded-2xl outline-none text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white transition-all"
+                      />
+                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">KG</span>
+                    </div>
+                    {pesoFinal > 0 && (
+                      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3 text-center">
+                        <p className="text-2xl font-black text-red-600">{waste.toFixed(3).replace('.', ',')} kg desperdicio</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{production.weightKg} − {pesoFinal} = {waste.toFixed(3)} kg</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="relative">
-                    <input
-                      type="number" inputMode="decimal" step="0.01" placeholder="O ingresá el desperdicio manual"
-                      value={wasteKg}
-                      onChange={e => setWasteKg(e.target.value)}
-                      className="w-full p-4 text-2xl font-black text-center border-2 rounded-2xl outline-none transition-all text-red-400 bg-red-50 border-red-100 focus:border-red-400 focus:bg-white"
-                    />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">KG</span>
+                  <div className="space-y-2">
+                    <p className="text-xs font-black text-slate-400 uppercase">Desperdicio (kg)</p>
+                    <div className="relative">
+                      <input
+                        type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+                        value={wasteKg} onChange={e => setWasteKg(e.target.value)}
+                        className="w-full p-4 text-4xl font-black text-center border-2 rounded-2xl outline-none text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white transition-all"
+                      />
+                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">KG</span>
+                    </div>
+                    {waste > 0 && (
+                      <p className="text-xs text-center text-slate-400">
+                        Neto: {(production.weightKg - waste).toFixed(3)} kg
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* GRASA INCORPORADA — opcional (no en lomito) */}
+          {/* GRASA — solo burger */}
           {kindLabel === 'burger' && (!showGrasa ? (
             <button onClick={() => setShowGrasa(true)} className="w-full py-3 border-2 border-dashed border-orange-200 rounded-2xl text-orange-400 font-bold text-sm hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all">
               + Agregar grasa incorporada (opcional)
@@ -261,9 +288,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                     <p className="text-xs text-slate-400">Grasa agregada a la mezcla</p>
                   </div>
                 </div>
-                {grasaPct && (
-                  <span className="bg-orange-100 text-orange-700 font-black text-lg px-3 py-1 rounded-full">{grasaPct}%</span>
-                )}
+                {grasaPct && <span className="bg-orange-100 text-orange-700 font-black text-lg px-3 py-1 rounded-full">{grasaPct}%</span>}
               </div>
               <div className="relative">
                 <input
@@ -273,11 +298,6 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                 />
                 <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-orange-300">KG</span>
               </div>
-              {grasaPct && (
-                <p className="text-center text-sm font-bold text-orange-500 mt-2">
-                  {grasaPct}% de grasa sobre {formatWeight(production.weightKg)} kg
-                </p>
-              )}
               <button onClick={() => { setShowGrasa(false); setGrasaKg(''); }} className="w-full mt-3 py-2 text-slate-400 text-xs font-bold hover:text-red-400 transition-colors">
                 quitar campo
               </button>
@@ -294,12 +314,12 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
             <h4 className="font-black text-slate-800 text-lg">Resumen</h4>
           </div>
           <div className="space-y-3 flex-1">
-            <SRow label="Peso bruto"   value={`${formatWeight(production.weightKg)} kg`} />
-            <SRow label="Desperdicio"  value={`- ${formatWeight(waste)} kg`} color="text-red-600" bg="bg-red-50" />
+            <SRow label="Peso bruto"  value={`${formatWeight(production.weightKg)} kg`} />
+            <SRow label="Desperdicio" value={`- ${formatWeight(waste)} kg`} color="text-red-600" bg="bg-red-50" />
             {grasa > 0 && (
               <SRow label={`Grasa (${grasaPct}%)`} value={`+ ${formatWeight(grasa)} kg`} color="text-orange-600" bg="bg-orange-50" />
             )}
-            <SRow label="Peso neto"    value={`${formatWeight(netWeight)} kg`} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
+            <SRow label="Peso neto"   value={`${formatWeight(netWeight)} kg`} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
             <SRow label={unit === 'unid' ? 'Unidades' : 'Cantidad'} value={qty > 0 ? `${qty} ${unit}` : '—'} color="text-blue-700 text-xl" bg="bg-blue-50" />
             {unit === 'unid' && (
               <div className={`p-5 rounded-2xl border-2 text-center transition-all ${qty > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
