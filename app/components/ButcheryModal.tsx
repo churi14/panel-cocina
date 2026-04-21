@@ -241,6 +241,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                   const next = step2Index + 1;
                   if (next < step2Queue.length) { setStep2Index(next); }
                   else { setStep2Queue([]); setStep2Index(0); setView('list'); }
+                  submittingRef.current = false;
                   setSubmitting(false);
                 }}
                 onBack={handleBackFromStep2}
@@ -255,6 +256,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                   submittingRef.current = true;
                   setSubmitting(true);
                   await handleFinishBurgerBlend(result);
+                  submittingRef.current = false;
                   setSubmitting(false);
                 }}
                 onBack={handleBackFromStep2}
@@ -271,6 +273,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                   submittingRef.current = true;
                   setSubmitting(true);
                   await handleFinishStep2(...args);
+                  submittingRef.current = false;
                   setSubmitting(false);
                 }}
                 onBack={handleBackFromStep2}
@@ -288,6 +291,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
             submittingRef.current = true;
             setSubmitting(true);
             await handleFinishBatchStep1(finishingBatchId);
+            submittingRef.current = false;
             setSubmitting(false);
           }}
           onCancel={() => setFinishingBatchId(null)}

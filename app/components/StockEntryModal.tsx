@@ -147,6 +147,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
       comentario: comentario || null,
       fecha: new Date().toISOString(),
     });
+    savingRef.current = false;
     setSaving(false);
     setSaved(true);
     setTimeout(() => {

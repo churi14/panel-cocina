@@ -107,6 +107,7 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
       operador,
       fecha: new Date().toISOString(),
     });
+    savingRef.current = false;
     setSaving(false);
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 1200);
