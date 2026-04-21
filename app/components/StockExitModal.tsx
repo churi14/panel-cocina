@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, PackageMinus, ChevronLeft, Search, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
@@ -40,6 +40,7 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
   const [cantidad, setCantidad] = useState('');
   const [motivo, setMotivo] = useState(MOTIVOS[0]);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
@@ -78,6 +79,8 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
       setError(`No podés descontar más de lo que hay (${selectedProduct.cantidad} ${selectedProduct.unidad})`);
       return;
     }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     const newQty = Math.max(0, selectedProduct.cantidad - qty);
 

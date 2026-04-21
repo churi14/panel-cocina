@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Truck, Check, ChevronLeft, Search, RefreshCw } from 'lucide-react';
 import { supabase } from '../supabase';
 
@@ -76,6 +76,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
   const [selectedProduct, setSelectedProduct] = useState<StockItem | null>(null);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [saved, setSaved] = useState(false);
 
   // Form fields
@@ -120,6 +121,8 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
     if (isAderezo && totalKgAderezo <= 0) return;
     if (!isAderezo && !cantidad) return;
     const cantidadFinal = isAderezo ? totalKgAderezo : parseFloat(cantidad.replace(',', '.'));
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     const newQty = selectedProduct.cantidad + cantidadFinal;
     const update: any = {
