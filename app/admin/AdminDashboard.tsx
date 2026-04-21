@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, Award
+  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, CheckCircle2
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -18,6 +18,7 @@ import TabVentas      from './TabVentas';
 import TabUsuarios    from './TabUsuarios';
 import TabOperadores  from './TabOperadores';
 import TabProyeccion  from './TabProyeccion';
+import TabTareas      from './TabTareas';
 import PushButton     from '../components/PushButton';
 import { useAuth }    from '../AuthContext';
 
@@ -26,7 +27,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
-  const [activeTab, setActiveTab]               = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'tareas'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -134,6 +135,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'usuarios',   label: 'Usuarios',    icon: <Users size={16} /> },
     { id: 'operadores', label: 'Operadores',  icon: <Award size={16} /> },
     { id: 'proyeccion', label: 'Proyección',   icon: <TrendingUp size={16} /> },
+    { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
   ] as const;
 
   return (
@@ -198,6 +200,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'usuarios'   && <TabUsuarios />}
         {activeTab === 'operadores' && <TabOperadores />}
         {activeTab === 'proyeccion' && <TabProyeccion />}
+        {activeTab === 'tareas'     && <TabTareas />}
       </main>
 
       <AdminTour />

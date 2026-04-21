@@ -23,6 +23,7 @@ import KitchenTour from './components/KitchenTour';
 import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, ButcheryProduction, ButcheryRecord } from './types';
 import { loadProduccionesActivas, cleanOldProducciones } from './components/butchery/produccionPersistence';
 import ProduccionDelDia from './components/butchery/ProduccionDelDia';
+import TareasPanel from './components/butchery/TareasPanel';
 import { supabase } from './supabase';
 
 // ── PWA: registrar service worker ────────────────────────────────────────────
@@ -503,6 +504,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                 <div id="tour-card-stock-view"><QuickActionCard title="Ver Stock" subtitle="Stock actual por categoría" icon={<BarChart3 size={24} />} color="green" onClick={() => setIsStockViewOpen(true)} /></div>
             </section>
             <ProduccionDelDia />
+            <TareasPanel operadorActual={perfil?.nombre} />
         </div>
       </main>
 
