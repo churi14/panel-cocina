@@ -21,6 +21,18 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [facturaQty, setFacturaQty]           = useState('');
   const [facturaProveedor, setFacturaProveedor] = useState('');
   const [savingFactura, setSavingFactura]     = useState(false);
+  const savingFacturaRef = React.useRef(false);
+  // Egreso
+  const [egresoQty, setEgresoQty]             = useState('');
+  const [egresoComentario, setEgresoComentario] = useState('');
+  const [savingEgreso, setSavingEgreso]       = useState(false);
+  const savingEgresoRef = React.useRef(false);
+  // Modo latas
+  const [latasCount, setLatasCount]           = useState('');
+  const [latasPeso, setLatasPeso]             = useState('');
+  const [modoLatas, setModoLatas]             = useState(false);
+  // Tab ingreso/egreso en modal
+  const [modalTab, setModalTab]               = useState<'ingreso' | 'egreso'>('ingreso');
   const [editingUmbrales, setEditingUmbrales]       = useState(false);
   const [umbralMinimo, setUmbralMinimo]             = useState('');
   const [umbralMedio, setUmbralMedio]               = useState('');
@@ -127,7 +139,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           const tieneAlerta = negativo || vencido || proxVenc;
 
                           return (
-                            <div key={item.id} onClick={() => setSelectedStockItem(item)} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity relative ${negativo ? 'border-red-600/60 bg-red-600/10' : vencido ? 'border-orange-500/60 bg-orange-500/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
+                            <div key={item.id} onClick={() => { setSelectedStockItem(item); setModalTab('ingreso'); setModoLatas(false); setLatasCount(''); setLatasPeso(''); setEgresoQty(''); setEgresoComentario(''); setFacturaQty(''); setFacturaProveedor(''); }} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity relative ${negativo ? 'border-red-600/60 bg-red-600/10' : vencido ? 'border-orange-500/60 bg-orange-500/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
                               
                               {/* Icono de alerta */}
                               {tieneAlerta && (
@@ -652,84 +664,247 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       )}
                     </div>
 
-                    {/* Cargar Factura */}
-                    <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4">
-                      <p className="text-xs font-black text-green-400 uppercase mb-3">📦 Cargar factura / ingreso</p>
-                      <div className="flex gap-3">
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad</label>
-                          <input
-                            type="number" step="0.001" min="0"
-                            value={facturaQty}
-                            onChange={e => setFacturaQty(e.target.value)}
-                            placeholder="0.000"
-                            className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <span className="text-slate-400 font-bold pb-2.5">{selectedStockItem.unidad}</span>
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
-                          <input
-                            type="text"
-                            value={facturaProveedor}
-                            onChange={e => setFacturaProveedor(e.target.value)}
-                            placeholder="Nombre proveedor"
-                            className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500"
-                          />
-                        </div>
+                    {/* TABS INGRESO / EGRESO */}
+                    <div className="rounded-2xl overflow-hidden border border-slate-700">
+                      {/* Tab selector */}
+                      <div className="flex">
+                        <button onClick={() => { setModalTab('ingreso'); setModoLatas(false); setLatasCount(''); setLatasPeso(''); }}
+                          className={`flex-1 py-3 text-sm font-black transition-all flex items-center justify-center gap-2
+                            ${modalTab === 'ingreso' ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+                          📦 Ingreso / Factura
+                        </button>
+                        <button onClick={() => setModalTab('egreso')}
+                          className={`flex-1 py-3 text-sm font-black transition-all flex items-center justify-center gap-2
+                            ${modalTab === 'egreso' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+                          📤 Egreso / Uso
+                        </button>
                       </div>
-                      {selectedStockItem.cantidad < 0 && facturaQty && parseFloat(facturaQty) > 0 && (
-                        <div className="mt-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Stock negativo:</span>
-                            <span className="font-black text-red-400">{selectedStockItem.cantidad.toFixed(3)} {selectedStockItem.unidad}</span>
+
+                      <div className="p-4 space-y-3">
+                        {/* ── INGRESO ── */}
+                        {modalTab === 'ingreso' && (<>
+                          {/* Toggle modo latas */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-400 uppercase">Modo de carga</span>
+                            <div className="flex bg-slate-800 rounded-lg p-0.5 gap-0.5">
+                              <button onClick={() => setModoLatas(false)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-black transition-all ${!modoLatas ? 'bg-white text-slate-900' : 'text-slate-400'}`}>
+                                Peso directo
+                              </button>
+                              <button onClick={() => setModoLatas(true)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-black transition-all ${modoLatas ? 'bg-white text-slate-900' : 'text-slate-400'}`}>
+                                🥫 Por latas/unidades
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Factura ingresa:</span>
-                            <span className="font-black text-green-400">+{parseFloat(facturaQty).toFixed(3)} {selectedStockItem.unidad}</span>
+
+                          {/* MODO LATAS */}
+                          {modoLatas ? (<>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad de latas/unidades</label>
+                                <input type="number" min="1" step="1"
+                                  value={latasCount} onChange={e => setLatasCount(e.target.value)}
+                                  placeholder="ej: 6"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">
+                                  Peso por lata ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})
+                                </label>
+                                <input type="number" min="0" step="0.001"
+                                  value={latasPeso} onChange={e => setLatasPeso(e.target.value)}
+                                  placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
+                                />
+                              </div>
+                            </div>
+                            {latasCount && latasPeso && parseFloat(latasCount) > 0 && parseFloat(latasPeso) > 0 && (() => {
+                              const n = parseFloat(latasCount);
+                              const p = parseFloat(latasPeso);
+                              // Si el peso ingresado es > 10 y la unidad es kg, asumir que pusieron gramos
+                              const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p;
+                              const total = parseFloat((n * pesoKg).toFixed(3));
+                              return (
+                                <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+                                  <div className="flex justify-between mb-1">
+                                    <span className="text-slate-400">{n} latas × {p}{selectedStockItem.unidad === 'kg' && p > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span>
+                                    <span className="font-black text-green-400">= {total} {selectedStockItem.unidad}</span>
+                                  </div>
+                                  <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
+                                    <span className="text-slate-400">Nuevo stock:</span>
+                                    <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + total).toFixed(3))} {selectedStockItem.unidad}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            <div>
+                              <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
+                              <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)}
+                                placeholder="Nombre proveedor"
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                            </div>
+                            <button
+                              onClick={async () => {
+                                const n = parseFloat(latasCount);
+                                const p = parseFloat(latasPeso);
+                                if (!n || !p || n <= 0 || p <= 0) return;
+                                const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p;
+                                const qty = parseFloat((n * pesoKg).toFixed(3));
+                                if (savingFacturaRef.current) return;
+                                savingFacturaRef.current = true;
+                                setSavingFactura(true);
+                                const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
+                                await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0,10) }).eq('id', selectedStockItem.id);
+                                await supabase.from('stock_movements').insert({
+                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
+                                  categoria: selectedStockItem.categoria, tipo: 'ingreso',
+                                  cantidad: qty, unidad: selectedStockItem.unidad,
+                                  motivo: `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${Math.round(n)} latas × ${p}${selectedStockItem.unidad === 'kg' && p > 10 ? 'gr' : selectedStockItem.unidad})`,
+                                  operador: 'Admin', fecha: new Date().toISOString(),
+                                });
+                                setLatasCount(''); setLatasPeso(''); setFacturaProveedor('');
+                                setSavingFactura(false); savingFacturaRef.current = false;
+                                await fetchMovements();
+                                setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
+                              }}
+                              disabled={savingFactura || !latasCount || !latasPeso || parseFloat(latasCount) <= 0 || parseFloat(latasPeso) <= 0}
+                              className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
+                              {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso por latas
+                            </button>
+                          </>) : (<>
+                          {/* MODO PESO DIRECTO */}
+                            <div className="flex gap-3">
+                              <div className="flex-1">
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad</label>
+                                <input type="number" step="0.001" min="0"
+                                  value={facturaQty} onChange={e => setFacturaQty(e.target.value)}
+                                  placeholder="0.000"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
+                              </div>
+                              <div className="flex items-end">
+                                <span className="text-slate-400 font-bold pb-2.5">{selectedStockItem.unidad}</span>
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
+                                <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)}
+                                  placeholder="Nombre proveedor"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500" />
+                              </div>
+                            </div>
+                            {selectedStockItem.cantidad < 0 && facturaQty && parseFloat(facturaQty) > 0 && (
+                              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm space-y-1">
+                                <div className="flex justify-between"><span className="text-slate-400">Stock negativo:</span><span className="font-black text-red-400">{selectedStockItem.cantidad.toFixed(3)} {selectedStockItem.unidad}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">Factura ingresa:</span><span className="font-black text-green-400">+{parseFloat(facturaQty).toFixed(3)} {selectedStockItem.unidad}</span></div>
+                                <div className="flex justify-between border-t border-amber-500/20 pt-1 mt-1">
+                                  <span className="font-black text-slate-300">Stock final:</span>
+                                  <span className={`font-black ${selectedStockItem.cantidad + parseFloat(facturaQty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {(selectedStockItem.cantidad + parseFloat(facturaQty)).toFixed(3)} {selectedStockItem.unidad}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            <button
+                              onClick={async () => {
+                                const qty = parseFloat(facturaQty);
+                                if (!qty || qty <= 0 || savingFacturaRef.current) return;
+                                savingFacturaRef.current = true;
+                                setSavingFactura(true);
+                                const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
+                                await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                                await supabase.from('stock_movements').insert({
+                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
+                                  categoria: selectedStockItem.categoria, tipo: 'ingreso',
+                                  cantidad: qty, unidad: selectedStockItem.unidad,
+                                  motivo: `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''}`,
+                                  operador: 'Admin', fecha: new Date().toISOString(),
+                                });
+                                setFacturaQty(''); setFacturaProveedor('');
+                                setSavingFactura(false); savingFacturaRef.current = false;
+                                await fetchMovements();
+                                setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
+                              }}
+                              disabled={!facturaQty || parseFloat(facturaQty) <= 0 || savingFactura}
+                              className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
+                              {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
+                            </button>
+                          </>)}
+                        </>)}
+
+                        {/* ── EGRESO ── */}
+                        {modalTab === 'egreso' && (<>
+                          <div>
+                            <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad a descontar</label>
+                            <div className="flex gap-2 items-center">
+                              <input type="number" step="0.001" min="0"
+                                value={egresoQty} onChange={e => setEgresoQty(e.target.value)}
+                                placeholder="0.000"
+                                className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-red-500" />
+                              <span className="text-slate-400 font-bold">{selectedStockItem.unidad}</span>
+                            </div>
+                            {egresoQty && parseFloat(egresoQty) > 0 && (
+                              <p className="text-xs text-slate-500 mt-1.5">
+                                Stock actual: <span className="text-white font-bold">{selectedStockItem.cantidad} {selectedStockItem.unidad}</span>
+                                {' → '}
+                                <span className={`font-black ${selectedStockItem.cantidad - parseFloat(egresoQty) < 0 ? 'text-red-400' : 'text-white'}`}>
+                                  {parseFloat((selectedStockItem.cantidad - parseFloat(egresoQty)).toFixed(3))} {selectedStockItem.unidad}
+                                </span>
+                              </p>
+                            )}
                           </div>
-                          <div className="flex justify-between border-t border-amber-500/20 pt-1 mt-1">
-                            <span className="font-black text-slate-300">Stock final:</span>
-                            <span className={`font-black ${selectedStockItem.cantidad + parseFloat(facturaQty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {(selectedStockItem.cantidad + parseFloat(facturaQty)).toFixed(3)} {selectedStockItem.unidad}
-                            </span>
+
+                          <div>
+                            <label className="text-[10px] text-red-400 uppercase font-bold mb-1 block">
+                              Motivo / Comentario <span className="text-red-500">*</span> (obligatorio)
+                            </label>
+                            <input type="text"
+                              value={egresoComentario} onChange={e => setEgresoComentario(e.target.value)}
+                              placeholder="ej: Uso en servicio, merma, corrección..."
+                              className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-sm text-white outline-none transition-colors
+                                ${!egresoComentario.trim() && egresoQty ? 'border-red-500 focus:border-red-400' : 'border-slate-700 focus:border-red-500'}`} />
+                            {!egresoComentario.trim() && egresoQty && (
+                              <p className="text-xs text-red-400 mt-1">⚠️ El comentario es obligatorio para registrar un egreso</p>
+                            )}
                           </div>
-                        </div>
-                      )}
-                      <button
-                        onClick={async () => {
-                          const qty = parseFloat(facturaQty);
-                          if (!qty || qty <= 0) return;
-                          setSavingFactura(true);
-                          const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
-                          await supabase.from('stock').update({
-                            cantidad: newQty,
-                            fecha_actualizacion: new Date().toISOString().slice(0, 10),
-                          }).eq('id', selectedStockItem.id);
-                          await supabase.from('stock_movements').insert({
-                            stock_id: selectedStockItem.id,
-                            nombre: selectedStockItem.nombre,
-                            categoria: selectedStockItem.categoria,
-                            tipo: 'ingreso',
-                            cantidad: qty,
-                            unidad: selectedStockItem.unidad,
-                            motivo: `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''}`,
-                            operador: 'Admin',
-                            fecha: new Date().toISOString(),
-                          });
-                          setFacturaQty('');
-                          setFacturaProveedor('');
-                          setSavingFactura(false);
-                          await fetchMovements();
-                          setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
-                        }}
-                        disabled={!facturaQty || parseFloat(facturaQty) <= 0 || savingFactura}
-                        className="mt-3 w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm"
-                      >
-                        {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
-                      </button>
+
+                          {/* Presets rápidos */}
+                          <div className="flex flex-wrap gap-2">
+                            {['Uso en servicio', 'Merma / vencimiento', 'Corrección de stock', 'Rotura / accidente'].map(m => (
+                              <button key={m} onClick={() => setEgresoComentario(m)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all
+                                  ${egresoComentario === m ? 'bg-white text-slate-900 border-white' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}>
+                                {m}
+                              </button>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={async () => {
+                              const qty = parseFloat(egresoQty);
+                              if (!qty || qty <= 0 || !egresoComentario.trim() || savingEgresoRef.current) return;
+                              savingEgresoRef.current = true;
+                              setSavingEgreso(true);
+                              const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) - qty).toFixed(3));
+                              await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                              await supabase.from('stock_movements').insert({
+                                stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
+                                categoria: selectedStockItem.categoria, tipo: 'egreso',
+                                cantidad: qty, unidad: selectedStockItem.unidad,
+                                motivo: egresoComentario.trim(),
+                                operador: 'Admin', fecha: new Date().toISOString(),
+                              });
+                              setEgresoQty(''); setEgresoComentario('');
+                              setSavingEgreso(false); savingEgresoRef.current = false;
+                              await fetchMovements();
+                              setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
+                            }}
+                            disabled={!egresoQty || parseFloat(egresoQty) <= 0 || !egresoComentario.trim() || savingEgreso}
+                            className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
+                            {savingEgreso ? <RefreshCw size={14} className="animate-spin" /> : '📤'} Confirmar egreso
+                          </button>
+                        </>)}
+                      </div>
                     </div>
 
                     {/* ── MIS ALERTAS PERSONALES ── */}
