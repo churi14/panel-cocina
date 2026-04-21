@@ -38,6 +38,11 @@ export default function TareasPanel({ operadorActual }: { operadorActual?: strin
   const [prioridad, setPrioridad]   = useState<'alta' | 'media' | 'baja'>('media');
   const [asignadoA, setAsignadoA]   = useState('todos');
   const [saving, setSaving]         = useState(false);
+
+  // Sincronizar operador cuando cambia el perfil (llega async)
+  useEffect(() => {
+    if (operadorActual && !operador) setOperador(operadorActual);
+  }, [operadorActual]);
   const savingRef                   = useRef(false);
 
   const fetchTareas = useCallback(async () => {
@@ -91,10 +96,11 @@ export default function TareasPanel({ operadorActual }: { operadorActual?: strin
   const pendientes  = tareas.filter(t => t.estado === 'pendiente');
   const completadas = tareas.filter(t => t.estado === 'completada');
 
-  // Filtra según operador: muestra las de todos + las asignadas a él
-  const tareasFiltradas = tareas.filter(t =>
-    t.asignado_a === null || t.asignado_a === operador
-  );
+  // Si hay operador: muestra las de todos + las asignadas a él
+  // Si no hay operador: muestra todas
+  const tareasFiltradas = operador
+    ? tareas.filter(t => t.asignado_a === null || t.asignado_a === operador)
+    : tareas;
   const pendientesFiltradas  = tareasFiltradas.filter(t => t.estado === 'pendiente');
   const completadasFiltradas = tareasFiltradas.filter(t => t.estado === 'completada');
 
@@ -186,27 +192,21 @@ export default function TareasPanel({ operadorActual }: { operadorActual?: strin
             </div>
           )}
 
-          {!operador && (
-            <div className="px-5 py-6 text-center text-slate-400">
-              <p className="text-sm font-medium">Seleccioná tu nombre arriba para ver tus tareas</p>
-            </div>
-          )}
-
-          {operador && loading && (
+          {loading && (
             <div className="flex items-center justify-center py-10 text-slate-400 gap-2">
               <RefreshCw size={16} className="animate-spin" />
               <span className="text-sm">Cargando...</span>
             </div>
           )}
 
-          {operador && !loading && tareasFiltradas.length === 0 && (
+          {!loading && tareasFiltradas.length === 0 && (
             <div className="text-center py-10 text-slate-400">
               <p className="text-3xl mb-2">✅</p>
               <p className="text-sm font-medium">Sin tareas pendientes</p>
             </div>
           )}
 
-          {operador && !loading && tareasFiltradas.length > 0 && (
+          {!loading && tareasFiltradas.length > 0 && (
             <div className="divide-y divide-slate-50">
               {/* PENDIENTES */}
               {pendientesFiltradas.map(t => {
