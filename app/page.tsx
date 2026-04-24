@@ -523,7 +523,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       {isSuppliersModalOpen && <SuppliersModal onClose={() => setIsSuppliersModalOpen(false)} suppliersDB={suppliersDB} setSuppliersDB={setSuppliersDB} />}
       {isRecipeManagerOpen && <RecipeManagerModal onClose={() => setIsRecipeManagerOpen(false)} recipes={recipesDB} setRecipes={setRecipesDB} />}
       {showProducidos && perfil && (
-        <ProducidosPorUsuario operador={perfil.nombre} onClose={() => setShowProducidos(false)} />
+        <ProducidosPorUsuario operadorActual={perfil.nombre} onClose={() => setShowProducidos(false)} />
       )}
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} operadorNombre={perfil?.nombre ?? ''} />}
 
