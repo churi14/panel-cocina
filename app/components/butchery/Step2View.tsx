@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { validarCantidad, detectarPosibleErrorDecimal, getCategoriaLimite } from './validaciones';
+import ConfirmacionCantidad from './ConfirmacionCantidad';
 import { ChevronLeft, CheckCircle2, Package, Trash2, Scale, ChevronRight, Flame } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { ButcheryProduction } from '../../types';
@@ -32,6 +34,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const [grasaKg, setGrasaKg]       = useState('');
   const [showGrasa, setShowGrasa]   = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [validacionPendiente, setValidacionPendiente] = useState<{accion: () => void; titulo: string; mensaje: string; detalle: string; sugerencia: string | null} | null>(null);
   const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
   const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
 
@@ -96,6 +99,19 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
 
   return (
     <div className="max-w-4xl mx-auto w-full">
+      {validacionPendiente && (
+        <ConfirmacionCantidad
+          titulo={validacionPendiente.titulo}
+          mensaje={validacionPendiente.mensaje}
+          detalle={validacionPendiente.detalle}
+          sugerencia={validacionPendiente.sugerencia}
+          onConfirmar={validacionPendiente.accion}
+          onCorregir={(val) => {
+            if (val !== undefined) setQuantity(String(val));
+            setValidacionPendiente(null);
+          }}
+        />
+      )}
       {showConfirm && (
         <FinishStep2Overlay
           data={{ production, quantity: qty, unit, wasteKg: waste, grasaKg: grasa, stockDestino: cut.stockDestino }}
@@ -346,7 +362,24 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
 
       <div className="mt-8">
         <button
-          onClick={() => setShowConfirm(true)}
+          onClick={() => {
+            const categoria = kindLabel === 'lomito' || kindLabel === 'burger' || kindLabel === 'milanesa' ? 'carne' : 'general';
+            const val = validarCantidad(qty, categoria);
+            const sugerencia = detectarPosibleErrorDecimal(qty);
+            if (val.ok) {
+              setShowConfirm(true);
+            } else if (val.tipo === 'bloqueo') {
+              alert('❌ ' + val.mensaje);
+            } else {
+              setValidacionPendiente({
+                accion: () => { setValidacionPendiente(null); setShowConfirm(true); },
+                titulo: 'Cantidad inusual',
+                mensaje: val.mensaje,
+                detalle: val.detalle,
+                sugerencia,
+              });
+            }
+          }}
           disabled={!canFinish}
           className={`w-full py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
             ${canFinish ? 'bg-green-600 text-white hover:bg-green-500 shadow-lg' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}

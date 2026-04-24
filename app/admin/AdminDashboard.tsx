@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, CheckCircle2, Sun, Moon
+  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, CheckCircle2, Sun, Moon, AlertTriangle
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -19,6 +19,7 @@ import TabUsuarios    from './TabUsuarios';
 import TabOperadores  from './TabOperadores';
 import TabProyeccion  from './TabProyeccion';
 import TabTareas      from './TabTareas';
+import TabAuditoria   from './TabAuditoria';
 import PushButton     from '../components/PushButton';
 import { useAuth }    from '../AuthContext';
 
@@ -42,7 +43,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'tareas'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'tareas' | 'auditoria'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -151,6 +152,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'operadores', label: 'Operadores',  icon: <Award size={16} /> },
     { id: 'proyeccion', label: 'Proyección',   icon: <TrendingUp size={16} /> },
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
+    { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
   ] as const;
 
   return (
@@ -221,6 +223,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'operadores' && <TabOperadores />}
         {activeTab === 'proyeccion' && <TabProyeccion />}
         {activeTab === 'tareas'     && <TabTareas />}
+        {activeTab === 'auditoria'  && <TabAuditoria />}
       </main>
 
       <AdminTour />
