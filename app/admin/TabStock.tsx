@@ -1019,9 +1019,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
             );
           })()}
 
-          </div>
       {showEntryModal && (
         <StockEntryModal onClose={() => { setShowEntryModal(false); fetchMovements(); }} />
       )}
+    </div>
   );
 }
