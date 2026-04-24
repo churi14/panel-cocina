@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, CheckCircle2
+  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, CheckCircle2, Sun, Moon
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -27,6 +27,21 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('admin-theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
+
+  const toggleTheme = () => {
+    setTheme(t => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('admin-theme', next);
+      return next;
+    });
+  };
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'tareas'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
@@ -139,7 +154,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   ] as const;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col" data-admin-theme={theme}>
 
       {/* TOP BAR */}
       <header id="admin-tour-header" className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between shrink-0">
@@ -156,6 +171,11 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
               </span>
             </div>
           )}
+          <button onClick={toggleTheme}
+            className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+            {theme === 'dark' ? <Sun size={18} className="text-slate-400" /> : <Moon size={18} className="text-slate-400" />}
+          </button>
           <PushButton />
           <button onClick={fetchMovements} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
             <RefreshCw size={18} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />

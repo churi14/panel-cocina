@@ -10,3 +10,56 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+/* ═══════════════════════════════════════
+   ADMIN LIGHT MODE
+   ═══════════════════════════════════════ */
+[data-admin-theme="light"] {
+  /* Fondo principal */
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Superficies */
+[data-admin-theme="light"] .bg-slate-950 { background-color: #f1f5f9 !important; }
+[data-admin-theme="light"] .bg-slate-900 { background-color: #ffffff !important; }
+[data-admin-theme="light"] .bg-slate-800 { background-color: #f8fafc !important; }
+[data-admin-theme="light"] .bg-slate-700 { background-color: #e2e8f0 !important; }
+[data-admin-theme="light"] .bg-slate-800\/40 { background-color: rgba(241,245,249,0.8) !important; }
+[data-admin-theme="light"] .bg-slate-800\/60 { background-color: rgba(241,245,249,0.9) !important; }
+[data-admin-theme="light"] .bg-slate-900\/80 { background-color: rgba(255,255,255,0.95) !important; }
+
+/* Bordes */
+[data-admin-theme="light"] .border-slate-800 { border-color: #e2e8f0 !important; }
+[data-admin-theme="light"] .border-slate-700 { border-color: #cbd5e1 !important; }
+[data-admin-theme="light"] .border-slate-600 { border-color: #94a3b8 !important; }
+
+/* Textos */
+[data-admin-theme="light"] .text-white       { color: #0f172a !important; }
+[data-admin-theme="light"] .text-slate-100   { color: #1e293b !important; }
+[data-admin-theme="light"] .text-slate-200   { color: #334155 !important; }
+[data-admin-theme="light"] .text-slate-300   { color: #475569 !important; }
+[data-admin-theme="light"] .text-slate-400   { color: #64748b !important; }
+[data-admin-theme="light"] .text-slate-500   { color: #94a3b8 !important; }
+
+/* Inputs */
+[data-admin-theme="light"] input,
+[data-admin-theme="light"] select,
+[data-admin-theme="light"] textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Botones de navegación activos */
+[data-admin-theme="light"] .border-white { border-color: #0f172a !important; }
+
+/* Hover states */
+[data-admin-theme="light"] .hover\:bg-slate-800:hover { background-color: #e2e8f0 !important; }
+[data-admin-theme="light"] .hover\:bg-slate-700:hover { background-color: #cbd5e1 !important; }
+
+/* Tablas */
+[data-admin-theme="light"] tbody tr:hover { background-color: #f8fafc !important; }
+[data-admin-theme="light"] thead { background-color: #f1f5f9 !important; }
+
+/* Modales */
+[data-admin-theme="light"] .fixed.inset-0.bg-black\/70 { background-color: rgba(15,23,42,0.5) !important; }
