@@ -7,7 +7,7 @@ import AdminDashboard from './admin/AdminDashboard';
 import { 
   ChefHat, Truck, BookOpen, Droplet, LogOut, Scale, Beef, 
   UtensilsCrossed, LayoutDashboard, Settings, ChevronRight,
-  PackageMinus, X, Carrot, Wine, Sandwich, Wheat, Soup,
+  PackageMinus, Package, X, Carrot, Wine, Sandwich, Wheat, Soup,
   Plus, Trash2, Calculator, CheckCircle2, Clock, Thermometer, AlertCircle, ArrowLeft, Play, Square, CheckSquare,
   Search, Phone, MapPin, Mail, Calendar as CalendarIcon, FileText, User, Edit, List, BarChart3, Download
 } from 'lucide-react';
@@ -24,6 +24,7 @@ import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, 
 import { loadProduccionesActivas, cleanOldProducciones } from './components/butchery/produccionPersistence';
 import ProduccionDelDia from './components/butchery/ProduccionDelDia';
 import TareasPanel from './components/butchery/TareasPanel';
+import ProducidosPorUsuario from './components/butchery/ProducidosPorUsuario';
 import { supabase } from './supabase';
 
 // ── PWA: registrar service worker ────────────────────────────────────────────
@@ -86,6 +87,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false); 
   const [isButcheryModalOpen, setIsButcheryModalOpen] = useState(false);
+  const [showProducidos, setShowProducidos] = useState(false);
   const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
   const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
   const [isRecipeManagerOpen, setIsRecipeManagerOpen] = useState(false);
@@ -464,6 +466,9 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
             <button id="tour-nav-recetario" onClick={() => setIsRecipeManagerOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
                 <BookOpen size={20} /> <span>Recetario</span>
             </button>
+            <button onClick={() => setShowProducidos(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
+                <Package size={20} /> <span>Mis producidos</span>
+            </button>
 
           </nav>
         </div>
@@ -517,6 +522,9 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       {/* MODALES CONECTADOS A LA DB EN MEMORIA */}
       {isSuppliersModalOpen && <SuppliersModal onClose={() => setIsSuppliersModalOpen(false)} suppliersDB={suppliersDB} setSuppliersDB={setSuppliersDB} />}
       {isRecipeManagerOpen && <RecipeManagerModal onClose={() => setIsRecipeManagerOpen(false)} recipes={recipesDB} setRecipes={setRecipesDB} />}
+      {showProducidos && perfil && (
+        <ProducidosPorUsuario operador={perfil.nombre} onClose={() => setShowProducidos(false)} />
+      )}
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} operadorNombre={perfil?.nombre ?? ''} />}
 
       {/* ── TOUR ── */}
