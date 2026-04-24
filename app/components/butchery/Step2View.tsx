@@ -15,7 +15,13 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   onFinish: (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string, observacion?: string) => void;
   onBack: () => void;
 }) {
-  const cut = getCut(production.type);
+  // getCut busca por type; si falla (fallback a lomo), intenta por typeName sin '_L'
+  const cutByType = getCut(production.type);
+  const cut = (cutByType.id === 'lomo' && production.type !== 'lomo')
+    ? (getCut(
+        production.typeName?.replace('_L','').toLowerCase().replace(' ','_') as any
+       ) ?? cutByType)
+    : cutByType;
   // Milanesa siempre se maneja por KG
   const defaultUnit: 'unid' | 'kg' = kindLabel === 'milanesa' ? 'kg' : cut.defaultUnit;
   const [unit, setUnit]             = useState<'unid' | 'kg'>(defaultUnit);
