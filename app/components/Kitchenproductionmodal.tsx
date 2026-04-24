@@ -331,6 +331,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   const [verduraDesperdicioKg, setVerduraDesperdicioKg] = useState('');
   const [verduraBrutoKg, setVerduraBrutoKg]             = useState('');
+  const [verduraConfirmData, setVerduraConfirmData]     = useState<{bruto: number; stockActual: number; nombre: string} | null>(null);
 
   const isPercent  = selectedProduct?.recipeType === 'percent';
   const isVerdura  = selectedProduct?.recipeType === 'verdura';
@@ -706,6 +707,18 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     if (isVerduraRecipe && selectedProduct) {
       const bruto = parseFloat(verduraBrutoKg) || baseKg;
       const desperdicio = parseFloat(verduraDesperdicioKg) || 0;
+      // Validar contra stock actual
+      const stockNombreCheck = VERDURA_STOCK_MAP[selectedProduct.id];
+      if (stockNombreCheck && bruto > 0) {
+        const { data: stockCheck } = await supabase.from('stock')
+          .select('cantidad').eq('nombre', stockNombreCheck).maybeSingle();
+        const stockActual = stockCheck ? Number(stockCheck.cantidad) : 0;
+        // Si van a descontar más del doble del stock disponible, pedir confirmación
+        if (bruto > Math.max(50, stockActual * 2) && stockActual > 0) {
+          setVerduraConfirmData({ bruto, stockActual, nombre: stockNombreCheck });
+          return; // No continuar — esperar confirmación del usuario
+        }
+      }
       await deductStockForVerdura(selectedProduct.id, bruto, desperdicio);
       setVerduraBrutoKg('');
       setVerduraDesperdicioKg('');
@@ -868,6 +881,55 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
     return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
+
+  // Modal de confirmación cantidad sospechosa
+  if (verduraConfirmData) {
+    const { bruto, stockActual, nombre } = verduraConfirmData;
+    return (
+      <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border-4 border-red-500">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-black text-red-600 mb-2">¿Estás seguro?</h2>
+          <p className="text-slate-600 mb-1">Vas a descontar:</p>
+          <p className="text-4xl font-black text-red-600 mb-1">{bruto} kg</p>
+          <p className="text-slate-500 text-sm mb-4">de {nombre}</p>
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
+            <p className="text-sm text-slate-600">Stock disponible actual:</p>
+            <p className="text-2xl font-black text-slate-800">{stockActual.toFixed(3)} kg</p>
+            <p className="text-xs text-red-500 font-bold mt-1">
+              ⚠️ Vas a descontar {(bruto / stockActual * 100).toFixed(0)}% del stock
+            </p>
+          </div>
+          <p className="text-xs text-slate-400 mb-6">
+            Si el número es incorrecto, tocá Corregir y volvé a ingresar la cantidad.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setVerduraConfirmData(null)}
+              className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl transition-all text-sm">
+              Corregir
+            </button>
+            <button
+              onClick={async () => {
+                setVerduraConfirmData(null);
+                if (finishingProd && selectedProduct) {
+                  const desperdicio = parseFloat(verduraDesperdicioKg) || 0;
+                  await deductStockForVerdura(selectedProduct.id, bruto, desperdicio);
+                  setVerduraBrutoKg('');
+                  setVerduraDesperdicioKg('');
+                  await clearCocinaProduccion(finishingProd.id, finishingProd.recipeName, bruto, finishingProd.operador ?? operador);
+                  setActiveProductions((prev: any[]) => prev.filter((p: any) => p.id !== finishingProd.id));
+                  setFinishingProd(null);
+                }
+              }}
+              className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-2xl transition-all text-sm">
+              Confirmar igual
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
