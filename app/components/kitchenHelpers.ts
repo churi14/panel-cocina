@@ -181,19 +181,6 @@ export function sugerirDecimal(valor: number, limiteMax: number): number | null 
 }
 
 
-// ── Descuento de stock para fiambres ─────────────────────────────────────────
-
-export const FIAMBRE_PROD_MAP: Record<string, string> = {
-  'fiambre_jamon':          'Jamón',
-  'fiambre_panceta':        'Panceta',
-  'fiambre_cheddar_feta':   'Cheddar en Feta',
-  'fiambre_cheddar_liq':    'Cheddar Líquido',
-  'fiambre_cheddar_burger': 'Cheddar para Burger',
-  'fiambre_provoleta':      'Provoleta',
-  'fiambre_muzza_sanguch':  'Queso Muzza para Sanguchería',
-  'fiambre_muzza_mila':     'Queso Muzza para Mila al Plato',
-  'fiambre_tybo':           'Queso Tybo',
-};
 
 const FIAMBRE_UNIDAD_MAP: Record<string, string> = {
   'fiambre_cheddar_feta': 'u',
