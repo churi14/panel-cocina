@@ -1106,7 +1106,29 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                               <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
                                 <input type="number" value={milanesaKgSalieron} onChange={e => setMilanesaKgSalieron(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-500" />
+                                  className={`w-full bg-slate-800 border rounded-xl px-3 py-2 text-lg font-black text-center outline-none transition-all
+                                    ${menjunjeKg && milanesaKgSalieron && parseFloat(milanesaKgSalieron) > parseFloat(menjunjeKg) * 1.1
+                                      ? 'border-red-500' : 'border-slate-700 focus:border-amber-500'}`} />
+                                {menjunjeKg && milanesaKgSalieron && parseFloat(milanesaKgSalieron) > parseFloat(menjunjeKg) * 1.1 && (() => {
+                                  const val = parseFloat(milanesaKgSalieron);
+                                  const strVal = String(Math.round(val));
+                                  let sugerencia = null;
+                                  for (let i = 1; i < strVal.length; i++) {
+                                    const cand = parseFloat(strVal.slice(0, i) + '.' + strVal.slice(i));
+                                    if (cand > 0 && cand <= parseFloat(menjunjeKg) * 1.05) { sugerencia = cand; break; }
+                                  }
+                                  return (
+                                    <div className="mt-1 bg-red-900/40 border border-red-500/40 rounded-xl px-3 py-2">
+                                      <p className="text-xs text-red-400 font-bold">⚠️ Superan los kg usados ({menjunjeKg})</p>
+                                      {sugerencia && (
+                                        <button onClick={() => setMilanesaKgSalieron(String(sugerencia))}
+                                          className="mt-1 text-xs text-blue-400 font-black underline">
+                                          ¿Quisiste decir {sugerencia} kg? → Tocar para corregir
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div>
@@ -1155,7 +1177,30 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                               <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
                                 <input type="number" value={empanadoSalieronKg} onChange={e => setEmpanadoSalieronKg(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-500" />
+                                  className={`w-full bg-slate-800 border rounded-xl px-3 py-2 text-lg font-black text-center outline-none transition-all
+                                    ${empanadoMenjunjeKg && empanadoSalieronKg && parseFloat(empanadoSalieronKg) > parseFloat(empanadoMenjunjeKg) * 1.1
+                                      ? 'border-red-500 focus:border-red-400'
+                                      : 'border-slate-700 focus:border-amber-500'}`} />
+                                {empanadoMenjunjeKg && empanadoSalieronKg && parseFloat(empanadoSalieronKg) > parseFloat(empanadoMenjunjeKg) * 1.1 && (() => {
+                                  const val = parseFloat(empanadoSalieronKg);
+                                  const strVal = String(Math.round(val));
+                                  let sugerencia = null;
+                                  for (let i = 1; i < strVal.length; i++) {
+                                    const cand = parseFloat(strVal.slice(0, i) + '.' + strVal.slice(i));
+                                    if (cand > 0 && cand <= parseFloat(empanadoMenjunjeKg) * 1.05) { sugerencia = cand; break; }
+                                  }
+                                  return (
+                                    <div className="mt-1 bg-red-900/40 border border-red-500/40 rounded-xl px-3 py-2">
+                                      <p className="text-xs text-red-400 font-bold">⚠️ Los kg salidos ({val}) superan los usados ({empanadoMenjunjeKg})</p>
+                                      {sugerencia && (
+                                        <button onClick={() => setEmpanadoSalieronKg(String(sugerencia))}
+                                          className="mt-1 text-xs text-blue-400 font-black underline">
+                                          ¿Quisiste decir {sugerencia} kg? → Tocar para corregir
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div>
