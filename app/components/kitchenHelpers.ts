@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabase } from '../supabase';
 import { checkAndNotifyStock, checkAndNotifyProduccionByName } from './pushEvents';
+export { checkAndNotifyStock, checkAndNotifyProduccionByName };
 
 export function formatQty(grams: number): string {
   if (grams >= 1000) {

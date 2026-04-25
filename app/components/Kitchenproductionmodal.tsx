@@ -1,313 +1,23 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   UtensilsCrossed, X, ArrowLeft, Play, CheckSquare, Square, Plus,
   CheckCircle2, Clock, Calculator, AlertCircle, Wheat, Droplet, ChefHat, Carrot
 } from 'lucide-react';
 import type { Recipe, ProductionRecord } from '../types';
 import { supabase } from '../supabase';
-import { checkAndNotifyStock, sendResumenTurno, checkAndNotifyProduccionByName } from './pushEvents';
-
-function formatQty(grams: number): string {
-  if (grams >= 1000) {
-    const kg = grams / 1000;
-    return `${kg % 1 === 0 ? kg.toFixed(0) : kg.toFixed(2).replace(/\.?0+$/, '')} kg`;
-  }
-  return `${grams % 1 === 0 ? grams.toFixed(0) : grams.toFixed(1)} gr`;
-}
-
-const KITCHEN_CATEGORIES = [
-  { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200',  hover: 'hover:border-amber-400',  icon: <Wheat   size={48} className="text-amber-600 mb-4" /> },
-  { id: 'Salsas',      label: 'Salsas',       border: 'border-red-200',    hover: 'hover:border-red-400',    icon: <Droplet size={48} className="text-red-600 mb-4" /> },
-  { id: 'Fraccionar',  label: 'Fraccionar',   border: 'border-purple-200', hover: 'hover:border-purple-400', icon: <Droplet size={48} className="text-purple-600 mb-4" /> },
-  { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',   hover: 'hover:border-rose-400',   icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
-  { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200',  hover: 'hover:border-green-400',  icon: <Carrot  size={48} className="text-green-600 mb-4" /> },
-  { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={48} className="text-yellow-600 mb-4" /> },
-  { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={48} className="text-yellow-600 mb-4" /> },
-  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
-];
-
-// ─── PERSISTENCIA COCINA ──────────────────────────────────────────────────────
-
-async function saveCocinaProduccion(id: number, recipeName: string, targetUnits: number, unit: string, baseQtyKg: number, startTime: number, operadorCocina: string, recipeId?: string) {
-  try {
-    await supabase.from('cocina_produccion_activa').insert({
-      id,
-      recipe_name: recipeName,
-      recipe_id: recipeId ?? null,
-      target_units: targetUnits,
-      unit,
-      base_qty_kg: baseQtyKg,
-      start_time: startTime,
-      status: 'running',
-      operador: operadorCocina,
-      updated_at: new Date().toISOString(),
-    });
-    // Notificar al panel admin via produccion_eventos
-    await supabase.from('produccion_eventos').insert({
-      tipo: 'inicio_cocina',
-      kind: 'cocina',
-      corte: recipeName,
-      operador: operadorCocina,
-      peso_kg: baseQtyKg,
-      detalle: `Inicio cocina — ${recipeName}`,
-      fecha: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.error('Error guardando producción cocina:', e);
-  }
-}
-
-async function clearCocinaProduccion(prodId: number, recipeName: string, baseQtyKg: number, operadorCocina: string) {
-  try {
-    await supabase.from('cocina_produccion_activa').delete().eq('id', prodId);
-    await supabase.from('produccion_eventos').insert({
-      tipo: 'fin_cocina',
-      kind: 'cocina',
-      corte: recipeName,
-      operador: operadorCocina,
-      peso_kg: baseQtyKg,
-      detalle: `Fin cocina — ${recipeName}`,
-      fecha: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.error('Error limpiando producción cocina:', e);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-
-// ─── Descuento de stock para recetas de Milanesa (Menjunje) ───────────────────
-async function deductStockForMilanesa(
-  corteNombre: string,  // ej: "Cuadrada", "Nalga"
-  cantidadKg: number,   // kg de milanesa cruda a usar
-  ingredientes: { nombre: string; cantidad: number; unidad: string }[]
-) {
-  try {
-    // 1. Descontar del stock_produccion: Milanesa - {corte}
-    const productoMila = `Milanesa - ${corteNombre}`;
-    const { data: milaData } = await supabase
-      .from('stock_produccion')
-      .select('id, cantidad')
-      .eq('producto', productoMila)
-      .maybeSingle();
-
-    if (milaData) {
-      const newQty = parseFloat((Number(milaData.cantidad) - cantidadKg).toFixed(3));
-      await supabase.from('stock_produccion')
-        .update({ cantidad: parseFloat(newQty.toFixed(3)) })
-        .eq('id', milaData.id);
-      await checkAndNotifyProduccionByName(productoMila, newQty, 'kg', supabase);
-    }
-
-    // 2. Descontar ingredientes del stock directo (huevo, pan rallado, etc.)
-    for (const ing of ingredientes) {
-      const { data: stockData } = await supabase
-        .from('stock')
-        .select('id, cantidad')
-        .ilike('nombre', ing.nombre)
-        .maybeSingle();
-
-      if (stockData) {
-        const newQty = parseFloat((Number(stockData.cantidad) - ing.cantidad).toFixed(3));
-        await supabase.from('stock')
-          .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
-          .eq('id', stockData.id);
-
-        // Log movement
-        await supabase.from('stock_movements').insert({
-          nombre: ing.nombre, categoria: 'SECOS',
-          tipo: 'egreso', cantidad: ing.cantidad, unidad: ing.unidad,
-          motivo: `Menjunje Milanesa — ${productoMila}`,
-          operador: 'Cocina', fecha: new Date().toISOString(),
-        });
-      }
-    }
-  } catch (e) {
-    console.error('Error descontando stock menjunje:', e);
-  }
-}
-
-
-// ─── Fraccionado de salsas en potes ────────────────────────────────────────
-async function deductStockForFraccion(
-  stockNombre: string, stockOrigen: 'stock' | 'stock_produccion',
-  kgUsado: number, potesProducidos: number, tipoPote: string, operador: string
-) {
-  if (kgUsado <= 0 || potesProducidos <= 0) return;
-  const tabla = stockOrigen === 'stock' ? 'stock' : 'stock_produccion';
-  const campoNombre = stockOrigen === 'stock' ? 'nombre' : 'producto';
-  const { data } = await supabase.from(tabla).select('id, cantidad').eq(campoNombre, stockNombre).maybeSingle();
-  if (data) {
-    const newQty = parseFloat((Number(data.cantidad) - kgUsado).toFixed(3));
-    await supabase.from(tabla).update({ cantidad: newQty, ...(stockOrigen === 'stock' ? { fecha_actualizacion: new Date().toISOString().slice(0,10) } : { ultima_prod: new Date().toISOString() }) }).eq('id', data.id);
-    if (stockOrigen === 'stock') {
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({ nombre: stockNombre, categoria: 'SECOS', tipo: 'egreso', cantidad: parseFloat(kgUsado.toFixed(3)), unidad: 'kg', motivo: `Fraccionado ${stockNombre} — ${potesProducidos}u ${tipoPote}`, operador, fecha: new Date().toISOString() });
-    }
-  }
-  const { data: pd } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', `%${stockNombre}%`).maybeSingle();
-  if (pd) {
-    await supabase.from('stock_produccion').update({ cantidad: Number(pd.cantidad) + potesProducidos, ultima_prod: new Date().toISOString() }).eq('id', pd.id);
-  } else {
-    await supabase.from('stock_produccion').insert({ producto: `POTES ${stockNombre}`, categoria: 'dip', cantidad: potesProducidos, unidad: 'u', ultima_prod: new Date().toISOString() });
-  }
-  await supabase.from('produccion_eventos').insert({ tipo: 'fin_cocina', kind: 'salsa', corte: stockNombre, peso_kg: kgUsado, operador, detalle: `${potesProducidos} potes ${tipoPote} · ${kgUsado.toFixed(3)}kg`, fecha: new Date().toISOString() });
-}
-
-// ─── Stock map verduras: nombre en stock ──────────────────────────────────────
-const VERDURA_STOCK_MAP: Record<string, string> = {
-  'verdura_tomate_rodajas':   'TOMATE',
-  'verdura_lechuga':          'LECHUGA',
-  'verdura_cebolla_brunoise': 'CEBOLLA',
-  'verdura_cebolla_rodajas':  'CEBOLLA',
-  'verdura_morron':           'MORRON',
-  'verdura_ajo':              'AJO',
-  'verdura_verdeo':           'CEBOLLA DE VERDEO',
-};
-const VERDURA_PROD_MAP: Record<string, string> = {
-  'verdura_tomate_rodajas':   'Tomate cortado',
-  'verdura_lechuga':          'Lechuga preparada',
-  'verdura_cebolla_brunoise': 'Cebolla brunoise',
-  'verdura_cebolla_rodajas':  'Cebolla rodajas',
-  'verdura_morron':           'Morrón preparado',
-  'verdura_ajo':              'Ajo preparado',
-  'verdura_verdeo':           'Cebolla de verdeo',
-};
-
-// ─── Stock map fiambres ───────────────────────────────────────────────────────
-const FIAMBRE_STOCK_MAP: Record<string, string> = {
-  'fiambre_jamon':          'JAMÓN',
-  'fiambre_panceta':        'PANCETA',
-  'fiambre_cheddar_feta':   'CHEDDAR EN FETA',
-  'fiambre_cheddar_liq':    'CHEDDAR LIQUIDO',
-  'fiambre_cheddar_burger': 'CHEDDAR PARA BURGUER',
-  'fiambre_provoleta':      'PROVOLETA',
-  'fiambre_muzza_sanguch':  'QUESO MUZZA',
-  'fiambre_muzza_mila':     'QUESO MUZZA',
-  'fiambre_tybo':           'QUESO TYBO',
-};
-const FIAMBRE_PROD_MAP: Record<string, string> = {
-  'fiambre_jamon':          'Jamón',
-  'fiambre_panceta':        'Panceta',
-  'fiambre_cheddar_feta':   'Cheddar en Feta',
-  'fiambre_cheddar_liq':    'Cheddar Líquido',
-  'fiambre_cheddar_burger': 'Cheddar para Burger',
-  'fiambre_provoleta':      'Provoleta',
-  'fiambre_muzza_sanguch':  'Queso Muzza para Sanguchería',
-  'fiambre_muzza_mila':     'Queso Muzza para Mila al Plato',
-  'fiambre_tybo':           'Queso Tybo',
-};
-const FIAMBRE_UNIDAD_MAP: Record<string, string> = {
-  'fiambre_cheddar_feta': 'u',
-};
-
-async function deductStockForFiambre(recipeId: string, pesoKg: number, operador: string) {
-  const stockNombre = FIAMBRE_STOCK_MAP[recipeId];
-  const prodNombre  = FIAMBRE_PROD_MAP[recipeId];
-  const unidad      = FIAMBRE_UNIDAD_MAP[recipeId] ?? 'kg';
-  if (!stockNombre || pesoKg <= 0) return;
-  try {
-    const { data } = await supabase.from('stock')
-      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
-    if (data) {
-      const newQty = parseFloat((Number(data.cantidad) - pesoKg).toFixed(3));
-      await supabase.from('stock')
-        .update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0,10) })
-        .eq('id', data.id);
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'FIAMBRE',
-        tipo: 'egreso', cantidad: parseFloat(pesoKg.toFixed(3)), unidad: 'kg',
-        motivo: `Preparación ${prodNombre}`, operador, fecha: new Date().toISOString(),
-      });
-    }
-    const { data: pd } = await supabase.from('stock_produccion')
-      .select('id, cantidad').ilike('producto', prodNombre).maybeSingle();
-    if (pd) {
-      await supabase.from('stock_produccion')
-        .update({ cantidad: parseFloat((Number(pd.cantidad) + pesoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
-        .eq('id', pd.id);
-    } else {
-      await supabase.from('stock_produccion')
-        .insert({ producto: prodNombre, categoria: 'fiambre', cantidad: parseFloat(pesoKg.toFixed(3)), unidad, ultima_prod: new Date().toISOString() });
-    }
-    await supabase.from('produccion_eventos').insert({
-      tipo: 'fin_cocina', kind: 'fiambre', corte: prodNombre,
-      peso_kg: pesoKg, operador, detalle: `${pesoKg}kg preparado`,
-      fecha: new Date().toISOString(),
-    });
-  } catch(e) { console.error('deductStockForFiambre:', e); }
-}
-
-async function addSalsaToStock(prodNombre: string, kgProducidos: number, operador: string) {
-  if (kgProducidos <= 0) return;
-  try {
-    const { data: pd } = await supabase.from('stock_produccion')
-      .select('id, cantidad').ilike('producto', prodNombre).maybeSingle();
-    if (pd) {
-      await supabase.from('stock_produccion')
-        .update({ cantidad: parseFloat((Number(pd.cantidad) + kgProducidos).toFixed(3)), ultima_prod: new Date().toISOString() })
-        .eq('id', pd.id);
-    } else {
-      await supabase.from('stock_produccion')
-        .insert({ producto: prodNombre, categoria: 'salsa', cantidad: parseFloat(kgProducidos.toFixed(3)), unidad: 'kg', ultima_prod: new Date().toISOString() });
-    }
-    await supabase.from('produccion_eventos').insert({
-      tipo: 'fin_cocina', kind: 'salsa', corte: prodNombre,
-      peso_kg: kgProducidos, operador, detalle: `${kgProducidos}kg producidos`,
-      fecha: new Date().toISOString(),
-    });
-  } catch(e) { console.error('addSalsaToStock:', e); }
-}
-
-async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desperdicioKg: number) {
-  const stockNombre = VERDURA_STOCK_MAP[recipeId];
-  const prodNombre  = VERDURA_PROD_MAP[recipeId];
-  if (!stockNombre || brutoPesoKg <= 0) return;
-
-  const netoKg = Math.max(0, brutoPesoKg - desperdicioKg);
-
-  try {
-    // 1. Descontar bruto del stock
-    const { data } = await supabase.from('stock')
-      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
-    if (data) {
-      const newQty = parseFloat((Number(data.cantidad) - brutoPesoKg).toFixed(3));
-      await supabase.from('stock')
-        .update({ cantidad: parseFloat(newQty.toFixed(3)), fecha_actualizacion: new Date().toISOString().slice(0, 10) })
-        .eq('id', data.id);
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'VERDURA',
-        tipo: 'egreso', cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',
-        motivo: `Producción ${prodNombre}`, operador: 'Cocina', fecha: new Date().toISOString(),
-      });
-      // Log desperdicio
-      await supabase.from('produccion_eventos').insert({
-        tipo: 'fin_cocina', kind: 'cocina', corte: prodNombre,
-        peso_kg: brutoPesoKg, waste_kg: desperdicioKg,
-        operador: 'Cocina', detalle: `Bruto: ${brutoPesoKg}kg | Desperdicio: ${desperdicioKg}kg | Neto: ${netoKg}kg`,
-        fecha: new Date().toISOString(),
-      });
-    }
-
-    // 2. Sumar neto a stock_produccion
-    if (netoKg > 0) {
-      const { data: prodData } = await supabase.from('stock_produccion')
-        .select('id, cantidad').eq('producto', prodNombre).maybeSingle();
-      if (prodData) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: parseFloat((Number(prodData.cantidad) + netoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
-          .eq('id', prodData.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: prodNombre, categoria: 'verduras', cantidad: parseFloat(netoKg.toFixed(3)), unidad: 'kg', ultima_prod: new Date().toISOString() });
-      }
-    }
-  } catch (e) { console.error('Error deductStockForVerdura:', e); }
-}
+import { sendResumenTurno } from './pushEvents';
+import {
+  saveCocinaProduccion, clearCocinaProduccion,
+  deductStockForMilanesa, deductStockForFraccion,
+  VERDURA_STOCK_MAP, FIAMBRE_STOCK_MAP,
+  formatQty,
+} from './kitchenHelpers';
+import KitchenFinalizarSalsa    from './KitchenFinalizarSalsa';
+import KitchenFinalizarPan      from './KitchenFinalizarPan';
+import KitchenFinalizarMenjunje from './KitchenFinalizarMenjunje';
+import KitchenFinalizarEmpanado from './KitchenFinalizarEmpanado';
+import KitchenFinalizarVerdura  from './KitchenFinalizarVerdura';
 
 const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
 
@@ -501,6 +211,15 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     };
     load();
   }, [finishingProd?.id, isEmpanadoRecipe]);
+  // Llamada por los componentes hijo cuando terminan su guardado
+  const finalizarProduccion = () => {
+    const remaining = activeProductions.filter(p => p.id !== finishingProd?.id);
+    setActiveProductions(remaining);
+    setFinishingProd(null);
+    finishingRef.current = false;
+    onClose();
+  };
+
   const handleFinish = async () => {
     const prod = finishingProd;
     if (!prod) return;
@@ -818,94 +537,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const elapsedTime = finishingProd ? currentTime - finishingProd.startTime : 0;
 
   // ── Modal salsa kg producidos ────────────────────────────────────────────
-  const SalsaModal = () => showSalsaModal && finishingProd ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <h3 className="font-black text-lg text-slate-800">🫙 {finishingProd.recipeName}</h3>
-        <p className="text-slate-500 text-sm">¿Cuántos kg salieron de esta tanda?</p>
-        <div className="relative">
-          <input type="number" inputMode="decimal" step="0.1" value={salsaKgProducidos}
-            onChange={e => setSalsaKgProducidos(e.target.value)} placeholder="0"
-            className="w-full p-4 border-2 rounded-xl text-3xl font-black text-center outline-none border-red-200 text-red-600 focus:border-red-500" />
-          <span className="absolute right-4 top-5 text-sm font-bold text-slate-300">KG</span>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowSalsaModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50">Cancelar</button>
-          <button onClick={handleFinish} disabled={!salsaKgProducidos || parseFloat(salsaKgProducidos) <= 0}
-            className="flex-1 py-3 bg-red-600 text-white font-black rounded-xl hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed">
-            Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  // ── Modal empanado milanesa ───────────────────────────────────────────────
-  const EmpanadoModal = () => showEmpanadoModal && finishingProd ? (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-        <h3 className="font-black text-lg text-slate-800">🥩 Empanado de Milanesa</h3>
-
-        {/* Stock selector — muestra el menjunje disponible por corte */}
-        <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">¿De qué menjunje empanaste?</p>
-          {empanadoStocks.length > 0 ? (
-            <div className="space-y-1 max-h-36 overflow-y-auto">
-              {empanadoStocks.map(s => (
-                <button key={s.producto}
-                  onClick={() => {
-                    setEmpanadoCorteStock(s.producto);
-                    setEmpanadoTipo(s.producto.toLowerCase().includes('pollo') ? 'pollo' : 'carne');
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all border
-                    ${empanadoCorteStock === s.producto
-                      ? 'bg-rose-50 border-rose-400 text-rose-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-rose-300'}`}>
-                  <span>{s.producto}</span>
-                  <span className="float-right text-xs opacity-60 font-normal">{s.cantidad.toFixed(2)} kg disp.</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-rose-500 bg-rose-50 rounded-lg px-3 py-2 border border-rose-200">
-              ⚠️ Sin menjunje disponible. Hacé menjunje primero.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">Kg de menjunje usados</p>
-          <div className="relative">
-            <input type="number" inputMode="decimal" step="0.5" value={empanadoMenjunjeKg}
-              onChange={e => setEmpanadoMenjunjeKg(e.target.value)} placeholder="0"
-              className="w-full p-3 border-2 rounded-xl text-2xl font-black text-center outline-none border-rose-200 text-rose-600 focus:border-rose-500" />
-            <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-black text-slate-400 uppercase mb-2">Kg de milanesa empanada que salieron</p>
-          <div className="relative">
-            <input type="number" inputMode="decimal" step="0.5" value={empanadoSalieronKg}
-              onChange={e => setEmpanadoSalieronKg(e.target.value)} placeholder="0"
-              className="w-full p-3 border-2 rounded-xl text-2xl font-black text-center outline-none border-amber-200 text-amber-600 focus:border-amber-500" />
-            <span className="absolute right-3 top-4 text-xs font-bold text-slate-300">KG</span>
-          </div>
-          {empanadoCorteStock && empanadoMenjunjeKg && empanadoSalieronKg && (
-            <p className="text-xs text-slate-400 mt-1.5">
-              → Guardará como <span className="font-black text-rose-600">Milanesa de {empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne'} Empanada — {empanadoCorteStock.replace('Milanesa - ','')}</span>
-            </p>
-          )}
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowEmpanadoModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50">Cancelar</button>
-          <button onClick={handleFinish} disabled={!empanadoMenjunjeKg || !empanadoSalieronKg || !empanadoCorteStock}
-            className="flex-1 py-3 bg-rose-600 text-white font-black rounded-xl hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed">
-            Guardar
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  // SalsaModal y EmpanadoModal — reemplazados por KitchenFinalizarSalsa y KitchenFinalizarEmpanado
 
 
   const formatTimer = (ms: number) => {
@@ -915,44 +547,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   };
 
   // Modal de confirmación cantidad sospechosa
-  if (verduraConfirmData) {
-    const { bruto, stockActual, nombre } = verduraConfirmData;
-    return (
-      <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl border-4 border-red-500">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-black text-red-600 mb-2">¿Estás seguro?</h2>
-          <p className="text-slate-600 mb-1">Vas a descontar:</p>
-          <p className="text-4xl font-black text-red-600 mb-1">{bruto} kg</p>
-          <p className="text-slate-500 text-sm mb-4">de {nombre}</p>
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-            <p className="text-sm text-slate-600">Stock disponible actual:</p>
-            <p className="text-2xl font-black text-slate-800">{stockActual.toFixed(3)} kg</p>
-            <p className="text-xs text-red-500 font-bold mt-1">
-              ⚠️ Vas a descontar {(bruto / stockActual * 100).toFixed(0)}% del stock
-            </p>
-          </div>
-          <p className="text-xs text-slate-400 mb-6">
-            Si el número es incorrecto, tocá Corregir y volvé a ingresar la cantidad.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setVerduraConfirmData(null)}
-              className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl transition-all text-sm">
-              Corregir
-            </button>
-            <button
-              onClick={async () => {
-                setVerduraConfirmData(null);
-                if (finishingProd && selectedProduct) {
-                  const desperdicio = parseFloat(verduraDesperdicioKg) || 0;
-                  await deductStockForVerdura(selectedProduct.id, bruto, desperdicio);
-                  setVerduraBrutoKg('');
-                  setVerduraDesperdicioKg('');
-                  await clearCocinaProduccion(finishingProd.id, finishingProd.recipeName, bruto, finishingProd.operador ?? operador);
-                  setActiveProductions((prev: any[]) => prev.filter((p: any) => p.id !== finishingProd.id));
-                  setFinishingProd(null);
-                }
+  // Confirmación de cantidad sospechosa en verdura — manejada por KitchenFinalizarVerdura
               }}
               className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-2xl transition-all text-sm">
               Confirmar igual
@@ -1096,162 +691,31 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             </div>
                           );
                         })()}
-                        {isPanRecipe && showPanModal && (
-                          <div className="bg-amber-950/50 border border-amber-500/30 rounded-xl p-4 space-y-3">
-                            <p className="text-amber-300 font-black text-sm uppercase">🍞 {prod.recipeName} — ¿Cuántas unidades salieron?</p>
-                            <div>
-                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Unidades producidas</label>
-                              <input type="number" value={panUnidades} onChange={e => setPanUnidades(e.target.value)}
-                                placeholder="140"
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xl font-black text-center outline-none focus:border-amber-500" />
-                            </div>
-                            {panUnidades && parseInt(panUnidades) > 0 && prod.baseKg && prod.baseKg > 0 && (
-                              <p className="text-xs text-green-400 font-black">
-                                → {Math.round(prod.baseKg * 1000 / parseInt(panUnidades))}g de harina por unidad
-                              </p>
-                            )}
-                          </div>
+                        {isPanRecipe && showPanModal && finishingProd && (
+                          <KitchenFinalizarPan
+                            prod={{...finishingProd, recipeId: activeRecipeId}}
+                            operador={operador}
+                            onFinalizado={() => { setShowPanModal(false); setPanUnidades(''); finalizarProduccion(); }}
+                            onCancelar={() => setShowPanModal(false)}
+                          />
                         )}
-
-                        {isMilanesaRecipe && showMenjunjeModal && (
-                          <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
-                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo}</p>
-                            <p className="text-xs text-slate-400 mb-1">Descuenta del stock de menjunje preparado.</p>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
-                                <input type="number" value={menjunjeKg} onChange={e => setMenjunjeKg(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
-                              </div>
-                              <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
-                                <input type="number" value={milanesaKgSalieron} onChange={e => setMilanesaKgSalieron(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-500" />
-                                {menjunjeKg && milanesaKgSalieron && parseFloat(milanesaKgSalieron) > parseFloat(menjunjeKg) * 2 && (() => {
-                                  const val = parseFloat(milanesaKgSalieron);
-                                  const base = parseFloat(menjunjeKg);
-                                  const strVal = String(Math.round(val));
-                                  let sugerencia = null;
-                                  for (let i = 1; i < strVal.length; i++) {
-                                    const cand = parseFloat(strVal.slice(0, i) + '.' + strVal.slice(i));
-                                    if (cand > base * 0.5 && cand <= base * 2) { sugerencia = cand; break; }
-                                  }
-                                  return (
-                                    <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
-                                      <p className="text-xs text-amber-400 font-bold">⚠️ {val} kg parece mucho para {base} kg de menjunje. ¿Es correcto?</p>
-                                      {sugerencia && (
-                                        <button onClick={() => setMilanesaKgSalieron(String(sugerencia))}
-                                          className="mt-1.5 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
-                                          ¿Quisiste decir {sugerencia} kg? → Corregir
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-xs text-amber-400 font-bold uppercase mb-1 block">📦 Unidades que salieron *</label>
-                              <input type="number" value={milanesaUnidades} onChange={e => setMilanesaUnidades(e.target.value)}
-                                placeholder="ej: 20"
-                                className="w-full bg-slate-700 border-2 border-amber-500 text-white rounded-xl px-3 py-3 text-2xl font-black text-center outline-none focus:border-amber-400" />
-                              {milanesaKgSalieron && milanesaUnidades && parseFloat(milanesaKgSalieron) > 0 && parseInt(milanesaUnidades) > 0 && (
-                                <p className="text-xs text-green-400 font-black mt-1">
-                                  → {Math.round(parseFloat(milanesaKgSalieron) / parseInt(milanesaUnidades) * 1000)}g por unidad
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                        {isMilanesaRecipe && showMenjunjeModal && finishingProd && (
+                          <KitchenFinalizarMenjunje
+                            prod={{...finishingProd, recipeId: activeRecipeId}}
+                            operador={operador}
+                            menjunjeTipo={menjunjeTipo}
+                            onFinalizado={() => { setShowMenjunjeModal(false); finalizarProduccion(); }}
+                            onCancelar={() => setShowMenjunjeModal(false)}
+                          />
                         )}
-
                         {isEmpanadoRecipe && finishingProd && (
-                          <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
-                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Empanado {empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne'}</p>
-                            <p className="text-xs text-slate-400 mb-1">Descuenta del stock de menjunje preparado.</p>
-                            {/* Selector de qué menjunje usó */}
-                            <div>
-                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">¿De qué menjunje empanaste?</label>
-                              <div className="space-y-1 max-h-32 overflow-y-auto">
-                                {empanadoStocks.length > 0 ? empanadoStocks.map(s => (
-                                  <button key={s.producto}
-                                    onClick={() => setEmpanadoCorteStock(s.producto)}
-                                    className={`w-full flex justify-between px-4 py-2.5 rounded-xl text-sm font-bold border transition-all
-                                      ${empanadoCorteStock === s.producto
-                                        ? 'bg-rose-600 text-white border-rose-500'
-                                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-rose-400'}`}>
-                                    <span>{s.producto.replace('Menjunje ','')}</span>
-                                    <span className="opacity-60 text-xs">{s.cantidad.toFixed(2)} kg</span>
-                                  </button>
-                                )) : (
-                                  <p className="text-xs text-slate-500 italic px-2">Cargando stocks...</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
-                                <input type="number" value={empanadoMenjunjeKg} onChange={e => setEmpanadoMenjunjeKg(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
-                                {empanadoMenjunjeKg && parseFloat(empanadoMenjunjeKg) > 50 && (() => {
-                                  const val = parseFloat(empanadoMenjunjeKg);
-                                  const strVal = String(Math.round(val));
-                                  let sug = null;
-                                  for (let i = 1; i < strVal.length; i++) {
-                                    const c = parseFloat(strVal.slice(0,i) + '.' + strVal.slice(i));
-                                    if (c > 0 && c <= 50) { sug = c; break; }
-                                  }
-                                  return (
-                                    <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
-                                      <p className="text-xs text-amber-400 font-bold">⚠️ {val} kg parece mucho. {sug ? `¿Quisiste decir ${sug} kg?` : '¿Es correcto?'}</p>
-                                      {sug && (
-                                        <button onClick={() => { setEmpanadoMenjunjeKg(String(sug)); setEmpanadoSalieronKg(String(sug)); }}
-                                          className="mt-1.5 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
-                                          ¿Quisiste decir {sug} kg? → Corregir
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                              <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
-                                <input type="number" value={empanadoSalieronKg} onChange={e => setEmpanadoSalieronKg(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-500" />
-                                {empanadoMenjunjeKg && empanadoSalieronKg && parseFloat(empanadoSalieronKg) > parseFloat(empanadoMenjunjeKg) * 2 && (() => {
-                                  const val = parseFloat(empanadoSalieronKg);
-                                  const base = parseFloat(empanadoMenjunjeKg);
-                                  const strVal = String(Math.round(val));
-                                  let sugerencia = null;
-                                  for (let i = 1; i < strVal.length; i++) {
-                                    const cand = parseFloat(strVal.slice(0, i) + '.' + strVal.slice(i));
-                                    if (cand > base * 0.5 && cand <= base * 2) { sugerencia = cand; break; }
-                                  }
-                                  return (
-                                    <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
-                                      <p className="text-xs text-amber-400 font-bold">⚠️ {val} kg salidos parece mucho para {base} kg de menjunje. ¿Es correcto?</p>
-                                      {sugerencia && (
-                                        <button onClick={() => setEmpanadoSalieronKg(String(sugerencia))}
-                                          className="mt-1.5 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
-                                          ¿Quisiste decir {sugerencia} kg? → Corregir
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-xs text-amber-400 font-bold uppercase mb-1 block">📦 Unidades que salieron *</label>
-                              <input type="number" value={milanesaUnidades} onChange={e => setMilanesaUnidades(e.target.value)}
-                                placeholder="ej: 20"
-                                className="w-full bg-slate-700 border-2 border-amber-500 text-white rounded-xl px-3 py-3 text-2xl font-black text-center outline-none focus:border-amber-400" />
-                              {empanadoSalieronKg && milanesaUnidades && parseFloat(empanadoSalieronKg) > 0 && parseInt(milanesaUnidades) > 0 && (
-                                <p className="text-xs text-green-400 font-black mt-1">
-                                  → {Math.round(parseFloat(empanadoSalieronKg) / parseInt(milanesaUnidades) * 1000)}g por unidad
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                          <KitchenFinalizarEmpanado
+                            prod={{...finishingProd, recipeId: activeRecipeId}}
+                            operador={operador}
+                            empanadoTipo={empanadoTipoActual}
+                            onFinalizado={() => finalizarProduccion()}
+                            onCancelar={() => setFinishingProd(null)}
+                          />
                         )}
 
                         <div className="flex gap-3">
@@ -1471,67 +935,24 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           )}
         </div>
       </div>
-      {/* ── SALSA MODAL ── */}
+      {/* ── SALSA ── */}
       {showSalsaModal && finishingProd && (
-        <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}>
-          <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'360px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)'}}>
-            <h3 style={{fontWeight:'900',fontSize:'18px',color:'#1e293b',marginBottom:'8px'}}>🫙 {finishingProd.recipeName}</h3>
-            <p style={{color:'#64748b',fontSize:'14px',marginBottom:'16px'}}>¿Cuántos kg salieron de esta tanda?</p>
-            <div style={{position:'relative',marginBottom:'16px'}}>
-              <input type="number" inputMode="decimal" step="0.1" value={salsaKgProducidos}
-                onChange={e => setSalsaKgProducidos(e.target.value)} placeholder="0"
-                style={{width:'100%',padding:'16px',border:'2px solid #fecaca',borderRadius:'12px',fontSize:'32px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#dc2626',boxSizing:'border-box',WebkitAppearance:'none'}} />
-              <span style={{position:'absolute',right:'16px',top:'50%',transform:'translateY(-50%)',fontSize:'14px',fontWeight:'700',color:'#94a3b8',pointerEvents:'none'}}>KG</span>
-            </div>
-            <div style={{display:'flex',gap:'12px'}}>
-              <button onClick={() => setShowSalsaModal(false)} style={{flex:1,padding:'12px',border:'2px solid #e2e8f0',borderRadius:'12px',fontWeight:'700',color:'#64748b',background:'white',cursor:'pointer',fontSize:'15px'}}>Cancelar</button>
-              <button onClick={() => handleFinish()} disabled={!salsaKgProducidos || parseFloat(salsaKgProducidos) <= 0}
-                style={{flex:1,padding:'12px',borderRadius:'12px',fontWeight:'900',color:'white',background:(!salsaKgProducidos||parseFloat(salsaKgProducidos)<=0)?'#94a3b8':'#dc2626',border:'none',cursor:(!salsaKgProducidos||parseFloat(salsaKgProducidos)<=0)?'not-allowed':'pointer',fontSize:'15px'}}>
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
+        <KitchenFinalizarSalsa
+          prod={{...finishingProd, recipeId: activeRecipeId}}
+          operador={operador}
+          onFinalizado={() => { setShowSalsaModal(false); finalizarProduccion(); }}
+          onCancelar={() => setShowSalsaModal(false)}
+        />
       )}
 
-      {/* ── EMPANADO MODAL ── */}
-      {showEmpanadoModal && finishingProd && (
-        <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',padding:'20px'}}>
-          <div style={{background:'white',borderRadius:'20px',width:'100%',maxWidth:'400px',padding:'24px',boxShadow:'0 25px 50px rgba(0,0,0,0.3)',maxHeight:'85vh',overflowY:'auto'}}>
-            <h3 style={{fontWeight:'900',fontSize:'18px',color:'#1e293b',marginBottom:'12px'}}>🥩 Empanado de Milanesa</h3>
-            <div style={{marginBottom:'12px'}}>
-              <p style={{fontSize:'11px',fontWeight:'900',color:'#94a3b8',textTransform:'uppercase',marginBottom:'8px'}}>¿De qué menjunje empanaste?</p>
-              {empanadoStocks.length > 0 ? (
-                <div style={{display:'flex',flexDirection:'column',gap:'6px',maxHeight:'140px',overflowY:'auto'}}>
-                  {empanadoStocks.map(s => (
-                    <button key={s.producto} onClick={() => { setEmpanadoCorteStock(s.producto); setEmpanadoTipo(s.producto.toLowerCase().includes('pollo') ? 'pollo' : 'carne'); }}
-                      style={{width:'100%',textAlign:'left',padding:'10px 12px',borderRadius:'10px',fontSize:'14px',fontWeight:'700',border:empanadoCorteStock===s.producto?'2px solid #fb7185':'2px solid #e2e8f0',background:empanadoCorteStock===s.producto?'#fff1f2':'#f8fafc',color:empanadoCorteStock===s.producto?'#be123c':'#475569',cursor:'pointer'}}>
-                      <span>{s.producto}</span>
-                      <span style={{float:'right',fontSize:'12px',opacity:0.6}}>{s.cantidad.toFixed(2)} kg</span>
-                    </button>
-                  ))}
-                </div>
-              ) : <p style={{fontSize:'12px',color:'#f43f5e',background:'#fff1f2',padding:'10px',borderRadius:'8px'}}>⚠️ Sin menjunje disponible.</p>}
-            </div>
-            <div style={{marginBottom:'12px'}}>
-              <p style={{fontSize:'11px',fontWeight:'900',color:'#94a3b8',textTransform:'uppercase',marginBottom:'6px'}}>Kg de menjunje usados</p>
-              <input type="number" inputMode="decimal" step="0.5" value={empanadoMenjunjeKg} onChange={e => setEmpanadoMenjunjeKg(e.target.value)} placeholder="0"
-                style={{width:'100%',padding:'12px',border:'2px solid #fecdd3',borderRadius:'12px',fontSize:'24px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#e11d48',boxSizing:'border-box',WebkitAppearance:'none'}} />
-            </div>
-            <div style={{marginBottom:'12px'}}>
-              <p style={{fontSize:'11px',fontWeight:'900',color:'#94a3b8',textTransform:'uppercase',marginBottom:'6px'}}>Kg empanada que salieron</p>
-              <input type="number" inputMode="decimal" step="0.5" value={empanadoSalieronKg} onChange={e => setEmpanadoSalieronKg(e.target.value)} placeholder="0"
-                style={{width:'100%',padding:'12px',border:'2px solid #fde68a',borderRadius:'12px',fontSize:'24px',fontWeight:'900',textAlign:'center',outline:'none',background:'#fff',color:'#d97706',boxSizing:'border-box',WebkitAppearance:'none'}} />
-            </div>
-            <div style={{display:'flex',gap:'12px'}}>
-              <button onClick={() => setShowEmpanadoModal(false)} style={{flex:1,padding:'12px',border:'2px solid #e2e8f0',borderRadius:'12px',fontWeight:'700',color:'#64748b',background:'white',cursor:'pointer',fontSize:'15px'}}>Cancelar</button>
-              <button onClick={() => handleFinish()} disabled={!empanadoMenjunjeKg||!empanadoSalieronKg||!empanadoCorteStock}
-                style={{flex:1,padding:'12px',borderRadius:'12px',fontWeight:'900',color:'white',background:(!empanadoMenjunjeKg||!empanadoSalieronKg||!empanadoCorteStock)?'#94a3b8':'#e11d48',border:'none',cursor:(!empanadoMenjunjeKg||!empanadoSalieronKg||!empanadoCorteStock)?'not-allowed':'pointer',fontSize:'15px'}}>
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── VERDURA — pantalla de confirmación sospechosa ── */}
+      {isVerduraRecipe && finishingProd && (
+        <KitchenFinalizarVerdura
+          prod={{...finishingProd, recipeId: activeRecipeId}}
+          operador={operador}
+          onFinalizado={() => finalizarProduccion()}
+          onCancelar={() => setFinishingProd(null)}
+        />
       )}
     </div>
   );
