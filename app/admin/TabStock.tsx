@@ -22,9 +22,6 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
   const [facturaQty, setFacturaQty]           = useState('');
   const [facturaProveedor, setFacturaProveedor] = useState('');
-  const [facturaLote, setFacturaLote]           = useState('');
-  const [facturaComentario, setFacturaComentario] = useState('');
-  const [facturaVence, setFacturaVence]         = useState('');
   const [savingFactura, setSavingFactura]     = useState(false);
   const savingFacturaRef = React.useRef(false);
   // Egreso
@@ -149,7 +146,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           const tieneAlerta = negativo || vencido || proxVenc;
 
                           return (
-                            <div key={item.id} onClick={() => { setSelectedStockItem(item); setModalTab('ingreso'); setModoLatas(false); setLatasCount(''); setLatasPeso(''); setEgresoQty(''); setEgresoComentario(''); setFacturaQty(''); setFacturaProveedor(''); setFacturaLote(''); setFacturaComentario(''); setFacturaVence(''); setFacturaLote(''); setFacturaComentario(''); setFacturaVence(''); }} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity relative ${negativo ? 'border-red-600/60 bg-red-600/10' : vencido ? 'border-orange-500/60 bg-orange-500/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
+                            <div key={item.id} onClick={() => { setSelectedStockItem(item); setModalTab('ingreso'); setModoLatas(false); setLatasCount(''); setLatasPeso(''); setEgresoQty(''); setEgresoComentario(''); setFacturaQty(''); setFacturaProveedor(''); setFacturaLote(''); setFacturaComentario(''); setFacturaVence(''); }} className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-opacity relative ${negativo ? 'border-red-600/60 bg-red-600/10' : vencido ? 'border-orange-500/60 bg-orange-500/10' : zero ? 'border-red-500/40 bg-red-500/10' : low ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-700 bg-slate-900'}`}>
                               
                               {/* Icono de alerta */}
                               {tieneAlerta && (
@@ -916,7 +913,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                               savingEgresoRef.current = true;
                               setSavingEgreso(true);
                               const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) - qty).toFixed(3));
-                              await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                              await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10), ...(facturaVence ? { fecha_vencimiento: new Date(facturaVence).toLocaleDateString('es-AR') } : {}) }).eq('id', selectedStockItem.id);
                               await supabase.from('stock_movements').insert({
                                 stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
                                 categoria: selectedStockItem.categoria, tipo: 'egreso',
@@ -1043,7 +1040,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
           })()}
 
       {showEntryModal && (
-        <StockEntryModal onClose={() => { setShowEntryModal(false); fetchMovements(); }} />
+        <StockEntryModal onClose={() => { setShowEntryModal(false); setSelectedStockItem(null); fetchMovements(); }} />
       )}
     </div>
   );
