@@ -343,21 +343,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     return acc;
   }, {});
 
-  // Cargar stocks de menjunje cuando hay una producción de empanado en curso
-  useEffect(() => {
-    if (!finishingProd || !isEmpanadoRecipe) return;
-    const load = async () => {
-      const { data } = await supabase.from('stock_produccion')
-        .select('producto, cantidad')
-        .ilike('producto', 'Menjunje Milanesa%')
-        .order('producto');
-      const stocks = (data ?? []).filter((d: any) => d.producto && d.cantidad !== undefined);
-      setEmpanadoStocks(stocks);
-      if (stocks.length === 1) setEmpanadoCorteStock(stocks[0].producto);
-    };
-    load();
-  }, [finishingProd?.id, isEmpanadoRecipe]);
-
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -446,6 +431,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   };
 
   // ── Produccion activa seleccionada para finalizar ────────────────────────
+  const finishingRef = React.useRef(false);
   const [finishingProd, setFinishingProd] = useState<import('../types').ActiveProductionItem | null>(null);
 
   // ── Estado para menjunje milanesa ─────────────────────────────────────────
@@ -487,9 +473,26 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Salsas';
   const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
 
+
+  // Cargar stocks de menjunje cuando hay una producción de empanado en curso
+  useEffect(() => {
+    if (!finishingProd || !isEmpanadoRecipe) return;
+    const load = async () => {
+      const { data } = await supabase.from('stock_produccion')
+        .select('producto, cantidad')
+        .ilike('producto', 'Menjunje Milanesa%')
+        .order('producto');
+      const stocks = (data ?? []).filter((d: any) => d.producto && d.cantidad !== undefined);
+      setEmpanadoStocks(stocks);
+      if (stocks.length === 1) setEmpanadoCorteStock(stocks[0].producto);
+    };
+    load();
+  }, [finishingProd?.id, isEmpanadoRecipe]);
   const handleFinish = async () => {
     const prod = finishingProd;
     if (!prod) return;
+    if (finishingRef.current) return;
+    finishingRef.current = true;
     if (isFraccion && !showFraccionModal) { setShowFraccionModal(true); return; }
     setShowFraccionModal(false);
     // Pan: pedir unidades
@@ -1219,7 +1222,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2">
                             <CheckCircle2 size={16} /> Confirmar y finalizar
                           </button>
-                          <button onClick={() => { setFinishingProd(null); setShowMenjunjeModal(false); }}
+                          <button onClick={() => { finishingRef.current = false; setFinishingProd(null); setShowMenjunjeModal(false); }}
                             className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl transition-colors">
                             <X size={16} />
                           </button>
