@@ -815,6 +815,26 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                 </div>
                               </div>
                             )}
+                            {/* TRAZABILIDAD */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Lote / Remito</label>
+                                <input type="text" value={facturaLote} onChange={e => setFacturaLote(e.target.value)}
+                                  placeholder="Ej: R-12345"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Vencimiento</label>
+                                <input type="date" value={facturaVence} onChange={e => setFacturaVence(e.target.value)}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Comentario / Faltante</label>
+                              <input type="text" value={facturaComentario} onChange={e => setFacturaComentario(e.target.value)}
+                                placeholder="Ej: Faltaron 2kg en la entrega..."
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                            </div>
                             <button
                               onClick={async () => {
                                 const qty = parseFloat(facturaQty);
@@ -822,15 +842,19 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                 savingFacturaRef.current = true;
                                 setSavingFactura(true);
                                 const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
-                                await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                                await supabase.from('stock').update({
+                                  cantidad: newQty,
+                                  fecha_actualizacion: new Date().toISOString().slice(0, 10),
+                                  ...(facturaVence ? { fecha_vencimiento: new Date(facturaVence).toLocaleDateString('es-AR') } : {}),
+                                }).eq('id', selectedStockItem.id);
                                 await supabase.from('stock_movements').insert({
                                   stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
                                   categoria: selectedStockItem.categoria, tipo: 'ingreso',
                                   cantidad: qty, unidad: selectedStockItem.unidad,
-                                  motivo: `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''}`,
+                                  motivo: ['Factura', facturaProveedor, facturaLote, facturaComentario].filter(Boolean).join(' - '),
                                   operador: 'Admin', fecha: new Date().toISOString(),
                                 });
-                                setFacturaQty(''); setFacturaProveedor('');
+                                setFacturaQty(''); setFacturaProveedor(''); setFacturaLote(''); setFacturaComentario(''); setFacturaVence('');
                                 setSavingFactura(false); savingFacturaRef.current = false;
                                 await fetchMovements();
                                 setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
