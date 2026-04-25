@@ -479,13 +479,25 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   useEffect(() => {
     if (!finishingProd || !isEmpanadoRecipe) return;
     const load = async () => {
-      const { data } = await supabase.from('stock_produccion')
-        .select('producto, cantidad')
-        .ilike('producto', 'Menjunje Milanesa%')
-        .order('producto');
-      const stocks = (data ?? []).filter((d: any) => d.producto && d.cantidad !== undefined);
+      // Buscar todos los menjunjes (aunque tengan 0 stock)
+      const nombres = ['Menjunje Milanesa Carne', 'Menjunje Milanesa Pollo'];
+      const stocks: {producto: string; cantidad: number}[] = [];
+      for (const nombre of nombres) {
+        const { data } = await supabase.from('stock_produccion')
+          .select('producto, cantidad')
+          .eq('producto', nombre)
+          .maybeSingle();
+        if (data) {
+          stocks.push({ producto: data.producto, cantidad: Number(data.cantidad) });
+        } else {
+          // Mostrar igual aunque no exista en stock aún
+          stocks.push({ producto: nombre, cantidad: 0 });
+        }
+      }
       setEmpanadoStocks(stocks);
-      if (stocks.length === 1) setEmpanadoCorteStock(stocks[0].producto);
+      // Pre-seleccionar el que corresponde al tipo
+      const tipoNombre = activeRecipeId.includes('pollo') ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne';
+      setEmpanadoCorteStock(tipoNombre);
     };
     load();
   }, [finishingProd?.id, isEmpanadoRecipe]);
@@ -1180,9 +1192,26 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
                                 <input type="number" value={empanadoMenjunjeKg} onChange={e => setEmpanadoMenjunjeKg(e.target.value)}
                                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
-                                {empanadoMenjunjeKg && parseFloat(empanadoMenjunjeKg) > 50 && (
-                                  <p className="text-xs text-amber-400 mt-1">⚠️ {empanadoMenjunjeKg} kg parece mucho. ¿Quisiste decir {(parseFloat(empanadoMenjunjeKg)/100).toFixed(2)} kg?</p>
-                                )}
+                                {empanadoMenjunjeKg && parseFloat(empanadoMenjunjeKg) > 50 && (() => {
+                                  const val = parseFloat(empanadoMenjunjeKg);
+                                  const strVal = String(Math.round(val));
+                                  let sug = null;
+                                  for (let i = 1; i < strVal.length; i++) {
+                                    const c = parseFloat(strVal.slice(0,i) + '.' + strVal.slice(i));
+                                    if (c > 0 && c <= 50) { sug = c; break; }
+                                  }
+                                  return (
+                                    <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
+                                      <p className="text-xs text-amber-400 font-bold">⚠️ {val} kg parece mucho. {sug ? `¿Quisiste decir ${sug} kg?` : '¿Es correcto?'}</p>
+                                      {sug && (
+                                        <button onClick={() => { setEmpanadoMenjunjeKg(String(sug)); setEmpanadoSalieronKg(String(sug)); }}
+                                          className="mt-1.5 w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
+                                          ¿Quisiste decir {sug} kg? → Corregir
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                               <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
