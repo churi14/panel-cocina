@@ -453,8 +453,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [empanadoMenjunjeKg, setEmpanadoMenjunjeKg] = useState('');
   const [empanadoSalieronKg, setEmpanadoSalieronKg] = useState('');
   const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
-  // Derive tipo from recipe ID so it's always correct
-  const empanadoTipoActual = activeRecipeId.includes('pollo') ? 'pollo' : 'carne';
   const [empanadoCorteStock, setEmpanadoCorteStock] = useState('');
   const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
   // Salsa kg modal
@@ -466,6 +464,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const isVerduraRecipe  = activeRecipeId.startsWith('verdura_');
   const isFiambreRecipe  = activeRecipeId.startsWith('fiambre_');
   const isEmpanadoRecipe = activeRecipeId.startsWith('empanado_');
+  const empanadoTipoActual = activeRecipeId.includes('pollo') ? 'pollo' : 'carne';
   const isPanRecipe      = activeRecipeId.startsWith('pan_');
   const isMilanesaRecipe = !activeRecipeId.startsWith('empanado_') && (
     activeRecipeName.toLowerCase().includes('menjunje') ||
