@@ -488,23 +488,12 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     }
     setShowMenjunjeModal(false);
     // Empanado: pedir kg menjunje y kg salidos
-    if (isEmpanadoRecipe && !showEmpanadoModal) {
-      // Buscar carne limpia disponible para empanado
-      const { data } = await supabase.from('stock_produccion')
-        .select('producto, cantidad')
-        .ilike('producto', '% Limpia')
-        .gt('cantidad', 0)
-        .order('producto');
-      const mergedEmp: {producto: string; cantidad: number}[] = [];
-      for (const item of (data ?? [])) {
-        const norm = item.producto.toLowerCase().includes('nalga') ? 'Nalga Limpia' : item.producto;
-        const ex = mergedEmp.find(m => m.producto === norm);
-        if (ex) ex.cantidad += item.cantidad;
-        else mergedEmp.push({...item, producto: norm});
-      }
-      setEmpanadoStocks(mergedEmp);
-      setEmpanadoCorteStock('');
-      setShowEmpanadoModal(true);
+    // Empanado: pre-llenar kg desde baseKg y no mostrar modal separado
+    if (isEmpanadoRecipe && !empanadoMenjunjeKg) {
+      const kgBase = String(prod.baseKg ?? prod.targetUnits ?? '');
+      setEmpanadoMenjunjeKg(kgBase);
+      setEmpanadoSalieronKg(kgBase);
+      setShowEmpanadoModal(false);
       return;
     }
     setShowEmpanadoModal(false);
@@ -1111,6 +1100,36 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                               {milanesaKgSalieron && milanesaUnidades && parseFloat(milanesaKgSalieron) > 0 && parseInt(milanesaUnidades) > 0 && (
                                 <p className="text-xs text-green-400 font-black mt-1">
                                   → {Math.round(parseFloat(milanesaKgSalieron) / parseInt(milanesaUnidades) * 1000)}g por unidad
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {isEmpanadoRecipe && finishingProd && (
+                          <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
+                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Empanado {empanadoTipo === 'pollo' ? 'Pollo' : 'Carne'}</p>
+                            <p className="text-xs text-slate-400 mb-1">Descuenta del stock de menjunje preparado.</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
+                                <input type="number" value={empanadoMenjunjeKg} onChange={e => setEmpanadoMenjunjeKg(e.target.value)}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
+                                <input type="number" value={empanadoSalieronKg} onChange={e => setEmpanadoSalieronKg(e.target.value)}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-500" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-amber-400 font-bold uppercase mb-1 block">📦 Unidades que salieron *</label>
+                              <input type="number" value={milanesaUnidades} onChange={e => setMilanesaUnidades(e.target.value)}
+                                placeholder="ej: 20"
+                                className="w-full bg-slate-700 border-2 border-amber-500 text-white rounded-xl px-3 py-3 text-2xl font-black text-center outline-none focus:border-amber-400" />
+                              {empanadoSalieronKg && milanesaUnidades && parseFloat(empanadoSalieronKg) > 0 && parseInt(milanesaUnidades) > 0 && (
+                                <p className="text-xs text-green-400 font-black mt-1">
+                                  → {Math.round(parseFloat(empanadoSalieronKg) / parseInt(milanesaUnidades) * 1000)}g por unidad
                                 </p>
                               )}
                             </div>
