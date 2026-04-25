@@ -343,6 +343,21 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     return acc;
   }, {});
 
+  // Cargar stocks de menjunje cuando hay una producción de empanado en curso
+  useEffect(() => {
+    if (!finishingProd || !isEmpanadoRecipe) return;
+    const load = async () => {
+      const { data } = await supabase.from('stock_produccion')
+        .select('producto, cantidad')
+        .ilike('producto', 'Menjunje Milanesa%')
+        .order('producto');
+      const stocks = (data ?? []).filter((d: any) => d.producto && d.cantidad !== undefined);
+      setEmpanadoStocks(stocks);
+      if (stocks.length === 1) setEmpanadoCorteStock(stocks[0].producto);
+    };
+    load();
+  }, [finishingProd?.id, isEmpanadoRecipe]);
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -490,25 +505,11 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     }
     setShowMenjunjeModal(false);
     // Empanado: pedir kg menjunje y kg salidos
-    // Empanado: pre-llenar kg y cargar stocks de menjunje disponibles
+    // Empanado: pre-llenar kg si no están cargados aún
     if (isEmpanadoRecipe && !empanadoMenjunjeKg) {
       const kgBase = String(prod.baseKg ?? prod.targetUnits ?? '');
       setEmpanadoMenjunjeKg(kgBase);
       setEmpanadoSalieronKg(kgBase);
-      // Cargar stocks de menjunje disponibles
-      const { data } = await supabase.from('stock_produccion')
-        .select('producto, cantidad')
-        .ilike('producto', 'Menjunje Milanesa%')
-        .gt('cantidad', 0)
-        .order('producto');
-      const mergedEmp: {producto: string; cantidad: number}[] = [];
-      for (const item of (data ?? [])) {
-        const ex = mergedEmp.find((m: any) => m.producto === item.producto);
-        if (ex) ex.cantidad += item.cantidad;
-        else mergedEmp.push(item);
-      }
-      setEmpanadoStocks(mergedEmp);
-      if (mergedEmp.length === 1) setEmpanadoCorteStock(mergedEmp[0].producto);
       setShowEmpanadoModal(false);
       return;
     }
