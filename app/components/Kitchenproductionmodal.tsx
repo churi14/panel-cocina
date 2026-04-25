@@ -498,15 +498,14 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
       // Cargar stocks de menjunje disponibles
       const { data } = await supabase.from('stock_produccion')
         .select('producto, cantidad')
-        .ilike('producto', 'Milanesa%')
+        .ilike('producto', 'Menjunje Milanesa%')
         .gt('cantidad', 0)
         .order('producto');
       const mergedEmp: {producto: string; cantidad: number}[] = [];
       for (const item of (data ?? [])) {
-        const norm = item.producto.toLowerCase().includes('nalga') ? 'Milanesa - Nalga Limpia' : item.producto;
-        const ex = mergedEmp.find((m: any) => m.producto === norm);
+        const ex = mergedEmp.find((m: any) => m.producto === item.producto);
         if (ex) ex.cantidad += item.cantidad;
-        else mergedEmp.push({...item, producto: norm});
+        else mergedEmp.push(item);
       }
       setEmpanadoStocks(mergedEmp);
       if (mergedEmp.length === 1) setEmpanadoCorteStock(mergedEmp[0].producto);
@@ -1159,7 +1158,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                       ${empanadoCorteStock === s.producto
                                         ? 'bg-rose-600 text-white border-rose-500'
                                         : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-rose-400'}`}>
-                                    <span>{s.producto.replace('Milanesa - ','')}</span>
+                                    <span>{s.producto.replace('Menjunje ','')}</span>
                                     <span className="opacity-60 text-xs">{s.cantidad.toFixed(2)} kg</span>
                                   </button>
                                 )) : (
