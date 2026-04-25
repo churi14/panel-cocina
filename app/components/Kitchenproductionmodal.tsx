@@ -546,17 +546,6 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     return `${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  // Modal de confirmación cantidad sospechosa
-  // Confirmación de cantidad sospechosa en verdura — manejada por KitchenFinalizarVerdura
-              }}
-              className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-2xl transition-all text-sm">
-              Confirmar igual
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
