@@ -15,6 +15,13 @@ type Props = {
 
 export default function TabStock({ stock, stockProd, movements, fetchMovements }: Props) {
   const [showEntryModal, setShowEntryModal] = useState(false);
+  // Nuevo producto
+  const [showNuevoModal, setShowNuevoModal] = useState(false);
+  const [nuevoCat, setNuevoCat]             = useState('');
+  const [nuevoNombre, setNuevoNombre]       = useState('');
+  const [nuevoCantidad, setNuevaCantidad]   = useState('');
+  const [nuevoUnidad, setNuevoUnidad]       = useState('kg');
+  const [savingNuevo, setSavingNuevo]       = useState(false);
   const { user } = useAuth();
   const [stockCat, setStockCat]           = useState('all');
   const [stockSearch, setStockSearch]     = useState('');
@@ -128,7 +135,13 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     <div key={cat}>
                       <div className="flex items-center justify-between px-4 py-2.5 rounded-xl mb-3 bg-slate-900 border border-slate-800">
                         <span className="font-black text-sm uppercase text-slate-300">{CAT_EMOJI[cat] ?? '📦'} {cat}</span>
-                        <span className="text-xs text-slate-500">{catItems.length} items</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500">{catItems.length} items</span>
+                          <button onClick={() => { setNuevoCat(cat as string); setNuevoNombre(''); setNuevaCantidad(''); setNuevoUnidad('kg'); setShowNuevoModal(true); }}
+                            className="text-xs font-black text-green-400 hover:text-green-300 px-2 py-0.5 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-all">
+                            + Agregar
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {catItems.map((item: any) => {
@@ -1045,6 +1058,80 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               </div>
             );
           })()}
+
+      {/* ── MODAL NUEVO PRODUCTO ── */}
+      {showNuevoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowNuevoModal(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            <h3 className="font-black text-white text-lg">➕ Nuevo producto</h3>
+            <p className="text-xs text-slate-400">Categoría: <span className="font-black text-white">{nuevoCat}</span></p>
+            <div>
+              <label className="text-xs text-slate-400 uppercase font-bold mb-1 block">Nombre del producto</label>
+              <input type="text" value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)}
+                placeholder="ej: ACEITE GIRASOL"
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500 uppercase" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-400 uppercase font-bold mb-1 block">Cantidad inicial</label>
+                <input type="number" value={nuevoCantidad} onChange={e => setNuevaCantidad(e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 uppercase font-bold mb-1 block">Unidad</label>
+                <select value={nuevoUnidad} onChange={e => setNuevoUnidad(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500">
+                  <option value="kg">kg</option>
+                  <option value="u">u (unidades)</option>
+                  <option value="lt">lt</option>
+                  <option value="g">g</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setShowNuevoModal(false)}
+                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl text-sm">
+                Cancelar
+              </button>
+              <button
+                disabled={!nuevoNombre.trim() || savingNuevo}
+                onClick={async () => {
+                  if (!nuevoNombre.trim() || savingNuevo) return;
+                  setSavingNuevo(true);
+                  const qty = parseFloat(nuevoCantidad) || 0;
+                  const { error } = await supabase.from('stock').insert({
+                    nombre: nuevoNombre.trim().toUpperCase(),
+                    categoria: nuevoCat,
+                    cantidad: qty,
+                    unidad: nuevoUnidad,
+                    fecha_actualizacion: new Date().toISOString().slice(0, 10),
+                  });
+                  if (!error && qty > 0) {
+                    await supabase.from('stock_movements').insert({
+                      nombre: nuevoNombre.trim().toUpperCase(),
+                      categoria: nuevoCat,
+                      tipo: 'ingreso',
+                      cantidad: qty,
+                      unidad: nuevoUnidad,
+                      motivo: 'Alta de producto',
+                      operador: 'Admin',
+                      fecha: new Date().toISOString(),
+                    });
+                  }
+                  setSavingNuevo(false);
+                  setShowNuevoModal(false);
+                  await fetchMovements();
+                }}
+                className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl text-sm disabled:opacity-40">
+                {savingNuevo ? 'Guardando...' : '✓ Crear producto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showEntryModal && (
         <StockEntryModal onClose={() => { setShowEntryModal(false); setSelectedStockItem(null); fetchMovements(); }} />
