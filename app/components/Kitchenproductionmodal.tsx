@@ -9,7 +9,7 @@ import { supabase } from '../supabase';
 import { sendResumenTurno } from './pushEvents';
 import {
   saveCocinaProduccion, clearCocinaProduccion,
-  deductStockForMilanesa, deductStockForFraccion, deductStockForFiambre,
+  deductStockForMilanesa, deductStockForFraccion,
   VERDURA_STOCK_MAP, FIAMBRE_STOCK_MAP,
   formatQty,
 } from './kitchenHelpers';
@@ -377,49 +377,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
       await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `✅ Empanado ${tipo} · ${operador}`, body: `${sKg}kg milanesa empanada de ${mKg}kg menjunje`, tag: 'empanado-fin', url: '/admin' }) });
     }
 
-    // Registrar salsa producida
-    if (isSalsaRecipe && salsaKgProducidos) {
-      const kg = parseFloat(salsaKgProducidos);
-      const prodNombre = prod.recipeName; // ej: "Salsa Club"
-      if (kg > 0) await addSalsaToStock(prodNombre, kg, operador);
-      await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `🫙 ${prodNombre} · ${operador}`, body: `${kg}kg producidos`, tag: 'salsa-fin', url: '/admin' }) });
-    }
+    // Salsa: manejado por KitchenFinalizarSalsa
 
-    // Empanado
-    if (isEmpanadoRecipe && empanadoMenjunjeKg && empanadoSalieronKg) {
-      const mKg = parseFloat(empanadoMenjunjeKg);
-      const sKg = parseFloat(empanadoSalieronKg);
-      const tipo = empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne';
-      const corteLabel = empanadoCorteStock ? empanadoCorteStock.replace('Milanesa - ', '') : tipo;
-      const prodNombre = `Milanesa de ${tipo} Empanada - ${corteLabel}`;
-      const menjNombre = empanadoCorteStock || (empanadoTipoActual === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
-      const { data: menjData } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', menjNombre).maybeSingle();
-      if (menjData) {
-        await supabase.from('stock_produccion').update({ cantidad: parseFloat((Number(menjData.cantidad) - mKg).toFixed(3)) }).eq('id', menjData.id);
-      }
-      if (sKg > 0) {
-        const { data: epd } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', prodNombre).maybeSingle();
-        if (epd) {
-          await supabase.from('stock_produccion').update({ cantidad: parseFloat((Number(epd.cantidad)+sKg).toFixed(3)), ultima_prod: new Date().toISOString() }).eq('id', epd.id);
-        } else {
-          await supabase.from('stock_produccion').insert({ producto: prodNombre, categoria: 'milanesa', cantidad: sKg, unidad: 'kg', ultima_prod: new Date().toISOString() });
-        }
-      }
-    }
-
-    // Salsa
-    if (isSalsaRecipe && salsaKgProducidos) {
-      const kg = parseFloat(salsaKgProducidos);
-      const prodNombre = prod.recipeName;
-      if (kg > 0) {
-        const { data: pd } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', prodNombre).maybeSingle();
-        if (pd) {
-          await supabase.from('stock_produccion').update({ cantidad: parseFloat((Number(pd.cantidad)+kg).toFixed(3)), ultima_prod: new Date().toISOString() }).eq('id', pd.id);
-        } else {
-          await supabase.from('stock_produccion').insert({ producto: prodNombre, categoria: 'salsa', cantidad: kg, unidad: 'kg', ultima_prod: new Date().toISOString() });
-        }
-      }
-    }
+    // Empanado: manejado por KitchenFinalizarEmpanado
 
     // Registrar pan producido en stock_produccion
     if (isPanRecipe && panUnidades && parseInt(panUnidades) > 0) {
