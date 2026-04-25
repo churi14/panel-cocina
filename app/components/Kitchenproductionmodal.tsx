@@ -479,7 +479,13 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     if (isPanRecipe && !showPanModal) { setShowPanModal(true); return; }
     setShowPanModal(false);
     // Menjunje milanesa
-    if (isMilanesaRecipe && !showMenjunjeModal) { setShowMenjunjeModal(true); return; }
+    if (isMilanesaRecipe && !showMenjunjeModal) {
+      const kgBase = String(prod.baseKg ?? prod.targetUnits ?? '');
+      setMenjunjeKg(kgBase);
+      setMilanesaKgSalieron(kgBase);
+      setShowMenjunjeModal(true);
+      return;
+    }
     setShowMenjunjeModal(false);
     // Empanado: pedir kg menjunje y kg salidos
     if (isEmpanadoRecipe && !showEmpanadoModal) {
@@ -1083,62 +1089,32 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
                         {isMilanesaRecipe && showMenjunjeModal && (
                           <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
-                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — Ingresá los kg usados</p>
+                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo}</p>
+                            <p className="text-xs text-slate-400 mb-1">Descuenta del stock de menjunje preparado.</p>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Stock de carne</label>
-                                {menjunjeStocks.length > 0 ? (
-                                  <div className="space-y-1 max-h-36 overflow-y-auto">
-                                    {menjunjeStocks.map(s => (
-                                      <button key={s.producto}
-                                        onClick={() => setMenjunjeCorte(s.producto.replace('Milanesa - ', ''))}
-                                        className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all border
-                                          ${menjunjeCorte === s.producto.replace('Milanesa - ', '')
-                                            ? 'bg-rose-600 text-white border-rose-500'
-                                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-rose-500'}`}>
-                                        <span>{s.producto}</span>
-                                        <span className="float-right text-xs opacity-60">{s.cantidad.toFixed(2)} kg</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-500 italic">
-                                    No hay stock de milanesa cruda. Producí primero en Carnicería.
-                                  </div>
-                                )}
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
+                                <input type="number" value={menjunjeKg} onChange={e => setMenjunjeKg(e.target.value)}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
                               </div>
                               <div>
-                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg carne usados</label>
-                                <input type="number" value={menjunjeKg} onChange={e => setMenjunjeKg(e.target.value)}
-                                  placeholder="5.000"
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-rose-500" />
+                                <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
+                                <input type="number" value={milanesaKgSalieron} onChange={e => setMilanesaKgSalieron(e.target.value)}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-500" />
                               </div>
                             </div>
-                            {/* Rendimiento — kg y unidades que salieron */}
-                            <div className="bg-slate-800/50 rounded-xl p-3 space-y-2">
-                              <p className="text-xs text-amber-400 font-black uppercase">📦 ¿Cuánto salió?</p>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg totales</label>
-                                  <input type="number" value={milanesaKgSalieron} onChange={e => setMilanesaKgSalieron(e.target.value)}
-                                    placeholder="4.200"
-                                    className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-500" />
-                                </div>
-                                <div>
-                                  <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Unidades</label>
-                                  <input type="number" value={milanesaUnidades} onChange={e => setMilanesaUnidades(e.target.value)}
-                                    placeholder="20"
-                                    className="w-full bg-slate-700 border border-slate-600 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-500" />
-                                </div>
-                              </div>
+                            <div>
+                              <label className="text-xs text-amber-400 font-bold uppercase mb-1 block">📦 Unidades que salieron *</label>
+                              <input type="number" value={milanesaUnidades} onChange={e => setMilanesaUnidades(e.target.value)}
+                                placeholder="ej: 20"
+                                className="w-full bg-slate-700 border-2 border-amber-500 text-white rounded-xl px-3 py-3 text-2xl font-black text-center outline-none focus:border-amber-400" />
                               {milanesaKgSalieron && milanesaUnidades && parseFloat(milanesaKgSalieron) > 0 && parseInt(milanesaUnidades) > 0 && (
-                                <p className="text-xs text-green-400 font-black">
+                                <p className="text-xs text-green-400 font-black mt-1">
                                   → {Math.round(parseFloat(milanesaKgSalieron) / parseInt(milanesaUnidades) * 1000)}g por unidad
                                 </p>
                               )}
                             </div>
                           </div>
-                        )}
 
                         <div className="flex gap-3">
                           <button onClick={handleFinish}
