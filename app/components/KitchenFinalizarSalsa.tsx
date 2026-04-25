@@ -6,6 +6,7 @@ import { clearCocinaProduccion } from './kitchenHelpers';
 type Prod = {
   id: number;
   recipeName: string;
+  recipeId: string;
   baseKg?: number;
   targetUnits: number;
   unit: string;

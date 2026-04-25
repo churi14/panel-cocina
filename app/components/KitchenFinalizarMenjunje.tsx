@@ -6,7 +6,7 @@ import { clearCocinaProduccion, deductStockForMilanesa } from './kitchenHelpers'
 type Prod = {
   id: number;
   recipeName: string;
-  recipeId?: string;
+  recipeId: string;
   baseKg?: number;
   targetUnits: number;
   unit: string;
