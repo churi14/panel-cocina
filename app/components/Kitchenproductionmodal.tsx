@@ -464,8 +464,10 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const isFiambreRecipe  = activeRecipeId.startsWith('fiambre_');
   const isEmpanadoRecipe = activeRecipeId.startsWith('empanado_');
   const isPanRecipe      = activeRecipeId.startsWith('pan_');
-  const isMilanesaRecipe = activeRecipeName.toLowerCase().includes('menjunje') ||
-    recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Milanesas';
+  const isMilanesaRecipe = !activeRecipeId.startsWith('empanado_') && (
+    activeRecipeName.toLowerCase().includes('menjunje') ||
+    recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Milanesas'
+  );
   const isSalsaRecipe    = !isFraccion && !isPanRecipe && !isMilanesaRecipe && !isVerduraRecipe && !isFiambreRecipe && !isEmpanadoRecipe &&
     recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Salsas';
   const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
@@ -488,11 +490,26 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     }
     setShowMenjunjeModal(false);
     // Empanado: pedir kg menjunje y kg salidos
-    // Empanado: pre-llenar kg desde baseKg y no mostrar modal separado
+    // Empanado: pre-llenar kg y cargar stocks de menjunje disponibles
     if (isEmpanadoRecipe && !empanadoMenjunjeKg) {
       const kgBase = String(prod.baseKg ?? prod.targetUnits ?? '');
       setEmpanadoMenjunjeKg(kgBase);
       setEmpanadoSalieronKg(kgBase);
+      // Cargar stocks de menjunje disponibles
+      const { data } = await supabase.from('stock_produccion')
+        .select('producto, cantidad')
+        .ilike('producto', 'Milanesa%')
+        .gt('cantidad', 0)
+        .order('producto');
+      const mergedEmp: {producto: string; cantidad: number}[] = [];
+      for (const item of (data ?? [])) {
+        const norm = item.producto.toLowerCase().includes('nalga') ? 'Milanesa - Nalga Limpia' : item.producto;
+        const ex = mergedEmp.find((m: any) => m.producto === norm);
+        if (ex) ex.cantidad += item.cantidad;
+        else mergedEmp.push({...item, producto: norm});
+      }
+      setEmpanadoStocks(mergedEmp);
+      if (mergedEmp.length === 1) setEmpanadoCorteStock(mergedEmp[0].producto);
       setShowEmpanadoModal(false);
       return;
     }
@@ -1110,6 +1127,25 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                           <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
                             <p className="text-rose-300 font-black text-sm uppercase">🥩 Empanado {empanadoTipo === 'pollo' ? 'Pollo' : 'Carne'}</p>
                             <p className="text-xs text-slate-400 mb-1">Descuenta del stock de menjunje preparado.</p>
+                            {/* Selector de qué menjunje usó */}
+                            <div>
+                              <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">¿De qué menjunje empanaste?</label>
+                              <div className="space-y-1 max-h-32 overflow-y-auto">
+                                {empanadoStocks.length > 0 ? empanadoStocks.map(s => (
+                                  <button key={s.producto}
+                                    onClick={() => setEmpanadoCorteStock(s.producto)}
+                                    className={`w-full flex justify-between px-4 py-2.5 rounded-xl text-sm font-bold border transition-all
+                                      ${empanadoCorteStock === s.producto
+                                        ? 'bg-rose-600 text-white border-rose-500'
+                                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-rose-400'}`}>
+                                    <span>{s.producto.replace('Milanesa - ','')}</span>
+                                    <span className="opacity-60 text-xs">{s.cantidad.toFixed(2)} kg</span>
+                                  </button>
+                                )) : (
+                                  <p className="text-xs text-slate-500 italic px-2">Cargando stocks...</p>
+                                )}
+                              </div>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
