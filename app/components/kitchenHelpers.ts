@@ -179,3 +179,57 @@ export function sugerirDecimal(valor: number, limiteMax: number): number | null 
   }
   return null;
 }
+
+
+// ── Descuento de stock para fiambres ─────────────────────────────────────────
+
+export const FIAMBRE_PROD_MAP: Record<string, string> = {
+  'fiambre_jamon':          'Jamón',
+  'fiambre_panceta':        'Panceta',
+  'fiambre_cheddar_feta':   'Cheddar en Feta',
+  'fiambre_cheddar_liq':    'Cheddar Líquido',
+  'fiambre_cheddar_burger': 'Cheddar para Burger',
+  'fiambre_provoleta':      'Provoleta',
+  'fiambre_muzza_sanguch':  'Queso Muzza para Sanguchería',
+  'fiambre_muzza_mila':     'Queso Muzza para Mila al Plato',
+  'fiambre_tybo':           'Queso Tybo',
+};
+
+const FIAMBRE_UNIDAD_MAP: Record<string, string> = {
+  'fiambre_cheddar_feta': 'u',
+};
+
+export async function deductStockForFiambre(recipeId: string, pesoKg: number, operador: string) {
+  const stockNombre = FIAMBRE_STOCK_MAP[recipeId];
+  const prodNombre  = FIAMBRE_PROD_MAP[recipeId];
+  const unidad      = FIAMBRE_UNIDAD_MAP[recipeId] ?? 'kg';
+  if (!stockNombre || pesoKg <= 0) return;
+  try {
+    const { data } = await supabase.from('stock')
+      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
+    if (data) {
+      const newQty = parseFloat((Number(data.cantidad) - pesoKg).toFixed(3));
+      await supabase.from('stock')
+        .update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) })
+        .eq('id', data.id);
+      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
+      await supabase.from('stock_movements').insert({
+        nombre: stockNombre, categoria: 'FIAMBRE', tipo: 'egreso',
+        cantidad: pesoKg, unidad,
+        motivo: `Producción ${prodNombre}`, operador, fecha: new Date().toISOString(),
+      });
+    }
+    if (pesoKg > 0 && prodNombre) {
+      const { data: pd } = await supabase.from('stock_produccion')
+        .select('id, cantidad').eq('producto', prodNombre).maybeSingle();
+      if (pd) {
+        await supabase.from('stock_produccion')
+          .update({ cantidad: parseFloat((Number(pd.cantidad) + pesoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
+          .eq('id', pd.id);
+      } else {
+        await supabase.from('stock_produccion')
+          .insert({ producto: prodNombre, categoria: 'fiambre', cantidad: pesoKg, unidad, ultima_prod: new Date().toISOString() });
+      }
+    }
+  } catch (e) { console.error('Error deductStockForFiambre:', e); }
+}
