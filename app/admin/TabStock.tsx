@@ -180,9 +180,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         })}
                           {/* Tarjeta agregar */}
                           <div onClick={() => { setNuevoCat(cat as string); setNuevoNombre(''); setNuevaCantidad(''); setNuevoUnidad('kg'); setShowNuevoModal(true); }}
-                            className="rounded-2xl border-2 border-dashed border-slate-700 p-4 cursor-pointer hover:border-green-500/50 hover:bg-green-500/5 transition-all flex flex-col items-center justify-center gap-2 min-h-[80px]">
-                            <span className="text-2xl text-slate-600 group-hover:text-green-500">+</span>
-                            <span className="text-xs font-bold text-slate-600">Agregar</span>
+                            className="rounded-2xl border-2 border-dashed border-green-500/50 bg-green-500/5 p-4 cursor-pointer hover:border-green-400 hover:bg-green-500/10 transition-all flex flex-col items-center justify-center gap-2 min-h-[80px] active:scale-95">
+                            <span className="text-2xl text-green-500">+</span>
+                            <span className="text-xs font-bold text-green-400">Agregar</span>
                           </div>
                       </div>
                     </div>
@@ -250,9 +250,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         ))}
                           {/* Tarjeta agregar */}
                           <div onClick={() => { setNuevoCat(cat as string); setNuevoNombre(''); setNuevaCantidad(''); setNuevoUnidad('kg'); setShowNuevoModal(true); }}
-                            className="rounded-2xl border-2 border-dashed border-slate-700 p-4 cursor-pointer hover:border-green-500/50 hover:bg-green-500/5 transition-all flex flex-col items-center justify-center gap-2 min-h-[80px]">
-                            <span className="text-2xl text-slate-600 group-hover:text-green-500">+</span>
-                            <span className="text-xs font-bold text-slate-600">Agregar</span>
+                            className="rounded-2xl border-2 border-dashed border-green-500/50 bg-green-500/5 p-4 cursor-pointer hover:border-green-400 hover:bg-green-500/10 transition-all flex flex-col items-center justify-center gap-2 min-h-[80px] active:scale-95">
+                            <span className="text-2xl text-green-500">+</span>
+                            <span className="text-xs font-bold text-green-400">Agregar</span>
                           </div>
                       </div>
                     </div>
