@@ -1115,6 +1115,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                               )}
                             </div>
                           </div>
+                        )}
 
                         <div className="flex gap-3">
                           <button onClick={handleFinish}
