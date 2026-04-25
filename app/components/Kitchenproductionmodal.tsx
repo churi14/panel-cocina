@@ -9,7 +9,7 @@ import { supabase } from '../supabase';
 import { sendResumenTurno } from './pushEvents';
 import {
   saveCocinaProduccion, clearCocinaProduccion,
-  deductStockForMilanesa, deductStockForFraccion,
+  deductStockForMilanesa, deductStockForFraccion, deductStockForFiambre,
   VERDURA_STOCK_MAP, FIAMBRE_STOCK_MAP,
   formatQty,
 } from './kitchenHelpers';
