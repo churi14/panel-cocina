@@ -453,6 +453,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const [empanadoMenjunjeKg, setEmpanadoMenjunjeKg] = useState('');
   const [empanadoSalieronKg, setEmpanadoSalieronKg] = useState('');
   const [empanadoTipo, setEmpanadoTipo]             = useState<'carne'|'pollo'>('carne');
+  // Derive tipo from recipe ID so it's always correct
+  const empanadoTipoActual = activeRecipeId.includes('pollo') ? 'pollo' : 'carne';
   const [empanadoCorteStock, setEmpanadoCorteStock] = useState('');
   const [empanadoStocks, setEmpanadoStocks]         = useState<{producto: string; cantidad: number}[]>([]);
   // Salsa kg modal
@@ -500,7 +502,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setShowPanModal(false);
     // Menjunje milanesa
     if (isMilanesaRecipe && !showMenjunjeModal) {
-      const kgBase = String(prod.baseKg ?? prod.targetUnits ?? '');
+      const rawKg = prod.baseKg ?? prod.targetUnits ?? 0;
+      // Sanity check: empanado rarely uses more than 50kg in one batch
+      const kgBase = String(rawKg);
       setMenjunjeKg(kgBase);
       setMilanesaKgSalieron(kgBase);
       setShowMenjunjeModal(true);
@@ -510,7 +514,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     // Empanado: pedir kg menjunje y kg salidos
     // Empanado: pre-llenar kg si no están cargados aún
     if (isEmpanadoRecipe && !empanadoMenjunjeKg) {
-      const kgBase = String(prod.baseKg ?? prod.targetUnits ?? '');
+      const rawKg = prod.baseKg ?? prod.targetUnits ?? 0;
+      // Sanity check: empanado rarely uses more than 50kg in one batch
+      const kgBase = String(rawKg);
       setEmpanadoMenjunjeKg(kgBase);
       setEmpanadoSalieronKg(kgBase);
       setShowEmpanadoModal(false);
@@ -602,14 +608,14 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     if (isEmpanadoRecipe && empanadoMenjunjeKg && empanadoSalieronKg) {
       const mKg  = parseFloat(empanadoMenjunjeKg);
       const sKg  = parseFloat(empanadoSalieronKg);
-      const tipo = empanadoTipo === 'pollo' ? 'Pollo' : 'Carne';
+      const tipo = empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne';
       // Nombre específico por corte si eligieron uno, sino genérico
       const corteLabel = empanadoCorteStock
         ? empanadoCorteStock.replace('Milanesa - ', '')
         : tipo;
       const prodNombre = `Milanesa de ${tipo} Empanada - ${corteLabel}`;
       // Descontar menjunje — buscar por el stock específico seleccionado o por tipo genérico
-      const menjNombre = empanadoCorteStock || (empanadoTipo === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
+      const menjNombre = empanadoCorteStock || (empanadoTipoActual === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
       const { data: menjData } = await supabase.from('stock_produccion')
         .select('id, cantidad').ilike('producto', menjNombre).maybeSingle();
       if (menjData) {
@@ -653,10 +659,10 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     if (isEmpanadoRecipe && empanadoMenjunjeKg && empanadoSalieronKg) {
       const mKg = parseFloat(empanadoMenjunjeKg);
       const sKg = parseFloat(empanadoSalieronKg);
-      const tipo = empanadoTipo === 'pollo' ? 'Pollo' : 'Carne';
+      const tipo = empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne';
       const corteLabel = empanadoCorteStock ? empanadoCorteStock.replace('Milanesa - ', '') : tipo;
       const prodNombre = `Milanesa de ${tipo} Empanada - ${corteLabel}`;
-      const menjNombre = empanadoCorteStock || (empanadoTipo === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
+      const menjNombre = empanadoCorteStock || (empanadoTipoActual === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
       const { data: menjData } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', menjNombre).maybeSingle();
       if (menjData) {
         await supabase.from('stock_produccion').update({ cantidad: parseFloat((Number(menjData.cantidad) - mKg).toFixed(3)) }).eq('id', menjData.id);
@@ -875,7 +881,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           </div>
           {empanadoCorteStock && empanadoMenjunjeKg && empanadoSalieronKg && (
             <p className="text-xs text-slate-400 mt-1.5">
-              → Guardará como <span className="font-black text-rose-600">Milanesa de {empanadoTipo === 'pollo' ? 'Pollo' : 'Carne'} Empanada — {empanadoCorteStock.replace('Milanesa - ','')}</span>
+              → Guardará como <span className="font-black text-rose-600">Milanesa de {empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne'} Empanada — {empanadoCorteStock.replace('Milanesa - ','')}</span>
             </p>
           )}
         </div>
@@ -1149,7 +1155,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
                         {isEmpanadoRecipe && finishingProd && (
                           <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
-                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Empanado {empanadoTipo === 'pollo' ? 'Pollo' : 'Carne'}</p>
+                            <p className="text-rose-300 font-black text-sm uppercase">🥩 Empanado {empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne'}</p>
                             <p className="text-xs text-slate-400 mb-1">Descuenta del stock de menjunje preparado.</p>
                             {/* Selector de qué menjunje usó */}
                             <div>
@@ -1175,6 +1181,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg menjunje usados</label>
                                 <input type="number" value={empanadoMenjunjeKg} onChange={e => setEmpanadoMenjunjeKg(e.target.value)}
                                   className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
+                                {empanadoMenjunjeKg && parseFloat(empanadoMenjunjeKg) > 50 && (
+                                  <p className="text-xs text-amber-400 mt-1">⚠️ {empanadoMenjunjeKg} kg parece mucho. ¿Quisiste decir {(parseFloat(empanadoMenjunjeKg)/100).toFixed(2)} kg?</p>
+                                )}
                               </div>
                               <div>
                                 <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg empanados salidos</label>
