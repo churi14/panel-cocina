@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { clearCocinaProduccion, deductStockForMilanesa } from './kitchenHelpers';
 
@@ -33,8 +33,14 @@ function sugerirDecimal(valor: number, limite: number): number | null {
 
 export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo, onFinalizado, onCancelar }: Props) {
   const baseKg = prod.baseKg ?? prod.targetUnits;
-  const [carneKg, setCarneKg]         = useState(String(baseKg));
-  const [menjunjeKgSalio, setMenjunjeKgSalio] = useState(String(baseKg));
+  const [carneKg, setCarneKg]         = useState('');
+  const [menjunjeKgSalio, setMenjunjeKgSalio] = useState('');
+  
+  // Pre-llenar con baseKg al montar
+  useEffect(() => {
+    setCarneKg(String(baseKg));
+    setMenjunjeKgSalio(String(baseKg));
+  }, [baseKg]);
   const [unidades, setUnidades]       = useState('');
   const [guardando, setGuardando]     = useState(false);
   const guardandoRef = useRef(false);
@@ -45,7 +51,16 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
   const grPorU = unidadesNum > 0 && menjNum > 0 ? Math.round(menjNum / unidadesNum * 1000) : null;
 
   const sugCarne = sugerirDecimal(carneNum, 50);
-  const sugSalio = menjNum > carneNum * 1.1 ? sugerirDecimal(menjNum, carneNum * 1.1) : null;
+  // Warning si kg salidos > 20% más que carne usada
+  const salioSospechoso = carneNum > 0 && menjNum > carneNum * 1.2;
+  const sugSalio = (() => {
+    if (!salioSospechoso) return null;
+    // Intentar dividir por 10 si es muy grande (ej: 23 → 2.3)
+    const div10 = menjNum / 10;
+    if (div10 > 0 && div10 <= carneNum * 1.2) return parseFloat(div10.toFixed(2));
+    // Intentar insertar decimal (ej: 23 → 2.3)
+    return sugerirDecimal(menjNum, carneNum * 1.5);
+  })();
 
   const handleGuardar = async () => {
     if (!carneKg || carneNum <= 0 || guardandoRef.current) return;
@@ -124,11 +139,19 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
           <label className="text-xs text-amber-400 font-bold uppercase mb-1 block">⭐ Kg menjunje que salió</label>
           <input type="number" value={menjunjeKgSalio} onChange={e => setMenjunjeKgSalio(e.target.value)}
             className="w-full bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-400" />
-          {sugSalio && (
-            <button onClick={() => setMenjunjeKgSalio(String(sugSalio))}
-              className="mt-1 w-full text-xs text-blue-400 font-black bg-blue-900/30 rounded-lg py-1">
-              ¿Quisiste decir {sugSalio} kg? → Corregir
-            </button>
+          {salioSospechoso && (
+            <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-400 font-bold">
+                ⚠️ {menjNum} kg salidos para {carneNum} kg de carne parece mucho.
+                {sugSalio ? ` ¿Quisiste decir ${sugSalio} kg?` : ' ¿Es correcto?'}
+              </p>
+              {sugSalio && (
+                <button onClick={() => setMenjunjeKgSalio(String(sugSalio))}
+                  className="mt-1.5 w-full py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
+                  Corregir a {sugSalio} kg
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
