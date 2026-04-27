@@ -60,7 +60,7 @@ export type ActiveProductionItem = NonNullable<ActiveProduction>;
 
 // --- CARNICERÍA ---
 
-export type ButcheryProductionType = 'lomo' | 'roast_beef' | 'tapa_asado' | 'tapa_nalga' | 'bife_chorizo' | 'vacio' | 'picana' | 'ojo_bife' | 'grasa_pella' | 'pollo' | 'cuadril' | 'cuadrada' | 'not_burger';
+export type ButcheryProductionType = 'lomo' | 'roast_beef' | 'tapa_asado' | 'tapa_nalga' | 'nalga' | 'bife_chorizo' | 'bife_angosto' | 'vacio' | 'picana' | 'ojo_bife' | 'grasa_pella' | 'pollo' | 'cuadril' | 'cuadrada' | 'not_burger';
 
 export type ButcheryProductionStatus = 'step1_running' | 'step1_done' | 'step2_pending' | 'step2_running' | 'step2_done';
 
