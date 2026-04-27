@@ -15,12 +15,6 @@ type Props = {
 
 export default function TabStock({ stock, stockProd, movements, fetchMovements }: Props) {
   const [showEntryModal, setShowEntryModal] = useState(false);
-  const [showNuevoModal, setShowNuevoModal] = useState(false);
-  const [nuevoCat, setNuevoCat]             = useState('');
-  const [nuevoNombre, setNuevoNombre]       = useState('');
-  const [nuevoCantidad, setNuevaCantidad]   = useState('');
-  const [nuevoUnidad, setNuevoUnidad]       = useState('kg');
-  const [savingNuevo, setSavingNuevo]       = useState(false);
   const { user } = useAuth();
   const [stockCat, setStockCat]           = useState('all');
   const [stockSearch, setStockSearch]     = useState('');
@@ -72,12 +66,21 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [prodStockValor, setProdStockValor]       = useState('');
   const [savingProdStock, setSavingProdStock]     = useState(false);
   const savingProdStockRef = React.useRef(false);
+  const [editandoMatStock, setEditandoMatStock]   = useState(false);
+  const [matStockValor, setMatStockValor]         = useState('');
+  const [savingMatStock, setSavingMatStock]       = useState(false);
+  const savingMatStockRef = React.useRef(false);
+  const [showNuevoModal, setShowNuevoModal]       = useState(false);
+  const [nuevoCat, setNuevoCat]                   = useState('');
+  const [nuevoNombre, setNuevoNombre]             = useState('');
+  const [nuevoCantidad, setNuevaCantidad]         = useState('');
+  const [nuevoUnidad, setNuevoUnidad]             = useState('kg');
+  const [savingNuevo, setSavingNuevo]             = useState(false);
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
     lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   headerBg: 'bg-rose-500/20'   },
     burger:   { emoji: '🍔', color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   headerBg: 'bg-blue-500/20'   },
     milanesa: { emoji: '🥪', color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  headerBg: 'bg-amber-500/20'  },
     verdura:  { emoji: '🥦', color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  headerBg: 'bg-green-500/20'  },
-    verduras: { emoji: '🥦', color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  headerBg: 'bg-green-500/20'  },
     verduras: { emoji: '🥦', color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  headerBg: 'bg-green-500/20'  },
     fiambre:  { emoji: '🧀', color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', headerBg: 'bg-yellow-500/20' },
     pan:      { emoji: '🍞', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', headerBg: 'bg-orange-500/20' },
@@ -378,14 +381,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           {savingProdStock ? '...' : '✓'} Guardar
                         </button>
                         <button onClick={() => setEditandoProdStock(false)}
-                          className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">
-                          Cancelar
-                        </button>
+                          className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
                       </div>
                       {prodStockValor !== '' && parseFloat(prodStockValor) !== selectedProdItem.cantidad && (
                         <p className="text-xs text-slate-400 mt-2">
-                          Actual: <span className="text-white font-bold">{selectedProdItem.cantidad}</span>
-                          {' → '}
+                          Actual: <span className="text-white font-bold">{selectedProdItem.cantidad}</span>{' → '}
                           <span className={`font-black ${parseFloat(prodStockValor) > selectedProdItem.cantidad ? 'text-green-400' : 'text-red-400'}`}>
                             {prodStockValor} {selectedProdItem.unidad}
                           </span>
@@ -704,7 +704,6 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
                   <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
-                    {/* Corrección directa de stock de materiales */}
                     {editandoMatStock && (
                       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4">
                         <p className="text-xs font-black text-amber-400 uppercase mb-2">⚠️ Corregir stock directamente</p>
@@ -720,14 +719,10 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                               savingMatStockRef.current = true;
                               setSavingMatStock(true);
                               const diff = nuevoValor - selectedStockItem.cantidad;
-                              await supabase.from('stock').update({
-                                cantidad: nuevoValor,
-                                fecha_actualizacion: new Date().toISOString().slice(0, 10),
-                              }).eq('id', selectedStockItem.id);
+                              await supabase.from('stock').update({ cantidad: nuevoValor, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
                               if (Math.abs(diff) > 0) {
                                 await supabase.from('stock_movements').insert({
-                                  stock_id: selectedStockItem.id,
-                                  nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria,
+                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria,
                                   tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
                                   unidad: selectedStockItem.unidad,
                                   motivo: `Corrección directa (${selectedStockItem.cantidad} → ${nuevoValor})`,
@@ -744,14 +739,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             {savingMatStock ? '...' : '✓'} Guardar
                           </button>
                           <button onClick={() => setEditandoMatStock(false)}
-                            className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">
-                            Cancelar
-                          </button>
+                            className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
                         </div>
                         {matStockValor !== '' && parseFloat(matStockValor) !== selectedStockItem.cantidad && (
                           <p className="text-xs text-slate-400 mt-2">
-                            Actual: <span className="text-white font-bold">{selectedStockItem.cantidad} {selectedStockItem.unidad}</span>
-                            {' → '}
+                            Actual: <span className="text-white font-bold">{selectedStockItem.cantidad} {selectedStockItem.unidad}</span>{' → '}
                             <span className={`font-black ${parseFloat(matStockValor) > selectedStockItem.cantidad ? 'text-green-400' : 'text-red-400'}`}>
                               {matStockValor} {selectedStockItem.unidad}
                             </span>
@@ -1182,7 +1174,6 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
             );
           })()}
 
-      {/* ── MODAL NUEVO PRODUCTO ── */}
       {showNuevoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={() => setShowNuevoModal(false)}>
@@ -1215,20 +1206,15 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowNuevoModal(false)}
-                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl text-sm">
-                Cancelar
-              </button>
-              <button
-                disabled={!nuevoNombre.trim() || savingNuevo}
+                className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
+              <button disabled={!nuevoNombre.trim() || savingNuevo}
                 onClick={async () => {
                   if (!nuevoNombre.trim() || savingNuevo) return;
                   setSavingNuevo(true);
                   const qty = parseFloat(nuevoCantidad) || 0;
                   await supabase.from('stock').insert({
-                    nombre: nuevoNombre.trim().toUpperCase(),
-                    categoria: nuevoCat,
-                    cantidad: qty,
-                    unidad: nuevoUnidad,
+                    nombre: nuevoNombre.trim().toUpperCase(), categoria: nuevoCat,
+                    cantidad: qty, unidad: nuevoUnidad,
                     fecha_actualizacion: new Date().toISOString().slice(0, 10),
                   });
                   if (qty > 0) {
@@ -1238,9 +1224,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       motivo: 'Alta de producto', operador: 'Admin', fecha: new Date().toISOString(),
                     });
                   }
-                  setSavingNuevo(false);
-                  setShowNuevoModal(false);
-                  await fetchMovements();
+                  setSavingNuevo(false); setShowNuevoModal(false); await fetchMovements();
                 }}
                 className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl text-sm disabled:opacity-40">
                 {savingNuevo ? 'Guardando...' : '✓ Crear'}
