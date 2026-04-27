@@ -30,7 +30,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const [quantity, setQuantity]     = useState('');
   const [pesoFinalKg, setPesoFinalKg] = useState('');
   const [wasteKg, setWasteKg]       = useState('');
-  const [wasteMode, setWasteMode]   = useState<'peso' | 'desperdicio'>('peso');
+  const [wasteMode, setWasteMode]   = useState<'por_unidad' | 'peso' | 'desperdicio'>('por_unidad');
+  const [pesoporUnidadGr, setPesoporUnidadGr] = useState('');
   const [grasaKg, setGrasaKg]       = useState('');
   const [showGrasa, setShowGrasa]   = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -63,15 +64,18 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
     fetchCarnesLimpias();
   }, [kindLabel, production.typeName]);
 
-  const qty       = parseFloat(quantity.replace(',', '.'))    || 0;
-  const pesoFinal = parseFloat(pesoFinalKg.replace(',', '.')) || 0;
+  const qty              = parseFloat(quantity.replace(',', '.'))          || 0;
+  const pesoFinal        = parseFloat(pesoFinalKg.replace(',', '.'))       || 0;
+  const pesoporUnidadKg  = (parseFloat(pesoporUnidadGr.replace(',', '.')) || 0) / 1000;
 
   const wasteAuto =
     unit === 'kg' && qty > 0
       ? Math.max(0, parseFloat((production.weightKg - qty).toFixed(3)))
-      : unit === 'unid' && wasteMode === 'peso' && pesoFinal > 0
-        ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
-        : null;
+      : unit === 'unid' && wasteMode === 'por_unidad' && qty > 0 && pesoporUnidadKg > 0
+        ? Math.max(0, parseFloat((production.weightKg - qty * pesoporUnidadKg).toFixed(3)))
+        : unit === 'unid' && wasteMode === 'peso' && pesoFinal > 0
+          ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
+          : null;
 
   const waste =
     unit === 'unid' && wasteMode === 'desperdicio'
@@ -90,7 +94,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
     setQuantity('');
     setWasteKg('');
     setPesoFinalKg('');
-    setWasteMode('peso');
+    setPesoporUnidadGr('');
+    setWasteMode('por_unidad');
   };
 
   const kindDisplay = kindLabel
@@ -239,23 +244,52 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Toggle: peso total vs desperdicio directo */}
-                <div className="flex bg-slate-100 rounded-xl p-1">
+                {/* Toggle: por unidad / peso total / desperdicio directo */}
+                <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
                   <button
-                    onClick={() => { setWasteMode('peso'); setWasteKg(''); }}
-                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1.5
-                      ${wasteMode === 'peso' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
-                    ⚖️ Peso total salido
+                    onClick={() => { setWasteMode('por_unidad'); setWasteKg(''); setPesoFinalKg(''); }}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1
+                      ${wasteMode === 'por_unidad' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
+                    ⚖️ Por unidad
                   </button>
                   <button
-                    onClick={() => { setWasteMode('desperdicio'); setPesoFinalKg(''); }}
-                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1.5
+                    onClick={() => { setWasteMode('peso'); setWasteKg(''); setPesoporUnidadGr(''); }}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1
+                      ${wasteMode === 'peso' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
+                    📦 Peso total
+                  </button>
+                  <button
+                    onClick={() => { setWasteMode('desperdicio'); setPesoFinalKg(''); setPesoporUnidadGr(''); }}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1
                       ${wasteMode === 'desperdicio' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
-                    🗑️ Desperdicio directo
+                    🗑️ Directo
                   </button>
                 </div>
 
-                {wasteMode === 'peso' ? (
+                {wasteMode === 'por_unidad' ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-black text-slate-400 uppercase">Peso por unidad (gr)</p>
+                    <div className="relative">
+                      <input
+                        type="number" inputMode="decimal" step="1" placeholder="0"
+                        value={pesoporUnidadGr} onChange={e => setPesoporUnidadGr(e.target.value)}
+                        className="w-full p-4 text-4xl font-black text-center border-2 rounded-2xl outline-none text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white transition-all"
+                      />
+                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">GR</span>
+                    </div>
+                    {qty > 0 && pesoporUnidadKg > 0 && (
+                      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3 text-center">
+                        <p className="text-2xl font-black text-red-600">{waste.toFixed(3).replace('.', ',')} kg desperdicio</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {production.weightKg} kg − ({qty} × {pesoporUnidadGr} gr) = {waste.toFixed(3)} kg
+                        </p>
+                      </div>
+                    )}
+                    {qty > 0 && pesoporUnidadGr === '' && (
+                      <p className="text-xs text-center text-slate-400">Ingresá el peso de cada pieza para calcular automáticamente</p>
+                    )}
+                  </div>
+                ) : wasteMode === 'peso' ? (
                   <div className="space-y-2">
                     <p className="text-xs font-black text-slate-400 uppercase">Peso total que salió (kg)</p>
                     <div className="relative">
