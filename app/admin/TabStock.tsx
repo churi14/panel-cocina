@@ -55,6 +55,13 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [editMovMotivo, setEditMovMotivo]           = useState('');
   const [savingMovement, setSavingMovement]         = useState(false);
   const [deleteMovConfirm, setDeleteMovConfirm]     = useState<any | null>(null);
+  
+  // Estados para corrección directa de Materiales
+  const [editandoMaterialStock, setEditandoMaterialStock] = useState(false);
+  const [materialStockValor, setMaterialStockValor] = useState('');
+  const [savingMaterialStock, setSavingMaterialStock] = useState(false);
+  const savingMaterialStockRef = React.useRef(false);
+
   // Umbrales personales (por usuario logueado)
   const [miCritico, setMiCritico]                   = useState('');
   const [miMedio, setMiMedio]                       = useState('');
@@ -659,7 +666,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-                onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); }}>
+                onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); setEditandoMaterialStock(false); }}>
                 <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl"
                   onClick={e => e.stopPropagation()}>
 
@@ -688,7 +695,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         </p>
                         <p className="text-xs text-slate-500">{selectedStockItem.unidad} en stock</p>
                       </div>
-                      <button onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); }}
+                      
+                      <button
+                        onClick={() => { setEditandoMaterialStock(v => !v); setMaterialStockValor(String(selectedStockItem.cantidad)); }}
+                        className="px-3 py-1.5 text-xs font-black bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-all">
+                        ✏️ Corregir stock
+                      </button>
+
+                      <button onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); setEditandoMaterialStock(false); }}
                         className="p-2 hover:bg-slate-800 rounded-xl text-slate-400">
                         <X size={18} />
                       </button>
@@ -696,6 +710,64 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                    {/* CAJA DE CORRECCIÓN DIRECTA DE MATERIALES */}
+                    {editandoMaterialStock && (
+                      <div className="px-5 py-4 border-b border-amber-500/30 bg-amber-500/10 rounded-2xl">
+                        <p className="text-xs font-black text-amber-400 uppercase mb-2">⚠️ Corregir stock directamente</p>
+                        <div className="flex gap-2 items-center">
+                          <input type="number" inputMode="decimal" step="0.001"
+                            value={materialStockValor} onChange={e => setMaterialStockValor(e.target.value)}
+                            className="flex-1 bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none" />
+                          <span className="text-slate-400 font-bold">{selectedStockItem.unidad}</span>
+                          <button
+                            onClick={async () => {
+                              const nuevoValor = parseFloat(String(materialStockValor).replace(',', '.'));
+                              if (isNaN(nuevoValor) || savingMaterialStockRef.current) return;
+                              savingMaterialStockRef.current = true;
+                              setSavingMaterialStock(true);
+                              const diff = nuevoValor - selectedStockItem.cantidad;
+                              
+                              await supabase.from('stock').update({ cantidad: nuevoValor, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                              
+                              if (Math.abs(diff) > 0) {
+                                await supabase.from('stock_movements').insert({
+                                  stock_id: selectedStockItem.id, 
+                                  nombre: selectedStockItem.nombre, 
+                                  categoria: selectedStockItem.categoria,
+                                  tipo: diff >= 0 ? 'ingreso' : 'egreso', 
+                                  cantidad: Math.abs(parseFloat(diff.toFixed(3))),
+                                  unidad: selectedStockItem.unidad,
+                                  motivo: `Corrección directa (${selectedStockItem.cantidad} → ${nuevoValor})`,
+                                  operador: 'Admin', 
+                                  fecha: new Date().toISOString(),
+                                });
+                              }
+                              setSavingMaterialStock(false); savingMaterialStockRef.current = false;
+                              setEditandoMaterialStock(false);
+                              setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
+                              await fetchMovements();
+                            }}
+                            disabled={savingMaterialStock || materialStockValor === ''}
+                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
+                            {savingMaterialStock ? '...' : '✓'} Guardar
+                          </button>
+                          <button onClick={() => setEditandoMaterialStock(false)}
+                            className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">
+                            Cancelar
+                          </button>
+                        </div>
+                        {materialStockValor !== '' && parseFloat(materialStockValor) !== selectedStockItem.cantidad && (
+                          <p className="text-xs text-slate-400 mt-2">
+                            Actual: <span className="text-white font-bold">{selectedStockItem.cantidad}</span>
+                            {' → '}
+                            <span className={`font-black ${parseFloat(materialStockValor) > selectedStockItem.cantidad ? 'text-green-400' : 'text-red-400'}`}>
+                              {materialStockValor} {selectedStockItem.unidad}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Umbrales */}
                     <div className="bg-slate-800 rounded-2xl p-4">
