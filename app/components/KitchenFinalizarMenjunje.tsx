@@ -17,6 +17,7 @@ type Props = {
   prod: Prod;
   operador: string;
   menjunjeTipo: string; // 'Carne' | 'Pollo'
+  corteNombre?: string; // ej: 'Nalga Limpia', 'Cuadril Limpia'
   onFinalizado: () => void;
   onCancelar: () => void;
 };
@@ -31,7 +32,7 @@ function sugerirDecimal(valor: number, limite: number): number | null {
   return null;
 }
 
-export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo, onFinalizado, onCancelar }: Props) {
+export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo, corteNombre, onFinalizado, onCancelar }: Props) {
   const baseKg = prod.baseKg ?? prod.targetUnits;
   const [carneKg, setCarneKg]         = useState('');
   const [menjunjeKgSalio, setMenjunjeKgSalio] = useState('');
@@ -75,7 +76,11 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
       { nombre: 'SAL',     cantidad: parseFloat((carneNum * 0.0195).toFixed(3)), unidad: 'kg' },
       { nombre: 'PEREJIL', cantidad: parseFloat((carneNum * 0.015).toFixed(3)),  unidad: 'kg' },
     ];
-    await deductStockForMilanesa(menjunjeTipo, carneNum, ingredientes);
+    // Usar el corte real (ej: 'Nalga Limpia') para descontar de 'Milanesa - Nalga Limpia'
+    // Si no hay corte especificado, no descontar (evita descontar del lugar equivocado)
+    if (corteNombre) {
+      await deductStockForMilanesa(corteNombre, carneNum, ingredientes);
+    }
 
     // Registrar menjunje en stock_produccion
     const nombreMenjunje = `Menjunje Milanesa ${menjunjeTipo}`;
@@ -126,7 +131,7 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-400 font-bold uppercase mb-1 block">Kg de carne usados</label>
-          <input type="number" value={carneKg} onChange={e => setCarneKg(e.target.value)}
+          <input type="number" value={carneKg} onChange={e => setCarneKg(e.target.value === '' ? '' : String(parseFloat(e.target.value) || ''))}
             className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-rose-500" />
           {sugCarne && (
             <button onClick={() => setCarneKg(String(sugCarne))}

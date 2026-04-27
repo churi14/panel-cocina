@@ -9,7 +9,7 @@ import { supabase } from '../supabase';
 import { sendResumenTurno } from './pushEvents';
 import {
   saveCocinaProduccion, clearCocinaProduccion,
-  deductStockForMilanesa, deductStockForFraccion, deductStockForFiambre, deductStockForVerdura,
+  deductStockForMilanesa, deductStockForFraccion,
   VERDURA_STOCK_MAP, FIAMBRE_STOCK_MAP,
   formatQty,
 } from './kitchenHelpers';
@@ -18,17 +18,6 @@ import KitchenFinalizarPan      from './KitchenFinalizarPan';
 import KitchenFinalizarMenjunje from './KitchenFinalizarMenjunje';
 import KitchenFinalizarEmpanado from './KitchenFinalizarEmpanado';
 import KitchenFinalizarVerdura  from './KitchenFinalizarVerdura';
-
-
-const KITCHEN_CATEGORIES = [
-  { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200',  hover: 'hover:border-amber-400',  icon: <Wheat   size={48} className="text-amber-600 mb-4" /> },
-  { id: 'Salsas',      label: 'Salsas',       border: 'border-red-200',    hover: 'hover:border-red-400',    icon: <Droplet size={48} className="text-red-600 mb-4" /> },
-  { id: 'Fraccionar',  label: 'Fraccionar',   border: 'border-purple-200', hover: 'hover:border-purple-400', icon: <Droplet size={48} className="text-purple-600 mb-4" /> },
-  { id: 'Milanesas',   label: 'Milanesas',    border: 'border-rose-200',   hover: 'hover:border-rose-400',   icon: <ChefHat size={48} className="text-rose-600 mb-4" /> },
-  { id: 'Verduras',    label: 'Verduras',     border: 'border-green-200',  hover: 'hover:border-green-400',  icon: <Carrot  size={48} className="text-green-600 mb-4" /> },
-  { id: 'Fiambres',    label: 'Fiambres',     border: 'border-yellow-200', hover: 'hover:border-yellow-400', icon: <ChefHat size={48} className="text-yellow-600 mb-4" /> },
-  { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
-];
 
 const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
 
@@ -664,6 +653,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             prod={{...finishingProd, recipeId: activeRecipeId}}
                             operador={operador}
                             menjunjeTipo={menjunjeTipo}
+                            corteNombre={selectedMenjunjeStock}
                             onFinalizado={() => { setShowMenjunjeModal(false); finalizarProduccion(); }}
                             onCancelar={() => setShowMenjunjeModal(false)}
                           />
@@ -678,16 +668,24 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                           />
                         )}
 
-                        <div className="flex gap-3">
-                          <button onClick={handleFinish}
-                            className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2">
-                            <CheckCircle2 size={16} /> Confirmar y finalizar
+                        {!showMenjunjeModal && !showPanModal && !isEmpanadoRecipe && !isSalsaRecipe && (
+                          <div className="flex gap-3">
+                            <button onClick={handleFinish}
+                              className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2">
+                              <CheckCircle2 size={16} /> Confirmar y finalizar
+                            </button>
+                            <button onClick={() => { finishingRef.current = false; setFinishingProd(null); setShowMenjunjeModal(false); }}
+                              className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl transition-colors">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        )}
+                        {(showMenjunjeModal || showPanModal || isEmpanadoRecipe || isSalsaRecipe) && (
+                          <button onClick={() => { finishingRef.current = false; setFinishingProd(null); setShowMenjunjeModal(false); setShowPanModal(false); }}
+                            className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl transition-colors text-sm">
+                            ✕ Cancelar
                           </button>
-                          <button onClick={() => { finishingRef.current = false; setFinishingProd(null); setShowMenjunjeModal(false); }}
-                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl transition-colors">
-                            <X size={16} />
-                          </button>
-                        </div>
+                        )}
                       </div>
                     )}
                   </div>
