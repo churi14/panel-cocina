@@ -88,6 +88,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const grasaPct   = grasa > 0 ? ((grasa / production.weightKg) * 100).toFixed(1) : null;
   const canFinish  = qty > 0;
   const isLastInBatch = currentIndex === totalInBatch - 1;
+  // Milanesa siempre va a Stock Milanesas sin importar el corte usado
+  const effectiveStockDestino = kindLabel === 'milanesa' ? 'Stock Milanesas' : cut.stockDestino;
 
   const handleUnitChange = (newUnit: 'unid' | 'kg') => {
     setUnit(newUnit);
@@ -119,7 +121,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
       )}
       {showConfirm && (
         <FinishStep2Overlay
-          data={{ production, quantity: qty, unit, wasteKg: waste, grasaKg: grasa, stockDestino: cut.stockDestino }}
+          data={{ production, quantity: qty, unit, wasteKg: waste, grasaKg: grasa, stockDestino: effectiveStockDestino }}
           onConfirm={(stock, obs) => { setShowConfirm(false); onFinish(qty, unit, waste, grasa, stock, obs); }}
           onCancel={() => setShowConfirm(false)}
         />
@@ -156,7 +158,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
           <span className="text-slate-500">Peso bruto:</span>
           <span className="font-black text-slate-700">{formatWeight(production.weightKg)} kg</span>
           <span className="text-slate-300">·</span>
-          <span className="font-bold text-blue-600">{cut.stockDestino}</span>
+          <span className="font-bold text-blue-600">{effectiveStockDestino}</span>
         </div>
       </div>
 
@@ -388,7 +390,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
                 {qty > 0 && <span className="text-lg font-bold text-amber-500 ml-1">gr</span>}
               </div>
             )}
-            <SRow label="Stock destino" value={cut.stockDestino} color="text-blue-700 text-sm" bg="bg-blue-50 border border-blue-200" />
+            <SRow label="Stock destino" value={effectiveStockDestino} color="text-blue-700 text-sm" bg="bg-blue-50 border border-blue-200" />
             <p className="text-xs text-center text-slate-400">Podés cambiar el stock al confirmar</p>
           </div>
         </div>
