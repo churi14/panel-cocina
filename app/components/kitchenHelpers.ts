@@ -157,15 +157,15 @@ export const FIAMBRE_STOCK_MAP: Record<string, string> = {
 };
 
 export const FIAMBRE_PROD_MAP: Record<string, string> = {
-  'fiambre_jamon':          'Jamón',
-  'fiambre_panceta':        'Panceta',
-  'fiambre_cheddar_feta':   'Cheddar en Feta',
-  'fiambre_cheddar_liq':    'Cheddar Líquido',
-  'fiambre_cheddar_burger': 'Cheddar para Burger',
-  'fiambre_provoleta':      'Provoleta',
+  'fiambre_jamon':          'JAMÓN',
+  'fiambre_panceta':        'PANCETA',
+  'fiambre_cheddar_feta':   'CHEDDAR EN FETA',
+  'fiambre_cheddar_liq':    'CHEDDAR LIQUIDO',
+  'fiambre_cheddar_burger': 'CHEDDAR PARA BURGUER',
+  'fiambre_provoleta':      'PROVOLETA',
   'fiambre_muzza_sanguch':  'Queso Muzza para Sanguchería',
   'fiambre_muzza_mila':     'Queso Muzza para Mila al Plato',
-  'fiambre_tybo':           'Queso Tybo',
+  'fiambre_tybo':           'QUESO TYBO',
 };
 
 // ── Utilidades de validación decimal ─────────────────────────────────────────
@@ -219,47 +219,4 @@ export async function deductStockForFiambre(recipeId: string, pesoKg: number, op
       }
     }
   } catch (e) { console.error('Error deductStockForFiambre:', e); }
-}
-// ── Descuento de stock para verduras ─────────────────────────────────────────
-
-export async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desperdicioKg: number) {
-  const stockNombre = VERDURA_STOCK_MAP[recipeId];
-  const prodNombre  = VERDURA_PROD_MAP[recipeId];
-  if (!stockNombre || brutoPesoKg <= 0) return;
-  const netoKg = Math.max(0, brutoPesoKg - desperdicioKg);
-  try {
-    const { data } = await supabase.from('stock')
-      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
-    if (data) {
-      const newQty = parseFloat((Number(data.cantidad) - brutoPesoKg).toFixed(3));
-      await supabase.from('stock')
-        .update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) })
-        .eq('id', data.id);
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'VERDURA', tipo: 'egreso',
-        cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',
-        motivo: `Producción ${prodNombre}`, operador: 'Cocina', fecha: new Date().toISOString(),
-      });
-      await supabase.from('produccion_eventos').insert({
-        tipo: 'fin_cocina', kind: 'cocina', corte: prodNombre,
-        peso_kg: brutoPesoKg, waste_kg: desperdicioKg,
-        operador: 'Cocina',
-        detalle: `Bruto: ${brutoPesoKg}kg | Desperdicio: ${desperdicioKg}kg | Neto: ${netoKg}kg`,
-        fecha: new Date().toISOString(),
-      });
-    }
-    if (netoKg > 0) {
-      const { data: pd } = await supabase.from('stock_produccion')
-        .select('id, cantidad').eq('producto', prodNombre).maybeSingle();
-      if (pd) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: parseFloat((Number(pd.cantidad) + netoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
-          .eq('id', pd.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: prodNombre, categoria: 'verduras', cantidad: parseFloat(netoKg.toFixed(3)), unidad: 'kg', ultima_prod: new Date().toISOString() });
-      }
-    }
-  } catch (e) { console.error('Error deductStockForVerdura:', e); }
 }

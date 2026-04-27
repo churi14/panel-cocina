@@ -34,7 +34,7 @@ async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desp
         .update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) })
         .eq('id', data.id);
       await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'VERDURA', tipo: 'egreso',
+        nombre: stockNombre, categoria: 'verduras', tipo: 'egreso',
         cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',
         motivo: `Producción ${prodNombre}`, operador: 'Cocina', fecha: new Date().toISOString(),
       });
