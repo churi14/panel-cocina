@@ -67,7 +67,9 @@ export const CUTS: CutConfig[] = [
   { id: 'roast_beef',   label: 'Roast Beef',      emoji: '🥩', stockDestino: 'Stock Roast Beef',      defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_asado',   label: 'Tapa de Asado',   emoji: '🥩', stockDestino: 'Stock Tapa de Asado',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_nalga',   label: 'Tapa de Nalga',   emoji: '🥩', stockDestino: 'Stock Tapa de Nalga',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
+  { id: 'nalga',        label: 'Nalga',            emoji: '🥩', stockDestino: 'Stock Nalga',            defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'bife_chorizo', label: 'Bife de Chorizo',  emoji: '🥩', stockDestino: 'Stock Bife de Chorizo', defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
+  { id: 'bife_angosto', label: 'Bife Angosto',     emoji: '🥩', stockDestino: 'Stock Bife Angosto',    defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'vacio',        label: 'Vacío',            emoji: '🥩', stockDestino: 'Stock Vacío',           defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'picana',       label: 'Picaña',           emoji: '🥩', stockDestino: 'Stock Picaña',          defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'ojo_bife',     label: 'Ojo de Bife',      emoji: '🥩', stockDestino: 'Stock Ojo de Bife',     defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
@@ -84,16 +86,21 @@ export function getCutsByKind(kind: ProductionKind): CutConfig[] {
 }
 
 export const ALL_STOCKS: string[] = [
+  'Stock Lomo',
   'Stock Roast Beef',
   'Stock Tapa de Asado',
   'Stock Tapa de Nalga',
+  'Stock Nalga',
   'Stock Bife de Chorizo',
+  'Stock Bife Angosto',
   'Stock Vacío',
   'Stock Picaña',
   'Stock Ojo de Bife',
+  'Stock Cuadril',
+  'Stock Cuadrada',
   'Stock Grasa de Pella',
+  'Stock Pollo',
   'Stock Burger',
-  'Stock Carne Picada',
   'Stock Milanesas',
 ];
 

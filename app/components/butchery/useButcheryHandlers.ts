@@ -17,10 +17,21 @@ export async function logProduccionEvento(tipo: string, kind: string, corte: str
 }
 
 const CORTE_STOCK_MAP: Record<string, string> = {
-  'Lomo': 'LOMO', 'Roast Beef': 'AGUJA', 'Tapa de Asado': 'TAPA DE ASADO',
-  'Tapa de Nalga': 'NALGA', 'Bife de Chorizo': 'BIFE ANGOSTO', 'Vacío': 'VACIO',
-  'Picaña': 'CUADRIL', 'Ojo de Bife': 'CUADRADA', 'Grasa de Pella': 'GRASA',
-  'Pollo': 'POLLO', 'Cuadril': 'CUADRIL', 'Cuadrada': 'CUADRADA', 'Not Burger': 'NOT',
+  'Lomo':            'LOMO',
+  'Roast Beef':      'ROAST BEEF',
+  'Tapa de Asado':   'TAPA DE ASADO',
+  'Tapa de Nalga':   'TAPA DE NALGA',
+  'Nalga':           'NALGA',
+  'Bife de Chorizo': 'BIFE DE CHORIZO',
+  'Bife Angosto':    'BIFE ANGOSTO',
+  'Vacío':           'VACIO',
+  'Picaña':          'PICAÑA',
+  'Ojo de Bife':     'OJO DE BIFE',
+  'Grasa de Pella':  'GRASA',
+  'Pollo':           'POLLO',
+  'Cuadril':         'CUADRIL',
+  'Cuadrada':        'CUADRADA',
+  'Not Burger':      'NOT',
 };
 
 export async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string) {
