@@ -49,7 +49,8 @@ export default function KitchenFinalizarEmpanado({ prod, operador, empanadoTipo,
   const unidadesNum = parseInt(unidades) || 0;
   const grPorU = unidadesNum > 0 && salioNum > 0 ? Math.round(salioNum / unidadesNum * 1000) : null;
   const sugMenjunje = sugerirDecimal(menjNum, 50);
-  const sugSalio = salioNum > menjNum * 2 ? sugerirDecimal(salioNum, menjNum * 2) : null;
+  const salioSospechoso = menjNum > 0 && salioNum > menjNum * 2;
+  const sugSalio = salioSospechoso ? sugerirDecimal(salioNum, menjNum * 2) ?? (salioNum > 10 ? parseFloat((salioNum/10).toFixed(2)) : null) : null;
 
   // Cargar stocks de menjunje al montar
   useEffect(() => {
@@ -182,14 +183,19 @@ export default function KitchenFinalizarEmpanado({ prod, operador, empanadoTipo,
           <label className="text-xs text-amber-400 font-bold uppercase mb-1 block">⭐ Kg empanados salidos</label>
           <input type="number" value={salieronKg} onChange={e => setSalieronKg(e.target.value)}
             className="w-full bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-3 py-2 text-lg font-black text-center outline-none focus:border-amber-400" />
-          {sugSalio && (
-            <button onClick={() => setSalieronKg(String(sugSalio))}
-              className="mt-1 w-full text-xs text-blue-400 font-black bg-blue-900/30 rounded-lg py-1">
-              ¿Quisiste decir {sugSalio} kg? → Corregir
-            </button>
-          )}
-          {salioNum > menjNum * 1.1 && !sugSalio && (
-            <p className="text-xs text-amber-400 mt-1">⚠️ {salioNum} kg salidos parece mucho para {menjNum} kg de menjunje. El pan rallado suma peso, ¿es correcto?</p>
+          {salioSospechoso && (
+            <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-400 font-bold">
+                ⚠️ {salioNum} kg para {menjNum} kg de menjunje parece mucho.
+                {sugSalio ? ` ¿Quisiste decir ${sugSalio} kg?` : ' ¿Es correcto?'}
+              </p>
+              {sugSalio && (
+                <button onClick={() => setSalieronKg(String(sugSalio))}
+                  className="mt-1.5 w-full py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
+                  Corregir a {sugSalio} kg
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

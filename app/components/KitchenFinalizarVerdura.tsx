@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { clearCocinaProduccion, checkAndNotifyStock, VERDURA_STOCK_MAP, VERDURA_PROD_MAP } from './kitchenHelpers';
 
@@ -73,7 +73,8 @@ function sugerirDecimal(valor: number, limite: number): number | null {
 
 export default function KitchenFinalizarVerdura({ prod, operador, onFinalizado, onCancelar }: Props) {
   const baseKg = prod.baseKg ?? prod.targetUnits;
-  const [brutoKg, setBrutoKg]         = useState(String(baseKg));
+  const [brutoKg, setBrutoKg]         = useState('');
+  useEffect(() => { setBrutoKg(String(baseKg)); }, [baseKg]);
   const [desperdicioKg, setDesperdicioKg] = useState('0');
   const [guardando, setGuardando]     = useState(false);
   const [confirmData, setConfirmData] = useState<{ bruto: number; stockActual: number; nombre: string } | null>(null);
@@ -82,7 +83,12 @@ export default function KitchenFinalizarVerdura({ prod, operador, onFinalizado, 
   const brutoNum = parseFloat(brutoKg) || 0;
   const despNum  = parseFloat(desperdicioKg) || 0;
   const netoNum  = Math.max(0, brutoNum - despNum);
-  const sugBruto = sugerirDecimal(brutoNum, 20);
+  const sugBruto = (() => {
+    if (brutoNum <= 20) return null;
+    const div10 = brutoNum / 10;
+    if (div10 > 0 && div10 <= 20) return parseFloat(div10.toFixed(2));
+    return sugerirDecimal(brutoNum, 20);
+  })();
 
   const stockNombre = VERDURA_STOCK_MAP[prod.recipeId] ?? '';
   const prodNombre  = VERDURA_PROD_MAP[prod.recipeId] ?? prod.recipeName;

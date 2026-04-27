@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { clearCocinaProduccion } from './kitchenHelpers';
 
@@ -47,13 +47,18 @@ export default function KitchenFinalizarSalsa({ prod, operador, onFinalizado, on
   const baseKg = prod.baseKg ?? prod.targetUnits;
 
   // Detección de error decimal
-  const val = parseFloat(kgSalieron);
+  const val = parseFloat(kgSalieron) || 0;
+  const limSalsa = Math.max(baseKg * 1.5, 5);
   let sugerencia: number | null = null;
-  if (val > 50) {
-    const str = String(Math.round(val));
-    for (let i = 1; i < str.length; i++) {
-      const c = parseFloat(str.slice(0, i) + '.' + str.slice(i));
-      if (c > 0 && c <= 50) { sugerencia = c; break; }
+  if (val > limSalsa) {
+    const div10 = val / 10;
+    if (div10 > 0 && div10 <= limSalsa) { sugerencia = parseFloat(div10.toFixed(2)); }
+    else {
+      const str = String(Math.round(val));
+      for (let i = 1; i < str.length; i++) {
+        const c = parseFloat(str.slice(0, i) + '.' + str.slice(i));
+        if (c > 0 && c <= limSalsa) { sugerencia = c; break; }
+      }
     }
   }
 

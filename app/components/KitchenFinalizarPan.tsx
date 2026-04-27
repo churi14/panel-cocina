@@ -85,6 +85,17 @@ export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCa
           placeholder="ej: 140"
           className="w-full bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-4 py-3 text-2xl font-black text-center outline-none focus:border-amber-400"
         />
+        {unidadesNum > 500 && (
+          <div className="mt-1 bg-amber-900/40 border border-amber-500/40 rounded-xl px-3 py-2">
+            <p className="text-xs text-amber-400 font-bold">⚠️ {unidadesNum} unidades parece mucho. ¿Es correcto?</p>
+            {unidadesNum % 10 === 0 && (
+              <button onClick={() => setUnidades(String(unidadesNum / 10))}
+                className="mt-1 w-full py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-lg">
+                Corregir a {Math.floor(unidadesNum / 10)} unidades
+              </button>
+            )}
+          </div>
+        )}
         {grPorUnidad && (
           <p className="text-xs text-green-400 font-black mt-1">
             → {grPorUnidad}g de harina por unidad · {baseKg}kg base
