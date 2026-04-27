@@ -26,6 +26,15 @@ export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCa
   const guardandoRef = useRef(false);
 
   const baseKg = prod.baseKg ?? prod.targetUnits;
+
+  // Normalizar nombre del producto — unificar variantes al nombre canónico en DB
+  const PAN_ALIAS: Record<string, string> = {
+    'PAN DE MILANESA':  'Pan Sanguchero',
+    'Pan de Milanesa':  'Pan Sanguchero',
+    'PAN DE LOMITO':    'Pan de Lomito',
+    'PAN SANGUCHERO':   'Pan Sanguchero',
+  };
+  const nombrePan = PAN_ALIAS[prod.recipeName] ?? prod.recipeName;
   const unidadesNum = parseInt(unidades) || 0;
   const grPorUnidad = unidadesNum > 0 && baseKg > 0
     ? Math.round(baseKg * 1000 / unidadesNum)
@@ -38,19 +47,19 @@ export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCa
 
     // Actualizar stock_produccion
     const { data: existe } = await supabase.from('stock_produccion')
-      .select('id, cantidad').eq('producto', prod.recipeName).maybeSingle();
+      .select('id, cantidad').eq('producto', nombrePan).maybeSingle();
     if (existe) {
       await supabase.from('stock_produccion')
         .update({ cantidad: existe.cantidad + unidadesNum, ultima_prod: new Date().toISOString() })
         .eq('id', existe.id);
     } else {
       await supabase.from('stock_produccion')
-        .insert({ producto: prod.recipeName, categoria: 'pan', cantidad: unidadesNum, unidad: 'u', ultima_prod: new Date().toISOString() });
+        .insert({ producto: nombrePan, categoria: 'pan', cantidad: unidadesNum, unidad: 'u', ultima_prod: new Date().toISOString() });
     }
 
     // Evento
     await supabase.from('produccion_eventos').insert({
-      tipo: 'fin_cocina', kind: 'pan', corte: prod.recipeName,
+      tipo: 'fin_cocina', kind: 'pan', corte: nombrePan,
       peso_kg: baseKg, operador,
       detalle: `${unidadesNum}u producidas`,
       fecha: new Date().toISOString(),
@@ -61,7 +70,7 @@ export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCa
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: `🍞 ${prod.recipeName} · ${operador}`,
+        title: `🍞 ${nombrePan} · ${operador}`,
         body: `${unidadesNum} unidades producidas`,
         tag: 'pan-producido', url: '/admin',
       }),
