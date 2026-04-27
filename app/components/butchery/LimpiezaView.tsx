@@ -69,6 +69,29 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
               className="w-full p-4 text-4xl font-black text-center border-2 border-orange-200 rounded-2xl outline-none text-orange-600 bg-orange-50 focus:border-orange-400 focus:bg-white transition-all" />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-orange-300">KG</span>
           </div>
+          {grasa > 0 && grasa > production.weightKg * 1.05 && (() => {
+            const sug = grasa > 50 ? parseFloat((grasa / 1000).toFixed(3))
+              : grasa > production.weightKg * 5 ? parseFloat((grasa / 10).toFixed(3))
+              : null;
+            return (
+              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                <p className="text-sm text-amber-700 font-bold">
+                  ⚠️ {grasa} kg de grasa parece más que el bruto ({production.weightKg} kg).
+                  {sug ? ` ¿Quisiste decir ${sug} kg?` : ' ¿Es correcto?'}
+                </p>
+                {sug && (
+                  <button onClick={() => {
+                    setGrasaKg(String(sug));
+                    const autoC = parseFloat((production.weightKg - sug).toFixed(3));
+                    if (autoC > 0) setCarneLinpiaKg(String(autoC));
+                  }}
+                    className="mt-1.5 w-full py-1.5 bg-blue-600 text-white text-sm font-black rounded-xl">
+                    Corregir a {sug} kg
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Carne limpia */}
