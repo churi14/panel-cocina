@@ -242,8 +242,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setShowPanModal(false);
     // Menjunje milanesa
     if (isMilanesaRecipe && !showMenjunjeModal) {
-      const rawKg = prod.baseKg ?? prod.targetUnits ?? 0;
-      // Sanity check: empanado rarely uses more than 50kg in one batch
+      // IMPORTANTE: usar solo baseKg, nunca targetUnits como kg
+      // targetUnits puede ser unidades (ej: 200 milanesas) y el sistema lo tomaría como 200kg
+      const rawKg = prod.baseKg ?? 0;
       const kgBase = String(rawKg);
       setMenjunjeKg(kgBase);
       setMilanesaKgSalieron(kgBase);
@@ -254,8 +255,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     // Empanado: pedir kg menjunje y kg salidos
     // Empanado: pre-llenar kg si no están cargados aún
     if (isEmpanadoRecipe && !empanadoMenjunjeKg) {
-      const rawKg = prod.baseKg ?? prod.targetUnits ?? 0;
-      // Sanity check: empanado rarely uses more than 50kg in one batch
+      // IMPORTANTE: usar solo baseKg, nunca targetUnits como kg
+      const rawKg = prod.baseKg ?? 0;
       const kgBase = String(rawKg);
       setEmpanadoMenjunjeKg(kgBase);
       setEmpanadoSalieronKg(kgBase);
