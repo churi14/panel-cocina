@@ -6,6 +6,24 @@ import { Movement, formatFecha } from './types';
 import { supabase } from '../supabase';
 import StockEntryModal from '../components/StockEntryModal';
 
+// ── Formatos doypack/paquete por producto ─────────────────────────────────────
+const FORMATOS_DOYPACK: Record<string, { label: string; kg: number }[]> = {
+  'MAYONESA':        [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'2.9 kg', kg:2.900 }],
+  'MAYONESA CLASICA':[{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'2.9 kg', kg:2.900 }],
+  'KETCHUP':         [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'3 kg',   kg:3.000 }],
+  'MOSTAZA':         [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'3 kg',   kg:3.000 }],
+  'SAVORA':          [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'3 kg',   kg:3.000 }],
+  'BARBACOA':        [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'3 kg',   kg:3.000 }],
+  'CHEDDAR LIQUIDO': [{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'3 kg',   kg:3.000 }],
+  'CHEDDAR LÍQUIDO': [{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 },{ label:'3 kg',   kg:3.000 }],
+  'SALSA CRIOLLA':   [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 }],
+  'CHIMICHURRI':     [{ label:'237g', kg:0.237 },{ label:'475g', kg:0.475 },{ label:'950g', kg:0.950 }],
+};
+function getFormatosDoypack(nombre: string) {
+  const key = Object.keys(FORMATOS_DOYPACK).find(k => nombre?.toUpperCase().includes(k));
+  return key ? FORMATOS_DOYPACK[key] : null;
+}
+
 type Props = {
   stock: any[];
   stockProd: any[];
@@ -36,6 +54,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [latasCount, setLatasCount]           = useState('');
   const [latasPeso, setLatasPeso]             = useState('');
   const [modoLatas, setModoLatas]             = useState(false);
+  const [aderezoCounts, setAderezoCounts]     = useState<Record<string,number>>({});
   // Tab ingreso/egreso en modal
   const [modalTab, setModalTab]               = useState<'ingreso' | 'egreso'>('ingreso');
   const [editingUmbrales, setEditingUmbrales]       = useState(false);
@@ -826,58 +845,97 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-black text-slate-400 uppercase">Modo de carga</span>
                             <div className="flex bg-slate-800 rounded-lg p-0.5 gap-0.5">
-                              <button onClick={() => setModoLatas(false)}
+                              <button onClick={() => { setModoLatas(false); setLatasCount(''); setLatasPeso(''); setAderezoCounts({}); }}
                                 className={`px-3 py-1.5 rounded-md text-xs font-black transition-all ${!modoLatas ? 'bg-white text-slate-900' : 'text-slate-400'}`}>
                                 Peso directo
                               </button>
-                              <button onClick={() => setModoLatas(true)}
+                              <button onClick={() => { setModoLatas(true); setAderezoCounts({}); }}
                                 className={`px-3 py-1.5 rounded-md text-xs font-black transition-all ${modoLatas ? 'bg-white text-slate-900' : 'text-slate-400'}`}>
-                                🥫 Por latas/unidades
+                                📦 Por paquetes/unidades
                               </button>
                             </div>
                           </div>
 
-                          {/* MODO LATAS */}
-                          {modoLatas ? (<>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad de latas/unidades</label>
-                                <input type="number" min="1" step="1"
-                                  value={latasCount} onChange={e => setLatasCount(e.target.value)}
-                                  placeholder="ej: 6"
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">
-                                  Peso por lata ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})
-                                </label>
-                                <input type="number" min="0" step="0.001"
-                                  value={latasPeso} onChange={e => setLatasPeso(e.target.value)}
-                                  placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
-                                />
-                              </div>
-                            </div>
-                            {latasCount && latasPeso && parseFloat(latasCount) > 0 && parseFloat(latasPeso) > 0 && (() => {
-                              const n = parseFloat(latasCount);
-                              const p = parseFloat(latasPeso);
-                              // Si el peso ingresado es > 10 y la unidad es kg, asumir que pusieron gramos
-                              const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p;
-                              const total = parseFloat((n * pesoKg).toFixed(3));
-                              return (
-                                <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
-                                  <div className="flex justify-between mb-1">
-                                    <span className="text-slate-400">{n} latas × {p}{selectedStockItem.unidad === 'kg' && p > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span>
-                                    <span className="font-black text-green-400">= {total} {selectedStockItem.unidad}</span>
-                                  </div>
-                                  <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
-                                    <span className="text-slate-400">Nuevo stock:</span>
-                                    <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + total).toFixed(3))} {selectedStockItem.unidad}</span>
-                                  </div>
+                          {/* MODO PAQUETES */}
+                          {modoLatas ? (() => {
+                            const formatos = getFormatosDoypack(selectedStockItem.nombre);
+                            const totalKgDoypack = formatos
+                              ? formatos.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0)
+                              : null;
+                            const totalKgLatas = !formatos && latasCount && latasPeso
+                              ? (() => { const n = parseFloat(latasCount); const p = parseFloat(latasPeso); const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p; return parseFloat((n * pesoKg).toFixed(3)); })()
+                              : null;
+                            const totalKg = totalKgDoypack !== null ? parseFloat(totalKgDoypack.toFixed(3)) : (totalKgLatas ?? 0);
+
+                            return (<>
+                              {formatos ? (
+                                // UI doypack con botones por formato
+                                <div className="space-y-2">
+                                  <p className="text-xs font-black text-slate-400 uppercase">¿Cuántas unidades de cada formato?</p>
+                                  {formatos.map(f => (
+                                    <div key={f.label} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+                                      <div>
+                                        <span className="text-white font-black text-sm">{f.label}</span>
+                                        <span className="text-slate-500 text-xs ml-2">{f.kg} kg c/u</span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: Math.max(0, (p[f.label] ?? 0) - 1) }))}
+                                          className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center transition-all">−</button>
+                                        <span className="text-white font-black text-lg w-8 text-center">{aderezoCounts[f.label] ?? 0}</span>
+                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: (p[f.label] ?? 0) + 1 }))}
+                                          className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center transition-all">+</button>
+                                        <span className="text-xs text-slate-500 w-12 text-right">{((aderezoCounts[f.label] ?? 0) * f.kg).toFixed(3)} kg</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {totalKgDoypack! > 0 && (
+                                    <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+                                      <div className="flex justify-between mb-1">
+                                        <span className="text-slate-400">Total a ingresar</span>
+                                        <span className="font-black text-green-400">{totalKgDoypack!.toFixed(3)} kg</span>
+                                      </div>
+                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
+                                        <span className="text-slate-400">Nuevo stock:</span>
+                                        <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + totalKgDoypack!).toFixed(3))} {selectedStockItem.unidad}</span>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              );
-                            })()}
+                              ) : (
+                                // UI genérica para productos sin formato definido
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad de unidades</label>
+                                    <input type="number" min="1" step="1"
+                                      value={latasCount} onChange={e => setLatasCount(e.target.value)}
+                                      placeholder="ej: 6"
+                                      className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">
+                                      Peso por unidad ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})
+                                    </label>
+                                    <input type="number" min="0" step="0.001"
+                                      value={latasPeso} onChange={e => setLatasPeso(e.target.value)}
+                                      placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'}
+                                      className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
+                                    />
+                                  </div>
+                                  {totalKgLatas !== null && totalKgLatas > 0 && (
+                                    <div className="col-span-2 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+                                      <div className="flex justify-between mb-1">
+                                        <span className="text-slate-400">{latasCount} unidades × {latasPeso}{selectedStockItem.unidad === 'kg' && parseFloat(latasPeso) > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span>
+                                        <span className="font-black text-green-400">= {totalKgLatas} {selectedStockItem.unidad}</span>
+                                      </div>
+                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
+                                        <span className="text-slate-400">Nuevo stock:</span>
+                                        <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + totalKgLatas).toFixed(3))} {selectedStockItem.unidad}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             <div>
                               <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
                               <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)}
@@ -886,11 +944,21 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             </div>
                             <button
                               onClick={async () => {
-                                const n = parseFloat(latasCount);
-                                const p = parseFloat(latasPeso);
-                                if (!n || !p || n <= 0 || p <= 0) return;
-                                const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p;
-                                const qty = parseFloat((n * pesoKg).toFixed(3));
+                                const formatos = getFormatosDoypack(selectedStockItem.nombre);
+                                let qty = 0;
+                                let motivo = '';
+                                if (formatos) {
+                                  qty = parseFloat(formatos.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3));
+                                  const detalle = formatos.filter(f => (aderezoCounts[f.label] ?? 0) > 0).map(f => `${aderezoCounts[f.label]}×${f.label}`).join(', ');
+                                  motivo = `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${detalle})`;
+                                } else {
+                                  const n = parseFloat(latasCount); const p = parseFloat(latasPeso);
+                                  if (!n || !p || n <= 0 || p <= 0) return;
+                                  const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p;
+                                  qty = parseFloat((n * pesoKg).toFixed(3));
+                                  motivo = `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${Math.round(n)} unidades × ${p}${selectedStockItem.unidad === 'kg' && p > 10 ? 'gr' : selectedStockItem.unidad})`;
+                                }
+                                if (!qty || qty <= 0) return;
                                 if (savingFacturaRef.current) return;
                                 savingFacturaRef.current = true;
                                 setSavingFactura(true);
@@ -900,19 +968,22 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                   stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
                                   categoria: selectedStockItem.categoria, tipo: 'ingreso',
                                   cantidad: qty, unidad: selectedStockItem.unidad,
-                                  motivo: `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${Math.round(n)} latas × ${p}${selectedStockItem.unidad === 'kg' && p > 10 ? 'gr' : selectedStockItem.unidad})`,
-                                  operador: 'Admin', fecha: new Date().toISOString(),
+                                  motivo, operador: 'Admin', fecha: new Date().toISOString(),
                                 });
-                                setLatasCount(''); setLatasPeso(''); setFacturaProveedor('');
+                                setLatasCount(''); setLatasPeso(''); setFacturaProveedor(''); setAderezoCounts({});
                                 setSavingFactura(false); savingFacturaRef.current = false;
                                 await fetchMovements();
                                 setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
                               }}
-                              disabled={savingFactura || !latasCount || !latasPeso || parseFloat(latasCount) <= 0 || parseFloat(latasPeso) <= 0}
+                              disabled={savingFactura || (() => {
+                                const formatos = getFormatosDoypack(selectedStockItem.nombre);
+                                if (formatos) return formatos.reduce((s,f) => s + (aderezoCounts[f.label]??0), 0) === 0;
+                                return !latasCount || !latasPeso || parseFloat(latasCount) <= 0 || parseFloat(latasPeso) <= 0;
+                              })()}
                               className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
-                              {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso por latas
+                              {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso por paquetes
                             </button>
-                          </>) : (<>
+                          </>)}  (<>
                           {/* MODO PESO DIRECTO */}
                             <div className="flex gap-3">
                               <div className="flex-1">
