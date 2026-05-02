@@ -858,56 +858,61 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
                           {/* MODO PAQUETES */}
                           {modoLatas && (<div className="space-y-3">
-                            {(() => {
-                              const _fmt = getFormatosDoypack(selectedStockItem.nombre);
-                              const _totalDoy = _fmt ? parseFloat(_fmt.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3)) : 0;
-                              const _n = parseFloat(latasCount || '0');
-                              const _p = parseFloat(latasPeso || '0');
-                              const _pk = selectedStockItem.unidad === 'kg' && _p > 10 ? _p / 1000 : _p;
-                              const _totalLatas = !_fmt && _n > 0 && _p > 0 ? parseFloat((_n * _pk).toFixed(3)) : 0;
-                              return _fmt ? (
-                                <div className="space-y-2">
-                                  <p className="text-xs font-black text-slate-400 uppercase">¿Cuántas unidades de cada formato?</p>
-                                  {_fmt.map(f => (
-                                    <div key={f.label} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
-                                      <div>
-                                        <span className="text-white font-black text-sm">{f.label}</span>
-                                        <span className="text-slate-500 text-xs ml-2">{f.kg} kg c/u</span>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: Math.max(0, (p[f.label] ?? 0) - 1) }))} className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center">−</button>
-                                        <span className="text-white font-black text-lg w-8 text-center">{aderezoCounts[f.label] ?? 0}</span>
-                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: (p[f.label] ?? 0) + 1 }))} className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center">+</button>
-                                        <span className="text-xs text-slate-500 w-12 text-right">{((aderezoCounts[f.label] ?? 0) * f.kg).toFixed(3)} kg</span>
-                                      </div>
+                            {/* Formatos doypack si el producto los tiene */}
+                            {getFormatosDoypack(selectedStockItem.nombre) ? (
+                              <div className="space-y-2">
+                                <p className="text-xs font-black text-slate-400 uppercase">¿Cuántas unidades de cada formato?</p>
+                                {getFormatosDoypack(selectedStockItem.nombre)!.map(f => (
+                                  <div key={f.label} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
+                                    <div>
+                                      <span className="text-white font-black text-sm">{f.label}</span>
+                                      <span className="text-slate-500 text-xs ml-2">{f.kg} kg c/u</span>
                                     </div>
-                                  ))}
-                                  {_totalDoy > 0 && (
-                                    <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
-                                      <div className="flex justify-between mb-1"><span className="text-slate-400">Total a ingresar</span><span className="font-black text-green-400">{_totalDoy.toFixed(3)} kg</span></div>
-                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1"><span className="text-slate-400">Nuevo stock:</span><span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + _totalDoy).toFixed(3))} {selectedStockItem.unidad}</span></div>
+                                    <div className="flex items-center gap-3">
+                                      <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: Math.max(0, (p[f.label] ?? 0) - 1) }))} className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center">−</button>
+                                      <span className="text-white font-black text-lg w-8 text-center">{aderezoCounts[f.label] ?? 0}</span>
+                                      <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: (p[f.label] ?? 0) + 1 }))} className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center">+</button>
+                                      <span className="text-xs text-slate-500 w-12 text-right">{((aderezoCounts[f.label] ?? 0) * f.kg).toFixed(3)} kg</span>
                                     </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad de unidades</label>
-                                    <input type="number" min="1" step="1" value={latasCount} onChange={e => setLatasCount(e.target.value)} placeholder="ej: 6" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
                                   </div>
-                                  <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Peso por unidad ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})</label>
-                                    <input type="number" min="0" step="0.001" value={latasPeso} onChange={e => setLatasPeso(e.target.value)} placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
-                                  </div>
-                                  {_totalLatas > 0 && (
-                                    <div className="col-span-2 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
-                                      <div className="flex justify-between mb-1"><span className="text-slate-400">{latasCount} × {latasPeso}{selectedStockItem.unidad === 'kg' && _p > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span><span className="font-black text-green-400">= {_totalLatas} {selectedStockItem.unidad}</span></div>
-                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1"><span className="text-slate-400">Nuevo stock:</span><span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + _totalLatas).toFixed(3))} {selectedStockItem.unidad}</span></div>
+                                ))}
+                                {parseFloat(getFormatosDoypack(selectedStockItem.nombre)!.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3)) > 0 && (
+                                  <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+                                    <div className="flex justify-between mb-1">
+                                      <span className="text-slate-400">Total a ingresar</span>
+                                      <span className="font-black text-green-400">{getFormatosDoypack(selectedStockItem.nombre)!.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3)} kg</span>
                                     </div>
-                                  )}
+                                    <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
+                                      <span className="text-slate-400">Nuevo stock:</span>
+                                      <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + getFormatosDoypack(selectedStockItem.nombre)!.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0)).toFixed(3))} {selectedStockItem.unidad}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad de unidades</label>
+                                  <input type="number" min="1" step="1" value={latasCount} onChange={e => setLatasCount(e.target.value)} placeholder="ej: 6" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
                                 </div>
-                              );
-                            })()}
+                                <div>
+                                  <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Peso por unidad ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})</label>
+                                  <input type="number" min="0" step="0.001" value={latasPeso} onChange={e => setLatasPeso(e.target.value)} placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
+                                </div>
+                                {latasCount && latasPeso && parseFloat(latasCount) > 0 && parseFloat(latasPeso) > 0 && (
+                                  <div className="col-span-2 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
+                                    <div className="flex justify-between mb-1">
+                                      <span className="text-slate-400">{latasCount} × {latasPeso}{selectedStockItem.unidad === 'kg' && parseFloat(latasPeso) > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span>
+                                      <span className="font-black text-green-400">= {parseFloat((parseFloat(latasCount) * (selectedStockItem.unidad === 'kg' && parseFloat(latasPeso) > 10 ? parseFloat(latasPeso)/1000 : parseFloat(latasPeso))).toFixed(3))} {selectedStockItem.unidad}</span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
+                                      <span className="text-slate-400">Nuevo stock:</span>
+                                      <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + parseFloat(latasCount) * (selectedStockItem.unidad === 'kg' && parseFloat(latasPeso) > 10 ? parseFloat(latasPeso)/1000 : parseFloat(latasPeso))).toFixed(3))} {selectedStockItem.unidad}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div>
                               <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
                               <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)} placeholder="Nombre proveedor" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
