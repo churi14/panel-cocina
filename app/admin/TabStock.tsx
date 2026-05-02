@@ -77,6 +77,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [nuevoUnidad, setNuevoUnidad]             = useState('kg');
   const [savingNuevo, setSavingNuevo]             = useState(false);
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
+    carnes_limpias: { emoji: '🔪', color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    headerBg: 'bg-red-500/20'    },
     lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   headerBg: 'bg-rose-500/20'   },
     burger:   { emoji: '🍔', color: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   headerBg: 'bg-blue-500/20'   },
     milanesa: { emoji: '🥪', color: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  headerBg: 'bg-amber-500/20'  },

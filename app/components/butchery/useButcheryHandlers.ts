@@ -234,12 +234,12 @@ export function createButcheryHandlers(s: Setters) {
     // 2. Agregar carne limpia a stock_produccion
     const productoCarne = getCarneLinpiaName(corteNorm, params.destino);
     if (params.carneLinpiaKg > 0) {
-      await addToStockProduccion({ producto: productoCarne, categoria: 'lomito', cantidad: params.carneLinpiaKg, unidad: 'kg' });
+      await addToStockProduccion({ producto: productoCarne, categoria: 'carnes_limpias', cantidad: params.carneLinpiaKg, unidad: 'kg' });
     }
 
     // 3. Grasa → stock_produccion
     if (params.grasaKg > 0) {
-      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'lomito', cantidad: params.grasaKg, unidad: 'kg' });
+      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'carnes_limpias', cantidad: params.grasaKg, unidad: 'kg' });
     }
 
     // 4. Log + push

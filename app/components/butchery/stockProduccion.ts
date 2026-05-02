@@ -7,7 +7,7 @@ export async function addToStockProduccion({
   unidad,
 }: {
   producto: string;
-  categoria: 'lomito' | 'burger' | 'milanesa';
+  categoria: 'lomito' | 'burger' | 'milanesa' | 'carnes_limpias';
   cantidad: number;
   unidad: 'u' | 'kg';
 }) {
