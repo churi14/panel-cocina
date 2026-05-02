@@ -944,7 +944,84 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           </div>)}
                           {/* MODO PESO DIRECTO */}
                           {!modoLatas && (<>
-                        </>)}
+                            <div className="flex gap-3">
+                              <div className="flex-1">
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad</label>
+                                <input type="number" step="0.001" min="0"
+                                  value={facturaQty} onChange={e => setFacturaQty(e.target.value)}
+                                  placeholder="0.000"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
+                              </div>
+                              <div className="flex items-end">
+                                <span className="text-slate-400 font-bold pb-2.5">{selectedStockItem.unidad}</span>
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
+                                <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)}
+                                  placeholder="Nombre proveedor"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500" />
+                              </div>
+                            </div>
+                            {selectedStockItem.cantidad < 0 && facturaQty && parseFloat(facturaQty) > 0 && (
+                              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm space-y-1">
+                                <div className="flex justify-between"><span className="text-slate-400">Stock negativo:</span><span className="font-black text-red-400">{selectedStockItem.cantidad.toFixed(3)} {selectedStockItem.unidad}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">Factura ingresa:</span><span className="font-black text-green-400">+{parseFloat(facturaQty).toFixed(3)} {selectedStockItem.unidad}</span></div>
+                                <div className="flex justify-between border-t border-amber-500/20 pt-1 mt-1">
+                                  <span className="font-black text-slate-300">Stock final:</span>
+                                  <span className={`font-black ${selectedStockItem.cantidad + parseFloat(facturaQty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {(selectedStockItem.cantidad + parseFloat(facturaQty)).toFixed(3)} {selectedStockItem.unidad}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Lote / Remito</label>
+                                <input type="text" value={facturaLote} onChange={e => setFacturaLote(e.target.value)}
+                                  placeholder="Ej: R-12345"
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Vencimiento</label>
+                                <input type="date" value={facturaVence} onChange={e => setFacturaVence(e.target.value)}
+                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Comentario / Faltante</label>
+                              <input type="text" value={facturaComentario} onChange={e => setFacturaComentario(e.target.value)}
+                                placeholder="Ej: Faltaron 2kg en la entrega..."
+                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                            </div>
+                            <button
+                              onClick={async () => {
+                                const qty = parseFloat(facturaQty);
+                                if (!qty || qty <= 0 || savingFacturaRef.current) return;
+                                savingFacturaRef.current = true;
+                                setSavingFactura(true);
+                                const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
+                                await supabase.from('stock').update({
+                                  cantidad: newQty,
+                                  fecha_actualizacion: new Date().toISOString().slice(0, 10),
+                                  ...(facturaVence ? { fecha_vencimiento: new Date(facturaVence).toLocaleDateString('es-AR') } : {}),
+                                }).eq('id', selectedStockItem.id);
+                                await supabase.from('stock_movements').insert({
+                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
+                                  categoria: selectedStockItem.categoria, tipo: 'ingreso',
+                                  cantidad: qty, unidad: selectedStockItem.unidad,
+                                  motivo: ['Factura', facturaProveedor, facturaLote, facturaComentario].filter(Boolean).join(' - '),
+                                  operador: 'Admin', fecha: new Date().toISOString(),
+                                });
+                                setFacturaQty(''); setFacturaProveedor(''); setFacturaLote(''); setFacturaComentario(''); setFacturaVence('');
+                                setSavingFactura(false); savingFacturaRef.current = false;
+                                await fetchMovements();
+                                setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
+                              }}
+                              disabled={!facturaQty || parseFloat(facturaQty) <= 0 || savingFactura}
+                              className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
+                              {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
+                            </button>
+                          </>)}
 
                         {/* ── EGRESO ── */}
                         {modalTab === 'egreso' && (<>
