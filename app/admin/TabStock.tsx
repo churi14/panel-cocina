@@ -857,212 +857,93 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           </div>
 
                           {/* MODO PAQUETES */}
-                          {modoLatas ? (() => {
-                            const formatos = getFormatosDoypack(selectedStockItem.nombre);
-                            const totalKgDoypack = formatos
-                              ? formatos.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0)
-                              : null;
-                            const totalKgLatas = !formatos && latasCount && latasPeso
-                              ? (() => { const n = parseFloat(latasCount); const p = parseFloat(latasPeso); const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p; return parseFloat((n * pesoKg).toFixed(3)); })()
-                              : null;
-                            const totalKg = totalKgDoypack !== null ? parseFloat(totalKgDoypack.toFixed(3)) : (totalKgLatas ?? 0);
-
-                            return (<>
-                              {formatos ? (
-                                // UI doypack con botones por formato
+                          {modoLatas && (<div className="space-y-3">
+                            {(() => {
+                              const _fmt = getFormatosDoypack(selectedStockItem.nombre);
+                              const _totalDoy = _fmt ? parseFloat(_fmt.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3)) : 0;
+                              const _n = parseFloat(latasCount || '0');
+                              const _p = parseFloat(latasPeso || '0');
+                              const _pk = selectedStockItem.unidad === 'kg' && _p > 10 ? _p / 1000 : _p;
+                              const _totalLatas = !_fmt && _n > 0 && _p > 0 ? parseFloat((_n * _pk).toFixed(3)) : 0;
+                              return _fmt ? (
                                 <div className="space-y-2">
                                   <p className="text-xs font-black text-slate-400 uppercase">¿Cuántas unidades de cada formato?</p>
-                                  {formatos.map(f => (
+                                  {_fmt.map(f => (
                                     <div key={f.label} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
                                       <div>
                                         <span className="text-white font-black text-sm">{f.label}</span>
                                         <span className="text-slate-500 text-xs ml-2">{f.kg} kg c/u</span>
                                       </div>
                                       <div className="flex items-center gap-3">
-                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: Math.max(0, (p[f.label] ?? 0) - 1) }))}
-                                          className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center transition-all">−</button>
+                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: Math.max(0, (p[f.label] ?? 0) - 1) }))} className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center">−</button>
                                         <span className="text-white font-black text-lg w-8 text-center">{aderezoCounts[f.label] ?? 0}</span>
-                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: (p[f.label] ?? 0) + 1 }))}
-                                          className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center transition-all">+</button>
+                                        <button onClick={() => setAderezoCounts(p => ({ ...p, [f.label]: (p[f.label] ?? 0) + 1 }))} className="w-8 h-8 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-black text-lg flex items-center justify-center">+</button>
                                         <span className="text-xs text-slate-500 w-12 text-right">{((aderezoCounts[f.label] ?? 0) * f.kg).toFixed(3)} kg</span>
                                       </div>
                                     </div>
                                   ))}
-                                  {totalKgDoypack! > 0 && (
+                                  {_totalDoy > 0 && (
                                     <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
-                                      <div className="flex justify-between mb-1">
-                                        <span className="text-slate-400">Total a ingresar</span>
-                                        <span className="font-black text-green-400">{totalKgDoypack!.toFixed(3)} kg</span>
-                                      </div>
-                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
-                                        <span className="text-slate-400">Nuevo stock:</span>
-                                        <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + totalKgDoypack!).toFixed(3))} {selectedStockItem.unidad}</span>
-                                      </div>
+                                      <div className="flex justify-between mb-1"><span className="text-slate-400">Total a ingresar</span><span className="font-black text-green-400">{_totalDoy.toFixed(3)} kg</span></div>
+                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1"><span className="text-slate-400">Nuevo stock:</span><span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + _totalDoy).toFixed(3))} {selectedStockItem.unidad}</span></div>
                                     </div>
                                   )}
                                 </div>
                               ) : (
-                                // UI genérica para productos sin formato definido
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad de unidades</label>
-                                    <input type="number" min="1" step="1"
-                                      value={latasCount} onChange={e => setLatasCount(e.target.value)}
-                                      placeholder="ej: 6"
-                                      className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
-                                    />
+                                    <input type="number" min="1" step="1" value={latasCount} onChange={e => setLatasCount(e.target.value)} placeholder="ej: 6" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
                                   </div>
                                   <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">
-                                      Peso por unidad ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})
-                                    </label>
-                                    <input type="number" min="0" step="0.001"
-                                      value={latasPeso} onChange={e => setLatasPeso(e.target.value)}
-                                      placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'}
-                                      className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500"
-                                    />
+                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Peso por unidad ({selectedStockItem.unidad === 'kg' ? 'gr o kg' : selectedStockItem.unidad})</label>
+                                    <input type="number" min="0" step="0.001" value={latasPeso} onChange={e => setLatasPeso(e.target.value)} placeholder={selectedStockItem.unidad === 'kg' ? 'ej: 750 (gr)' : 'ej: 1'} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
                                   </div>
-                                  {totalKgLatas !== null && totalKgLatas > 0 && (
+                                  {_totalLatas > 0 && (
                                     <div className="col-span-2 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-sm">
-                                      <div className="flex justify-between mb-1">
-                                        <span className="text-slate-400">{latasCount} unidades × {latasPeso}{selectedStockItem.unidad === 'kg' && parseFloat(latasPeso) > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span>
-                                        <span className="font-black text-green-400">= {totalKgLatas} {selectedStockItem.unidad}</span>
-                                      </div>
-                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1">
-                                        <span className="text-slate-400">Nuevo stock:</span>
-                                        <span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + totalKgLatas).toFixed(3))} {selectedStockItem.unidad}</span>
-                                      </div>
+                                      <div className="flex justify-between mb-1"><span className="text-slate-400">{latasCount} × {latasPeso}{selectedStockItem.unidad === 'kg' && _p > 10 ? ' gr' : ' ' + selectedStockItem.unidad}</span><span className="font-black text-green-400">= {_totalLatas} {selectedStockItem.unidad}</span></div>
+                                      <div className="flex justify-between border-t border-green-500/20 pt-1 mt-1"><span className="text-slate-400">Nuevo stock:</span><span className="font-black text-white">{parseFloat((selectedStockItem.cantidad + _totalLatas).toFixed(3))} {selectedStockItem.unidad}</span></div>
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              );
+                            })()}
                             <div>
                               <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
-                              <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)}
-                                placeholder="Nombre proveedor"
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
+                              <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)} placeholder="Nombre proveedor" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
                             </div>
                             <button
                               onClick={async () => {
-                                const formatos = getFormatosDoypack(selectedStockItem.nombre);
-                                let qty = 0;
-                                let motivo = '';
-                                if (formatos) {
-                                  qty = parseFloat(formatos.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3));
-                                  const detalle = formatos.filter(f => (aderezoCounts[f.label] ?? 0) > 0).map(f => `${aderezoCounts[f.label]}×${f.label}`).join(', ');
-                                  motivo = `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${detalle})`;
+                                const fmt = getFormatosDoypack(selectedStockItem.nombre);
+                                let qty = 0; let motivo = '';
+                                if (fmt) {
+                                  qty = parseFloat(fmt.reduce((s, f) => s + f.kg * (aderezoCounts[f.label] ?? 0), 0).toFixed(3));
+                                  const det = fmt.filter(f => (aderezoCounts[f.label] ?? 0) > 0).map(f => `${aderezoCounts[f.label]}×${f.label}`).join(', ');
+                                  motivo = `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${det})`;
                                 } else {
-                                  const n = parseFloat(latasCount); const p = parseFloat(latasPeso);
-                                  if (!n || !p || n <= 0 || p <= 0) return;
-                                  const pesoKg = selectedStockItem.unidad === 'kg' && p > 10 ? p / 1000 : p;
-                                  qty = parseFloat((n * pesoKg).toFixed(3));
-                                  motivo = `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${Math.round(n)} unidades × ${p}${selectedStockItem.unidad === 'kg' && p > 10 ? 'gr' : selectedStockItem.unidad})`;
+                                  const nn = parseFloat(latasCount); const pp = parseFloat(latasPeso);
+                                  if (!nn || !pp) return;
+                                  const pk = selectedStockItem.unidad === 'kg' && pp > 10 ? pp / 1000 : pp;
+                                  qty = parseFloat((nn * pk).toFixed(3));
+                                  motivo = `Factura${facturaProveedor ? ' - ' + facturaProveedor : ''} (${Math.round(nn)}u × ${pp}${selectedStockItem.unidad === 'kg' && pp > 10 ? 'gr' : selectedStockItem.unidad})`;
                                 }
-                                if (!qty || qty <= 0) return;
-                                if (savingFacturaRef.current) return;
-                                savingFacturaRef.current = true;
-                                setSavingFactura(true);
+                                if (!qty || qty <= 0 || savingFacturaRef.current) return;
+                                savingFacturaRef.current = true; setSavingFactura(true);
                                 const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
                                 await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0,10) }).eq('id', selectedStockItem.id);
-                                await supabase.from('stock_movements').insert({
-                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
-                                  categoria: selectedStockItem.categoria, tipo: 'ingreso',
-                                  cantidad: qty, unidad: selectedStockItem.unidad,
-                                  motivo, operador: 'Admin', fecha: new Date().toISOString(),
-                                });
+                                await supabase.from('stock_movements').insert({ stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria, tipo: 'ingreso', cantidad: qty, unidad: selectedStockItem.unidad, motivo, operador: 'Admin', fecha: new Date().toISOString() });
                                 setLatasCount(''); setLatasPeso(''); setFacturaProveedor(''); setAderezoCounts({});
                                 setSavingFactura(false); savingFacturaRef.current = false;
                                 await fetchMovements();
                                 setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
                               }}
-                              disabled={savingFactura || (() => {
-                                const formatos = getFormatosDoypack(selectedStockItem.nombre);
-                                if (formatos) return formatos.reduce((s,f) => s + (aderezoCounts[f.label]??0), 0) === 0;
-                                return !latasCount || !latasPeso || parseFloat(latasCount) <= 0 || parseFloat(latasPeso) <= 0;
-                              })()}
+                              disabled={savingFactura || (() => { const fmt = getFormatosDoypack(selectedStockItem.nombre); return fmt ? fmt.reduce((s,f) => s+(aderezoCounts[f.label]??0),0)===0 : !latasCount||!latasPeso||parseFloat(latasCount)<=0||parseFloat(latasPeso)<=0; })()}
                               className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
                               {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso por paquetes
                             </button>
-                          </>)}) : (<>                          {/* MODO PESO DIRECTO */}
-                            <div className="flex gap-3">
-                              <div className="flex-1">
-                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Cantidad</label>
-                                <input type="number" step="0.001" min="0"
-                                  value={facturaQty} onChange={e => setFacturaQty(e.target.value)}
-                                  placeholder="0.000"
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-green-500" />
-                              </div>
-                              <div className="flex items-end">
-                                <span className="text-slate-400 font-bold pb-2.5">{selectedStockItem.unidad}</span>
-                              </div>
-                              <div className="flex-1">
-                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Proveedor (opcional)</label>
-                                <input type="text" value={facturaProveedor} onChange={e => setFacturaProveedor(e.target.value)}
-                                  placeholder="Nombre proveedor"
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500" />
-                              </div>
-                            </div>
-                            {selectedStockItem.cantidad < 0 && facturaQty && parseFloat(facturaQty) > 0 && (
-                              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm space-y-1">
-                                <div className="flex justify-between"><span className="text-slate-400">Stock negativo:</span><span className="font-black text-red-400">{selectedStockItem.cantidad.toFixed(3)} {selectedStockItem.unidad}</span></div>
-                                <div className="flex justify-between"><span className="text-slate-400">Factura ingresa:</span><span className="font-black text-green-400">+{parseFloat(facturaQty).toFixed(3)} {selectedStockItem.unidad}</span></div>
-                                <div className="flex justify-between border-t border-amber-500/20 pt-1 mt-1">
-                                  <span className="font-black text-slate-300">Stock final:</span>
-                                  <span className={`font-black ${selectedStockItem.cantidad + parseFloat(facturaQty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {(selectedStockItem.cantidad + parseFloat(facturaQty)).toFixed(3)} {selectedStockItem.unidad}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {/* TRAZABILIDAD */}
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Lote / Remito</label>
-                                <input type="text" value={facturaLote} onChange={e => setFacturaLote(e.target.value)}
-                                  placeholder="Ej: R-12345"
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Vencimiento</label>
-                                <input type="date" value={facturaVence} onChange={e => setFacturaVence(e.target.value)}
-                                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Comentario / Faltante</label>
-                              <input type="text" value={facturaComentario} onChange={e => setFacturaComentario(e.target.value)}
-                                placeholder="Ej: Faltaron 2kg en la entrega..."
-                                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-green-500" />
-                            </div>
-                            <button
-                              onClick={async () => {
-                                const qty = parseFloat(facturaQty);
-                                if (!qty || qty <= 0 || savingFacturaRef.current) return;
-                                savingFacturaRef.current = true;
-                                setSavingFactura(true);
-                                const newQty = parseFloat(((selectedStockItem.cantidad ?? 0) + qty).toFixed(3));
-                                await supabase.from('stock').update({
-                                  cantidad: newQty,
-                                  fecha_actualizacion: new Date().toISOString().slice(0, 10),
-                                  ...(facturaVence ? { fecha_vencimiento: new Date(facturaVence).toLocaleDateString('es-AR') } : {}),
-                                }).eq('id', selectedStockItem.id);
-                                await supabase.from('stock_movements').insert({
-                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre,
-                                  categoria: selectedStockItem.categoria, tipo: 'ingreso',
-                                  cantidad: qty, unidad: selectedStockItem.unidad,
-                                  motivo: ['Factura', facturaProveedor, facturaLote, facturaComentario].filter(Boolean).join(' - '),
-                                  operador: 'Admin', fecha: new Date().toISOString(),
-                                });
-                                setFacturaQty(''); setFacturaProveedor(''); setFacturaLote(''); setFacturaComentario(''); setFacturaVence('');
-                                setSavingFactura(false); savingFacturaRef.current = false;
-                                await fetchMovements();
-                                setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: newQty } : null);
-                              }}
-                              disabled={!facturaQty || parseFloat(facturaQty) <= 0 || savingFactura}
-                              className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
-                              {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
-                            </button>
-                          </>)}
+                          </div>)}
+                          {/* MODO PESO DIRECTO */}
+                          {!modoLatas && (<>
                         </>)}
 
                         {/* ── EGRESO ── */}
