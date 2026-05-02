@@ -124,5 +124,5 @@ export function formatGrams(gr: number): string   { return gr.toFixed(0); }
 
 export function getCarneLinpiaName(corte: string, destino: 'burger' | 'carne_limpia'): string {
   const norm = corte.toLowerCase().includes('nalga') ? 'Nalga' : corte;
-  return destino === 'burger' ? `Carne Limpia Burger - ${norm}` : `${norm} Limpia`;
+  return destino === 'burger' ? `Carne Limpia Burger - ${norm}` : `${norm}_L`;
 }

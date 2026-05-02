@@ -155,7 +155,7 @@ export function createButcheryHandlers(s: Setters) {
       `Finalizo paso 2 - ${quantity} ${unit} de ${corteNorm} - ${operador}`, operador, wasteKg);
     await PushEvents.finProduccion(prod.kind ?? 'lomito', corteNorm, quantity, unit, operador);
     const kindLabel = prod.kind ?? 'lomito';
-    if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Lomito - ${corteNorm}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
+    if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Bifes Lomito_${corteNorm}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
     else if (kindLabel === 'milanesa') await addToStockProduccion({ producto: `Milanesa - ${corteNorm}`, categoria: 'milanesa', cantidad: parseFloat((prod.weightKg - wasteKg).toFixed(3)), unidad: 'kg' });
     const now = Date.now(); const netWeight = prod.weightKg - wasteKg;
     const avgGrams = unit === 'unid' && quantity > 0 ? (netWeight / quantity) * 1000 : 0;
