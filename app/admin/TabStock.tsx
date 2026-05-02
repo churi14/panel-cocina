@@ -1022,6 +1022,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                               {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso
                             </button>
                           </>)}
+                        </>)}
 
                         {/* ── EGRESO ── */}
                         {modalTab === 'egreso' && (<>
