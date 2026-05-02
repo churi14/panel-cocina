@@ -983,7 +983,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                               className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2 text-sm">
                               {savingFactura ? <RefreshCw size={14} className="animate-spin" /> : '✓'} Confirmar ingreso por paquetes
                             </button>
-                          </>)}  (<>
+                          </>)} {!modoLatas && (<>
                           {/* MODO PESO DIRECTO */}
                             <div className="flex gap-3">
                               <div className="flex-1">
