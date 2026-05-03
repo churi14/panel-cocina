@@ -65,18 +65,16 @@ export function TestModeProvider({ children }: { children: React.ReactNode }) {
       // 2. Borrar log de rollback
       await supabase.from('test_rollback_log').delete().eq('session_id', sessionId);
 
-      // 3. Borrar inserts etiquetados
-      const { count: movCount } = await supabase
-        .from('stock_movements').delete().eq('es_test', true).select('*', { count: 'exact', head: true });
+      // 3. Borrar inserts etiquetados y contar
+      const { data: movData } = await supabase.from('stock_movements').delete().eq('es_test', true).select('id');
+      const { data: prodData } = await supabase.from('stock_produccion').delete().eq('es_test', true).select('id');
+      const { data: evData } = await supabase.from('produccion_eventos').delete().eq('es_test', true).select('id');
+      const { data: cocData } = await supabase.from('cocina_produccion_activa').delete().eq('es_test', true).select('id');
 
-      const { count: prodCount } = await supabase
-        .from('stock_produccion').delete().eq('es_test', true).select('*', { count: 'exact', head: true });
-
-      const { count: evCount } = await supabase
-        .from('produccion_eventos').delete().eq('es_test', true).select('*', { count: 'exact', head: true });
-
-      const { count: cocCount } = await supabase
-        .from('cocina_produccion_activa').delete().eq('es_test', true).select('*', { count: 'exact', head: true });
+      const movCount = movData?.length ?? 0;
+      const prodCount = prodData?.length ?? 0;
+      const evCount = evData?.length ?? 0;
+      const cocCount = cocData?.length ?? 0;
 
       detalle += `Borrados: ${movCount ?? 0} movimientos, ${prodCount ?? 0} prod. activas, ${evCount ?? 0} eventos, ${cocCount ?? 0} cocina activa.`;
 
