@@ -46,7 +46,7 @@ export async function testUpdate(
         tabla,
         row_id:         rowId,
         columna,
-        valor_anterior: Number(data[columna] ?? 0),
+        valor_anterior: Number((data as Record<string, any>)[columna] ?? 0),
       });
     }
   }
