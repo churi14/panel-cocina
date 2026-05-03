@@ -85,15 +85,20 @@ export default function Page() {
 function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const { signOut, perfil } = useAuth();
 
-  // Test mode — estado local simple, sin contexto ni Supabase
-  const [isTestMode, setIsTestMode] = useState(false);
+  // Test mode — persiste en sessionStorage para sobrevivir F5
+  const [isTestMode, setIsTestMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('test_mode') === 'true';
+  });
 
   const toggleTestMode = () => {
     if (isTestMode) {
       if (confirm('¿Salir del modo test? Los datos de prueba se van a borrar desde admin.')) {
+        sessionStorage.removeItem('test_mode');
         setIsTestMode(false);
       }
     } else {
+      sessionStorage.setItem('test_mode', 'true');
       setIsTestMode(true);
     }
   };
