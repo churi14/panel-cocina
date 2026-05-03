@@ -21,6 +21,7 @@ import TabProyeccion  from './TabProyeccion';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
 import PushButton     from '../components/PushButton';
+import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
 
 export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => void; onIrACocina?: () => void }) {
@@ -179,6 +180,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
             {theme === 'dark' ? <Sun size={18} className="text-slate-400" /> : <Moon size={18} className="text-slate-400" />}
           </button>
           <PushButton />
+          <TestModeButton />
           <button onClick={fetchMovements} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
             <RefreshCw size={18} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
