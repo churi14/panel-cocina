@@ -214,7 +214,7 @@ export default function KitchenFinalizarEmpanado({ prod, operador, empanadoTipo,
           Cancelar
         </button>
         <button onClick={handleGuardar}
-          disabled={!menjunjeKg || menjNum <= 0 || guardando}
+          disabled={!menjunjeKg || menjNum <= 0 || guardando || menjNum > 100 || salioSospechoso}
           className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-sm disabled:opacity-40">
           {guardando ? 'Guardando...' : '✓ Confirmar'}
         </button>

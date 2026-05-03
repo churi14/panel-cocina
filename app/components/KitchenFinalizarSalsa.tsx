@@ -115,7 +115,7 @@ export default function KitchenFinalizarSalsa({ prod, operador, onFinalizado, on
           Cancelar
         </button>
         <button onClick={handleGuardar}
-          disabled={!kgSalieron || parseFloat(kgSalieron) <= 0 || guardando}
+          disabled={!kgSalieron || parseFloat(kgSalieron) <= 0 || guardando || (parseFloat(kgSalieron) > limSalsa)}
           className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-sm disabled:opacity-40">
           {guardando ? 'Guardando...' : '✓ Confirmar'}
         </button>
