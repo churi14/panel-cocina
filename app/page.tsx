@@ -84,7 +84,19 @@ export default function Page() {
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
 function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const { signOut, perfil } = useAuth();
-  const { isTestMode, limpiarTestMode } = useTestMode();
+
+  // Test mode — estado local simple, sin contexto ni Supabase
+  const [isTestMode, setIsTestMode] = useState(false);
+
+  const toggleTestMode = () => {
+    if (isTestMode) {
+      if (confirm('¿Salir del modo test? Los datos de prueba se van a borrar desde admin.')) {
+        setIsTestMode(false);
+      }
+    } else {
+      setIsTestMode(true);
+    }
+  };
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
@@ -460,12 +472,9 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       {isTestMode && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-slate-900 text-xs font-black text-center py-1.5 flex items-center justify-center gap-3">
           <FlaskConical size={14} />
-          MODO TEST ACTIVO — Los cambios no son reales y se pueden borrar
-          <button
-            onClick={() => limpiarTestMode()}
-            className="bg-slate-900 text-amber-400 px-3 py-0.5 rounded-full text-xs font-black hover:bg-slate-700 transition-all"
-          >
-            Limpiar y salir
+          🧪 MODO TEST — Lo que hacés acá NO afecta el stock real
+          <button onClick={toggleTestMode} className="bg-slate-900 text-amber-400 px-3 py-0.5 rounded-full text-xs font-black hover:bg-slate-700">
+            Salir del test
           </button>
         </div>
       )}
@@ -494,6 +503,12 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                <Scale size={20} /> <span className="font-medium text-sm">Panel Admin</span>
              </button>
            )}
+           <button onClick={toggleTestMode}
+             className={`flex items-center gap-3 transition-colors w-full px-3 py-2 rounded-lg mb-2 text-sm font-medium
+               ${isTestMode ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}>
+             <FlaskConical size={18} />
+             <span>{isTestMode ? '🧪 Salir del modo test' : 'Modo test'}</span>
+           </button>
            <button id="tour-logout" onClick={signOut} className="flex items-center gap-3 text-slate-500 hover:text-red-500 transition-colors w-full px-3 py-2 rounded-lg hover:bg-red-50"><LogOut size={20} /> <span className="font-medium text-sm">Cerrar Sesión</span></button>
         </div>
       </aside>
