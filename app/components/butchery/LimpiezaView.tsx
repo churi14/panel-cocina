@@ -29,9 +29,7 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
   const canFinish   = carne > 0;
 
   const corteNorm = production.typeName;
-  const productoDestino = destino === 'burger'
-    ? `Carne Limpia Burger - ${corteNorm}`
-    : `${corteNorm} Limpia`;
+  const productoDestino = `${corteNorm}_L`;
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 pb-10">
