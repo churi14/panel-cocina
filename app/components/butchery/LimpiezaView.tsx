@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
 
-type Destino = 'burger' | 'carne_limpia';
+type Destino = 'carne_limpia';
 
 type Props = {
   production: ButcheryProduction;
@@ -19,14 +19,14 @@ type Props = {
 export default function LimpiezaView({ production, onFinish, onBack }: Props) {
   const [grasaKg, setGrasaKg]             = useState('');
   const [carneLinpiaKg, setCarneLinpiaKg] = useState('');
-  const [destino, setDestino]             = useState<Destino | null>(null);
+  const destino: Destino = 'carne_limpia'; // siempre va a carne limpia
   const [submitting, setSubmitting]       = useState(false);
   const submittingRef                     = useRef(false);
 
   const grasa       = parseFloat(grasaKg.replace(',', '.'))       || 0;
   const carne       = parseFloat(carneLinpiaKg.replace(',', '.')) || 0;
   const desperdicio = Math.max(0, parseFloat((production.weightKg - grasa - carne).toFixed(3)));
-  const canFinish   = carne > 0 && destino !== null;
+  const canFinish   = carne > 0;
 
   const corteNorm = production.typeName;
   const productoDestino = destino === 'burger'
@@ -147,28 +147,13 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
           </div>
         </div>
 
-        {/* Destino — solo 2 opciones */}
-        <div className="bg-white border-2 border-slate-200 rounded-3xl p-5">
-          <h4 className="font-black text-slate-700 mb-3">📍 ¿A dónde va esta carne limpia?</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setDestino('burger')}
-              className={`py-4 rounded-2xl font-black text-base transition-all flex flex-col items-center gap-1
-                ${destino === 'burger' ? 'bg-blue-600 text-white shadow-lg scale-[1.02]' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-              <span className="text-2xl">🍔</span>
-              Burger
-            </button>
-            <button onClick={() => setDestino('carne_limpia')}
-              className={`py-4 rounded-2xl font-black text-base transition-all flex flex-col items-center gap-1
-                ${destino === 'carne_limpia' ? 'bg-green-600 text-white shadow-lg scale-[1.02]' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-              <span className="text-2xl">🥩</span>
-              Carne Limpia
-            </button>
+        {/* Destino — siempre carne limpia */}
+        <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-4 flex items-center gap-3">
+          <span className="text-2xl">🥩</span>
+          <div>
+            <p className="font-black text-green-800 text-sm">Destino: stock de carne limpia</p>
+            <p className="text-xs text-green-600 mt-0.5">→ <span className="font-bold">{productoDestino}</span></p>
           </div>
-          {destino && (
-            <p className="text-xs text-center text-slate-400 mt-2">
-              → Va a: <span className="font-black text-slate-700">{productoDestino}</span>
-            </p>
-          )}
         </div>
 
         {/* Resumen */}
@@ -193,7 +178,7 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
 
         <button
           onClick={async () => {
-            if (!destino || submittingRef.current) return;
+            if (submittingRef.current) return;
             submittingRef.current = true;
             setSubmitting(true);
             await onFinish({ carneLinpiaKg: carne, grasaKg: grasa, desperdicioKg: desperdicio, destino });
