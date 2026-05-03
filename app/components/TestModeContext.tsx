@@ -1,22 +1,19 @@
 "use client";
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { testModeStore } from '../testModeStore';
-
-const LS_KEY     = 'test_mode_active';
-const LS_SID_KEY = 'test_mode_session_id';
 
 interface TestModeContextValue {
   isTestMode: boolean;
   sessionId: string | null;
-  activarTestMode: () => void;
+  activarTestMode: () => Promise<void>;
   limpiarTestMode: () => Promise<{ ok: boolean; detalle: string }>;
 }
 
 const TestModeContext = createContext<TestModeContextValue>({
   isTestMode: false,
   sessionId: null,
-  activarTestMode: () => {},
+  activarTestMode: async () => {},
   limpiarTestMode: async () => ({ ok: false, detalle: '' }),
 });
 
@@ -29,65 +26,74 @@ function newSessionId() {
 }
 
 export function TestModeProvider({ children }: { children: React.ReactNode }) {
-  // Inicializar desde localStorage para que funcione entre pestañas
-  const [isTestMode, setIsTestMode] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(LS_KEY) === 'true';
-  });
-  const [sessionId, setSessionId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(LS_SID_KEY);
-  });
+  const [isTestMode, setIsTestMode] = useState(false);
+  const [sessionId, setSessionId]   = useState<string | null>(null);
+  const channelRef = useRef<any>(null);
 
-  // Sincronizar el store global al montar (para que el proxy de supabase lo sepa)
+  // ── Leer estado inicial y suscribirse a cambios en tiempo real ──────────────
   useEffect(() => {
-    const sid = localStorage.getItem(LS_SID_KEY);
-    const active = localStorage.getItem(LS_KEY) === 'true';
-    if (active && sid) {
-      testModeStore.activate(sid);
-      setIsTestMode(true);
-      setSessionId(sid);
-    }
-  }, []);
-
-  // Escuchar cambios de otras pestañas via storage event
-  useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === LS_KEY) {
-        const active = e.newValue === 'true';
-        const sid = localStorage.getItem(LS_SID_KEY);
-        if (active && sid) {
-          testModeStore.activate(sid);
-          setIsTestMode(true);
+    // 1. Leer estado actual desde Supabase
+    supabase
+      .from('system_config')
+      .select('value')
+      .eq('key', 'test_mode')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) {
+          const active = data.value.active === true;
+          const sid    = data.value.session_id ?? null;
+          setIsTestMode(active);
           setSessionId(sid);
-        } else {
-          testModeStore.deactivate();
-          setIsTestMode(false);
-          setSessionId(null);
+          if (active && sid) testModeStore.activate(sid);
         }
-      }
+      });
+
+    // 2. Suscribirse a cambios en tiempo real (funciona entre dispositivos)
+    channelRef.current = supabase
+      .channel('system_config_test_mode')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'system_config', filter: 'key=eq.test_mode' },
+        (payload) => {
+          const val    = (payload.new as any).value;
+          const active = val?.active === true;
+          const sid    = val?.session_id ?? null;
+          setIsTestMode(active);
+          setSessionId(sid);
+          if (active && sid) testModeStore.activate(sid);
+          else               testModeStore.deactivate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
   }, []);
 
-  const activarTestMode = useCallback(() => {
+  // ── Activar modo test ────────────────────────────────────────────────────────
+  const activarTestMode = useCallback(async () => {
     const sid = newSessionId();
-    localStorage.setItem(LS_KEY, 'true');
-    localStorage.setItem(LS_SID_KEY, sid);
+    await supabase
+      .from('system_config')
+      .update({ value: { active: true, session_id: sid } })
+      .eq('key', 'test_mode');
+    // El realtime lo actualizará en todos los dispositivos
+    // pero también actualizamos local por si el evento tarda
     testModeStore.activate(sid);
-    setSessionId(sid);
     setIsTestMode(true);
+    setSessionId(sid);
   }, []);
 
+  // ── Limpiar modo test ────────────────────────────────────────────────────────
   const limpiarTestMode = useCallback(async (): Promise<{ ok: boolean; detalle: string }> => {
-    const sid = sessionId ?? localStorage.getItem(LS_SID_KEY);
+    const sid = sessionId;
     if (!sid) return { ok: false, detalle: 'No hay sesión activa' };
 
     try {
       let detalle = '';
 
-      // 1. Revertir UPDATEs de stock desde el log
+      // 1. Revertir UPDATEs de stock
       const { data: logs } = await supabase
         .from('test_rollback_log')
         .select('*')
@@ -101,22 +107,23 @@ export function TestModeProvider({ children }: { children: React.ReactNode }) {
             .update({ [log.columna]: log.valor_anterior })
             .eq('id', log.row_id);
         }
-        detalle += `${logs.length} cambios de stock revertidos. `;
+        detalle += `${logs.length} cambios revertidos. `;
       }
-
       await supabase.from('test_rollback_log').delete().eq('session_id', sid);
 
-      // 2. Borrar todos los inserts etiquetados
+      // 2. Borrar inserts etiquetados
       const { data: mov }  = await supabase.from('stock_movements').delete().eq('es_test', true).select('id');
       const { data: prod } = await supabase.from('stock_produccion').delete().eq('es_test', true).select('id');
       const { data: ev }   = await supabase.from('produccion_eventos').delete().eq('es_test', true).select('id');
       const { data: coc }  = await supabase.from('cocina_produccion_activa').delete().eq('es_test', true).select('id');
-
       detalle += `Borrados: ${mov?.length ?? 0} movimientos, ${prod?.length ?? 0} prod, ${ev?.length ?? 0} eventos, ${coc?.length ?? 0} activas.`;
 
-      // 3. Desactivar en todas las pestañas
-      localStorage.setItem(LS_KEY, 'false');
-      localStorage.removeItem(LS_SID_KEY);
+      // 3. Desactivar en todos los dispositivos via Supabase
+      await supabase
+        .from('system_config')
+        .update({ value: { active: false, session_id: null } })
+        .eq('key', 'test_mode');
+
       testModeStore.deactivate();
       setIsTestMode(false);
       setSessionId(null);

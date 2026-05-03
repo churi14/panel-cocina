@@ -84,16 +84,7 @@ export default function Page() {
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
 function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const { signOut, perfil } = useAuth();
-
-  // Test mode: leer directo de localStorage + poll para detectar cambios entre pestañas
-  const [isTestMode, setIsTestMode] = useState(false);
-  useEffect(() => {
-    const check = () => setIsTestMode(localStorage.getItem('test_mode_active') === 'true');
-    check(); // leer al montar
-    const interval = setInterval(check, 1000); // poll cada segundo
-    window.addEventListener('storage', check); // también escuchar evento cross-tab
-    return () => { clearInterval(interval); window.removeEventListener('storage', check); };
-  }, []);
+  const { isTestMode, limpiarTestMode } = useTestMode();
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
@@ -471,15 +462,10 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
           <FlaskConical size={14} />
           MODO TEST ACTIVO — Los cambios no son reales y se pueden borrar
           <button
-            onClick={() => {
-              localStorage.setItem('test_mode_active', 'false');
-              localStorage.removeItem('test_mode_session_id');
-              setIsTestMode(false);
-              alert('Modo test desactivado. Andá a admin para limpiar los datos de prueba.');
-            }}
+            onClick={() => limpiarTestMode()}
             className="bg-slate-900 text-amber-400 px-3 py-0.5 rounded-full text-xs font-black hover:bg-slate-700 transition-all"
           >
-            Desactivar
+            Limpiar y salir
           </button>
         </div>
       )}

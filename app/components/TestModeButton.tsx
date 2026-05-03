@@ -37,7 +37,7 @@ export default function TestModeButton() {
       {/* Botón en admin */}
       {!isTestMode ? (
         <button
-          onClick={activarTestMode}
+          onClick={() => activarTestMode()}
           className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-black transition-all"
         >
           <FlaskConical size={14} />
