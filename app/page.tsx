@@ -26,6 +26,8 @@ import ProduccionDelDia from './components/butchery/ProduccionDelDia';
 import TareasPanel from './components/butchery/TareasPanel';
 import ProducidosPorUsuario from './components/butchery/ProducidosPorUsuario';
 import { supabase } from './supabase';
+import { useTestMode } from './components/TestModeContext';
+import { FlaskConical } from 'lucide-react';
 
 // ── PWA: registrar service worker ────────────────────────────────────────────
 function usePWA() {
@@ -82,6 +84,7 @@ export default function Page() {
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
 function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const { signOut, perfil } = useAuth();
+  const { isTestMode, limpiarTestMode } = useTestMode();
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
@@ -453,6 +456,19 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
 
   return (
     <div className="flex h-screen bg-[#f3f4f6] p-4 font-sans text-slate-800 overflow-hidden relative">
+      {/* BANNER MODO TEST */}
+      {isTestMode && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-slate-900 text-xs font-black text-center py-1.5 flex items-center justify-center gap-3">
+          <FlaskConical size={14} />
+          MODO TEST ACTIVO — Los cambios no son reales y se pueden borrar
+          <button
+            onClick={async () => { await limpiarTestMode(); }}
+            className="bg-slate-900 text-amber-400 px-3 py-0.5 rounded-full text-xs font-black hover:bg-slate-700 transition-all"
+          >
+            Limpiar y salir
+          </button>
+        </div>
+      )}
       {/* SIDEBAR */}
       <aside className="w-72 bg-white rounded-2xl shadow-sm flex flex-col justify-between p-6 mr-4 transition-all hidden md:flex">
         <div>
