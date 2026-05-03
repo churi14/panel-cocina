@@ -17,6 +17,7 @@ import KitchenFinalizarSalsa    from './KitchenFinalizarSalsa';
 import KitchenFinalizarPan      from './KitchenFinalizarPan';
 import KitchenFinalizarMenjunje from './KitchenFinalizarMenjunje';
 import KitchenFinalizarEmpanado from './KitchenFinalizarEmpanado';
+import KitchenFinalizarFiambre  from './KitchenFinalizarFiambre';
 import KitchenFinalizarVerdura  from './KitchenFinalizarVerdura';
 
 const KITCHEN_CATEGORIES = [
@@ -270,7 +271,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
     const endTime = Date.now();
     const dur = (endTime - prod.startTime) / 1000;
-    const baseKg = prod.baseKg ?? prod.targetUnits;
+    const baseKg = prod.baseKg ?? 0;
 
     setProductionHistory((prev: ProductionRecord[]) => [...prev, {
       id: Date.now(), date: new Date().toLocaleDateString(), timestamp: endTime,
@@ -339,11 +340,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
       }
     }
 
-    // Registrar preparación de fiambres
-    if (isFiambreRecipe) {
-      const kg = prod.baseKg ?? prod.targetUnits;
-      if (kg > 0) await deductStockForFiambre(prod.recipeId ?? '', kg, operador);
-    }
+    // Registrar preparación de fiambres — manejado por KitchenFinalizarFiambre
 
     // Registrar empanado de milanesa
     if (isEmpanadoRecipe && empanadoMenjunjeKg && empanadoSalieronKg) {
@@ -651,6 +648,14 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             </div>
                           );
                         })()}
+                        {isFiambreRecipe && finishingProd && (
+                          <KitchenFinalizarFiambre
+                            prod={{...finishingProd, recipeId: activeRecipeId}}
+                            operador={operador}
+                            onFinalizado={() => finalizarProduccion()}
+                            onCancelar={() => setFinishingProd(null)}
+                          />
+                        )}
                         {isPanRecipe && showPanModal && finishingProd && (
                           <KitchenFinalizarPan
                             prod={{...finishingProd, recipeId: activeRecipeId}}
@@ -679,7 +684,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                           />
                         )}
 
-                        {!showMenjunjeModal && !showPanModal && !isEmpanadoRecipe && !isSalsaRecipe && (
+                        {!showMenjunjeModal && !showPanModal && !isEmpanadoRecipe && !isSalsaRecipe && !isFiambreRecipe && (
                           <div className="flex gap-3">
                             <button onClick={handleFinish}
                               className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl transition-colors flex items-center justify-center gap-2">
@@ -691,7 +696,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             </button>
                           </div>
                         )}
-                        {(showMenjunjeModal || showPanModal || isEmpanadoRecipe || isSalsaRecipe) && (
+                        {(showMenjunjeModal || showPanModal || isEmpanadoRecipe || isSalsaRecipe || isFiambreRecipe) && (
                           <button onClick={() => { finishingRef.current = false; setFinishingProd(null); setShowMenjunjeModal(false); setShowPanModal(false); }}
                             className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl transition-colors text-sm">
                             ✕ Cancelar

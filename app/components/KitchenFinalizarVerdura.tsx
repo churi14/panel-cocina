@@ -72,7 +72,7 @@ function sugerirDecimal(valor: number, limite: number): number | null {
 }
 
 export default function KitchenFinalizarVerdura({ prod, operador, onFinalizado, onCancelar }: Props) {
-  const baseKg = prod.baseKg ?? prod.targetUnits;
+  const baseKg = prod.baseKg ?? 0; // fix: nunca usar targetUnits como kg
   const [brutoKg, setBrutoKg]         = useState('');
   useEffect(() => { setBrutoKg(String(baseKg)); }, [baseKg]);
   const [desperdicioKg, setDesperdicioKg] = useState('0');

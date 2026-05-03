@@ -33,7 +33,7 @@ function sugerirDecimal(valor: number, limite: number): number | null {
 }
 
 export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo, corteNombre, onFinalizado, onCancelar }: Props) {
-  const baseKg = prod.baseKg ?? prod.targetUnits;
+  const baseKg = prod.baseKg ?? 0; // fix: nunca usar targetUnits como kg
   const [carneKg, setCarneKg]         = useState('');
   const [menjunjeKgSalio, setMenjunjeKgSalio] = useState('');
   
