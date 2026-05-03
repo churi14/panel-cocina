@@ -148,7 +148,7 @@ export default function KitchenFinalizarEmpanado({ prod, operador, empanadoTipo,
   return (
     <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
       <p className="text-rose-300 font-black text-sm uppercase">🥩 Empanado {tipo}</p>
-      <p className="text-xs text-slate-400">Descuenta del stock de menjunje preparado.</p>
+      <p className="text-xs text-slate-400">⚠️ <strong>Todos los pesos en KG</strong>. Si usaste 8 kg de menjunje, escribí 8.</p>
 
       {/* Selector de menjunje */}
       <div>

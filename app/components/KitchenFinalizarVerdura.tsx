@@ -162,6 +162,7 @@ export default function KitchenFinalizarVerdura({ prod, operador, onFinalizado, 
   return (
     <div className="bg-green-950/40 border border-green-500/30 rounded-xl p-4 space-y-3">
       <p className="text-green-300 font-black text-sm uppercase">🥦 {prodNombre}</p>
+      <p className="text-xs text-slate-400">⚠️ <strong>Ingresá en KG</strong>. Si pesaste 5 kg de tomates, escribí 5 (no 5000).</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

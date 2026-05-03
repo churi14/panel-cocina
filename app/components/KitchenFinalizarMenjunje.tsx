@@ -126,7 +126,7 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
   return (
     <div className="bg-rose-950/50 border border-rose-500/30 rounded-xl p-4 space-y-3">
       <p className="text-rose-300 font-black text-sm uppercase">🥩 Menjunje {menjunjeTipo} — ¿Cuánto salió?</p>
-      <p className="text-xs text-slate-400">Va directo al stock de menjunje preparado.</p>
+      <p className="text-xs text-slate-400">⚠️ <strong>Ingresá en KG</strong> (no en gramos). Si limpiaste 10 kg de carne, escribí 10.</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
