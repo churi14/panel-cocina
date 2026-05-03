@@ -6,7 +6,7 @@ import ConfirmacionCantidad from './ConfirmacionCantidad';
 import { ChevronLeft, CheckCircle2, Package, Trash2, Scale, ChevronRight, Flame } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { ButcheryProduction } from '../../types';
-import { getCut, formatWeight, formatGrams } from './cuts';
+import { getCut, formatWeight, formatGrams, ALL_STOCKS } from './cuts';
 import { FinishStep2Overlay } from './Overlays';
 
 export function Step2View({ production, totalInBatch, currentIndex, kindLabel, onFinish, onBack }: {
@@ -35,6 +35,8 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const [grasaKg, setGrasaKg]       = useState('');
   const [showGrasa, setShowGrasa]   = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [stockDestinoOverride, setStockDestinoOverride] = useState<string | null>(null);
+  const [observacion, setObservacion] = useState('');
   const [validacionPendiente, setValidacionPendiente] = useState<{accion: () => void; titulo: string; mensaje: string; detalle: string; sugerencia: string | null} | null>(null);
   const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
   const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
@@ -473,7 +475,28 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
               </div>
             )}
             <SRow label="Stock destino" value={effectiveStockDestino} color="text-blue-700 text-sm" bg="bg-blue-50 border border-blue-200" />
-            <p className="text-xs text-center text-slate-400">Podés cambiar el stock al confirmar</p>
+            {/* Cambiar stock destino inline */}
+            <div className="space-y-1">
+              <p className="text-xs font-black text-slate-400 uppercase">Cambiar stock destino (opcional)</p>
+              <select
+                value={stockDestinoOverride ?? effectiveStockDestino}
+                onChange={e => setStockDestinoOverride(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-blue-400"
+              >
+                {ALL_STOCKS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            {/* Observación */}
+            <div className="space-y-1">
+              <p className="text-xs font-black text-slate-400 uppercase">Observación (opcional)</p>
+              <input
+                type="text"
+                value={observacion}
+                onChange={e => setObservacion(e.target.value)}
+                placeholder="Ej: demoró más por temperatura..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 outline-none focus:border-blue-400"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -484,13 +507,14 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
             const categoria = kindLabel === 'lomito' || kindLabel === 'burger' || kindLabel === 'milanesa' ? 'carne' : 'general';
             const val = validarCantidad(qty, categoria);
             const sugerencia = detectarPosibleErrorDecimal(qty);
+            const finalStock = stockDestinoOverride ?? effectiveStockDestino;
             if (val.ok) {
-              setShowConfirm(true);
+              onFinish(qty, unit, waste, grasa, finalStock, observacion || undefined);
             } else if (val.tipo === 'bloqueo') {
               alert('❌ ' + val.mensaje);
             } else {
               setValidacionPendiente({
-                accion: () => { setValidacionPendiente(null); setShowConfirm(true); },
+                accion: () => { setValidacionPendiente(null); onFinish(qty, unit, waste, grasa, finalStock, observacion || undefined); },
                 titulo: 'Cantidad inusual',
                 mensaje: val.mensaje,
                 detalle: val.detalle,
