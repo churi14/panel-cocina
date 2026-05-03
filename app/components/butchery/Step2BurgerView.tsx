@@ -105,6 +105,11 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
   const carneNetaKg     = parseFloat(carneNeta.replace(',', '.'))  || 0;
   const grasaSepKg      = parseFloat(grasaSep.replace(',', '.'))   || 0;
 
+  // Validaciones de carne neta
+  const warnCarneGramos  = carneNetaKg > totalBrutoKg * 10; // probablemente gramos
+  const sugerirCarneKg   = warnCarneGramos ? parseFloat((carneNetaKg / 1000).toFixed(3)) : null;
+  const warnCarneExcede  = !warnCarneGramos && carneNetaKg > totalBrutoKg;
+
   // Validaciones de grasa
   const warnGrasaGramos  = grasaSepKg > 20;                         // probablemente pusieron gramos
   const warnGrasaExcede  = !warnGrasaGramos && grasaSepKg > totalBrutoKg; // imposible
@@ -139,7 +144,7 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
   const qty             = parseInt(medallones) || 0;
   const avgGrams        = qty > 0 ? (totalBlendKg / qty) * 1000 : 0;
 
-  const canAdvance2     = carneNetaKg > 0 && grasaSepKg >= 0 && !warnGrasaGramos && !warnGrasaExcede;
+  const canAdvance2     = carneNetaKg > 0 && grasaSepKg >= 0 && !warnGrasaGramos && !warnGrasaExcede && !warnCarneGramos && !warnCarneExcede;
   const canFinish       = qty > 0;
 
   const handleAdvance = () => {
@@ -215,6 +220,31 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
             unit="KG" color="orange" required
           />
         </div>
+
+        {/* Advertencias de carne neta */}
+        {warnCarneGramos && (
+          <div className="bg-red-50 border-2 border-red-400 rounded-2xl px-4 py-3 mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <span className="text-red-500 shrink-0 text-lg">⛔</span>
+              <div>
+                <p className="text-sm font-black text-red-700">¿Pusiste gramos en vez de kg?</p>
+                <p className="text-xs text-red-500 mt-0.5">{carneNetaKg} kg es imposible — el total bruto es {totalBrutoKg} kg.</p>
+                {sugerirCarneKg && <p className="text-xs text-red-600 font-bold mt-1">{carneNetaKg} gr = {sugerirCarneKg} kg</p>}
+              </div>
+            </div>
+            {sugerirCarneKg && (
+              <button onClick={() => setCarneNeta(String(sugerirCarneKg))}
+                className="shrink-0 px-3 py-1.5 bg-red-500 hover:bg-red-400 text-white font-black text-xs rounded-lg">
+                Usar {sugerirCarneKg} kg
+              </button>
+            )}
+          </div>
+        )}
+        {warnCarneExcede && !warnCarneGramos && (
+          <div className="bg-red-50 border-2 border-red-400 rounded-2xl px-4 py-3 mb-4">
+            <p className="text-sm font-black text-red-700">⛔ La carne neta no puede superar el total bruto ({totalBrutoKg} kg)</p>
+          </div>
+        )}
 
         {/* Advertencias de grasa */}
         {warnGrasaGramos && (
