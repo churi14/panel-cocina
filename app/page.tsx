@@ -84,7 +84,16 @@ export default function Page() {
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
 function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const { signOut, perfil } = useAuth();
-  const { isTestMode, limpiarTestMode } = useTestMode();
+
+  // Test mode: leer directo de localStorage + poll para detectar cambios entre pestañas
+  const [isTestMode, setIsTestMode] = useState(false);
+  useEffect(() => {
+    const check = () => setIsTestMode(localStorage.getItem('test_mode_active') === 'true');
+    check(); // leer al montar
+    const interval = setInterval(check, 1000); // poll cada segundo
+    window.addEventListener('storage', check); // también escuchar evento cross-tab
+    return () => { clearInterval(interval); window.removeEventListener('storage', check); };
+  }, []);
   // --- ESTADOS DE MODALES ---
   const [isStockModalOpen, setIsStockModalOpen] = useState(false); 
   const [isStockViewOpen, setIsStockViewOpen] = useState(false);
@@ -455,17 +464,22 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   };
 
   return (
-    <div className="flex h-screen bg-[#f3f4f6] p-4 font-sans text-slate-800 overflow-hidden relative">
+    <div className={`flex h-screen bg-[#f3f4f6] p-4 font-sans text-slate-800 overflow-hidden relative${isTestMode ? ' pt-8' : ''}`}>
       {/* BANNER MODO TEST */}
       {isTestMode && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-400 text-slate-900 text-xs font-black text-center py-1.5 flex items-center justify-center gap-3">
           <FlaskConical size={14} />
           MODO TEST ACTIVO — Los cambios no son reales y se pueden borrar
           <button
-            onClick={async () => { await limpiarTestMode(); }}
+            onClick={() => {
+              localStorage.setItem('test_mode_active', 'false');
+              localStorage.removeItem('test_mode_session_id');
+              setIsTestMode(false);
+              alert('Modo test desactivado. Andá a admin para limpiar los datos de prueba.');
+            }}
             className="bg-slate-900 text-amber-400 px-3 py-0.5 rounded-full text-xs font-black hover:bg-slate-700 transition-all"
           >
-            Limpiar y salir
+            Desactivar
           </button>
         </div>
       )}
