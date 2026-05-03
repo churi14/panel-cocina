@@ -192,7 +192,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Milanesas'
   );
   const isSalsaRecipe    = !isFraccion && !isPanRecipe && !isMilanesaRecipe && !isVerduraRecipe && !isFiambreRecipe && !isEmpanadoRecipe &&
-    recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Salsas';
+    (activeRecipeId.startsWith('salsa_') ||
+     recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Salsas');
   const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
 
 
@@ -648,6 +649,14 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                             </div>
                           );
                         })()}
+                        {isSalsaRecipe && finishingProd && (
+                          <KitchenFinalizarSalsa
+                            prod={{...finishingProd, recipeId: activeRecipeId ?? ''}}
+                            operador={operador}
+                            onFinalizado={() => { setShowSalsaModal(false); finalizarProduccion(); }}
+                            onCancelar={() => setFinishingProd(null)}
+                          />
+                        )}
                         {isFiambreRecipe && finishingProd && (
                           <KitchenFinalizarFiambre
                             prod={{...finishingProd, recipeId: activeRecipeId}}
