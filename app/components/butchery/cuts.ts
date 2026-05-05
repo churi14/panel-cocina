@@ -78,6 +78,7 @@ export const CUTS: CutConfig[] = [
   { id: 'cuadril',      label: 'Cuadril',         emoji: '🥩', stockDestino: 'Stock Cuadril',         defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
   { id: 'not_burger',   label: 'Not Burger',      emoji: '🌱', stockDestino: 'Stock Not Burger',      defaultUnit: 'unid', kinds: ['burger'] },
   { id: 'cuadrada',     label: 'Cuadrada',        emoji: '🥩', stockDestino: 'Stock Cuadrada',        defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
+  { id: 'aguja',        label: 'Aguja',           emoji: '🥩', stockDestino: 'Stock Aguja',           defaultUnit: 'kg',   kinds: ['limpieza', 'lomito', 'burger', 'milanesa'] },
 ];
 
 // Filtra cortes por tipo de producción
@@ -98,6 +99,7 @@ export const ALL_STOCKS: string[] = [
   'Stock Ojo de Bife',
   'Stock Cuadril',
   'Stock Cuadrada',
+  'Stock Aguja',
   'Stock Grasa de Pella',
   'Stock Pollo',
   'Stock Burger',

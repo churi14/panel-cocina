@@ -32,6 +32,7 @@ const CORTE_STOCK_MAP: Record<string, string> = {
   'Cuadril':         'CUADRIL',
   'Cuadrada':        'CUADRADA',
   'Not Burger':      'NOT',
+  'Aguja':           'AGUJA',
 };
 
 export async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string) {
