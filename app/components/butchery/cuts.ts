@@ -54,7 +54,7 @@ export const PRODUCTION_KINDS: ProductionKindConfig[] = [
 
 // --- CORTES POR TIPO ---
 export type CutConfig = {
-  id: ButcheryProductionType;
+  id: string;
   label: string;
   emoji: string;
   stockDestino: string;
