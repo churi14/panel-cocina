@@ -2,20 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Play, Check } from 'lucide-react';
-import { ButcheryProductionType } from '../../types';
+// import { ButcheryProductionType } from '../../types'; // usando string directo
 import { CUTS, PRODUCTION_KINDS, ProductionKind, ProductionKindConfig, getCutsByKind, getCutLabel, getCut, formatWeight } from './cuts';
 import { StartConfirmOverlay } from './Overlays';
 import { supabase } from '../../supabase';
 
-type WeightEntry = { type: ButcheryProductionType; weight: string; carneLinpiaName?: string };
+type WeightEntry = { type: string; weight: string; carneLinpiaName?: string };
 
 export function NewProductionWizard({ onStart, onCancel }: {
-  onStart: (entries: { type: ButcheryProductionType; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => void | Promise<void>;
+  onStart: (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [step, setStep] = useState<'kind' | 'select' | 'weights'>('kind');
   const [selectedKind, setSelectedKind] = useState<ProductionKind | null>(null);
-  const [selected, setSelected]         = useState<ButcheryProductionType[]>([]);
+  const [selected, setSelected]         = useState<string[]>([]);
   const [weights, setWeights]           = useState<WeightEntry[]>([]);
   const [showConfirm, setShowConfirm]   = useState(false);
   const [tipVisible, setTipVisible]     = useState(false); // collapsed by default, open with 'Ver ayuda'
@@ -31,7 +31,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     ? CUTS.filter(c => c.id !== 'grasa_pella' && c.id !== 'not_burger') // todos los cortes de carne
     : selectedKind ? getCutsByKind(selectedKind) : [];
 
-  const toggleCut = (id: ButcheryProductionType) =>
+  const toggleCut = (id: string) =>
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const handleSelectKind = async (kind: ProductionKind) => {
@@ -83,10 +83,10 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const handleGoToWeights = () => {
     if (selectedKind === 'burger' && selectedCarnesMulti.length > 0) {
       // Burger: un peso por cada corte seleccionado
-      const fakeType = 'lomo' as ButcheryProductionType;
+      const fakeType = 'lomo' as string;
       setWeights(selectedCarnesMulti.map(p => ({ type: fakeType, weight: '', carneLinpiaName: p })));
     } else if (selectedKind !== 'limpieza' && selectedCarneLinpia) {
-      const fakeType = 'lomo' as ButcheryProductionType;
+      const fakeType = 'lomo' as string;
       setWeights([{ type: fakeType, weight: '', carneLinpiaName: selectedCarneLinpia }]);
     } else {
       setWeights(selected.map(type => ({
@@ -98,7 +98,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setStep('weights');
   };
 
-  const setWeight = (type: ButcheryProductionType, val: string) =>
+  const setWeight = (type: string, val: string) =>
     setWeights(prev => prev.map(w => w.type === type ? { ...w, weight: val } : w));
   const setWeightByIdx = (idx: number, val: string) =>
     setWeights(prev => prev.map((w, i) => i === idx ? { ...w, weight: val } : w));
