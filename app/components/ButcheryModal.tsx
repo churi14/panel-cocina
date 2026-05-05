@@ -225,7 +225,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           )}
 
           {!!operador && view === 'new' && (
-            <NewProductionWizard onStart={handleStartProductions} onCancel={() => setView('list')} />
+            <NewProductionWizard onStart={handleStartProductions as any} onCancel={() => setView('list')} />
           )}
 
           {!!operador && view === 'step2' && step2Queue.length > 0 && (
