@@ -1,4 +1,4 @@
-import { ButcheryProductionType } from '../../types';
+// types import removed - using string
 
 // --- TIPOS DE PRODUCCIÓN (pantalla inicial) ---
 export type ProductionKind = 'limpieza' | 'lomito' | 'burger' | 'milanesa';
@@ -106,10 +106,10 @@ export const ALL_STOCKS: string[] = [
   'Stock Milanesas',
 ];
 
-export function getCut(type: ButcheryProductionType): CutConfig {
+export function getCut(type: string): CutConfig {
   return CUTS.find(c => c.id === type) ?? CUTS[0];
 }
-export function getCutLabel(type: ButcheryProductionType): string {
+export function getCutLabel(type: string): string {
   return getCut(type).label;
 }
 
