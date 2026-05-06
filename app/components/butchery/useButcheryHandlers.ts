@@ -109,7 +109,7 @@ export function createButcheryHandlers(s: Setters) {
     }));
     s.setButcheryProductions(prev => [...prev, ...(newProds as any[])]);
     s.setView('list');
-    saveProduccionesMany(newProds);
+    saveProduccionesMany(newProds as any);
     entries.forEach(e => {
       const nombreCorte = e.carneLinpiaName
         ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
