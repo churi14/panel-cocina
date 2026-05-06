@@ -77,7 +77,7 @@ type Setters = {
 export function createButcheryHandlers(s: Setters) {
   const { operador, step2Queue, step2Index } = s;
 
-  const handleStartProductions = async (entries: { type: ButcheryProductionType; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => {
+  const handleStartProductions = async (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => {
     // Solo notificar si hay stock negativo — no bloquear producción
     for (const e of entries) {
       const corteNombre = getCutLabel(e.type);
@@ -151,13 +151,14 @@ export function createButcheryHandlers(s: Setters) {
     if (!prod) return;
     await deductStockByName(prod.typeName, prod.weightKg, prod.kind ?? 'lomito');
     // Normalizar: Tapa de Nalga y Nalga Feteada → Nalga
-    const corteNorm = (prod.typeName ?? '').toLowerCase().includes('nalga') ? 'Nalga' : prod.typeName;
-    await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', corteNorm, prod.weightKg,
-      `Finalizo paso 2 - ${quantity} ${unit} de ${corteNorm} - ${operador}`, operador, wasteKg);
-    await PushEvents.finProduccion(prod.kind ?? 'lomito', corteNorm, quantity, unit, operador);
+    const corteNorm = (prod.typeName ?? '').replace(/_L$/, '').trim();
+    const corteDisplay = corteNorm.toLowerCase().includes('nalga') ? 'Nalga' : corteNorm;
+    await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', corteDisplay, prod.weightKg,
+      `Finalizo paso 2 - ${quantity} ${unit} de ${corteDisplay} - ${operador}`, operador, wasteKg);
+    await PushEvents.finProduccion(prod.kind ?? 'lomito', corteDisplay, quantity, unit, operador);
     const kindLabel = prod.kind ?? 'lomito';
-    if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Bifes Lomito_${corteNorm}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
-    else if (kindLabel === 'milanesa') await addToStockProduccion({ producto: `Milanesa - ${corteNorm}`, categoria: 'milanesa', cantidad: parseFloat((prod.weightKg - wasteKg).toFixed(3)), unidad: 'kg' });
+    if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Bifes Lomito_${corteDisplay}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
+    else if (kindLabel === 'milanesa') await addToStockProduccion({ producto: `Milanesa - ${corteDisplay}`, categoria: 'milanesa', cantidad: parseFloat((prod.weightKg - wasteKg).toFixed(3)), unidad: 'kg' });
     const now = Date.now(); const netWeight = prod.weightKg - wasteKg;
     const avgGrams = unit === 'unid' && quantity > 0 ? (netWeight / quantity) * 1000 : 0;
     s.setButcheryRecords(prev => [...prev, {
