@@ -6,6 +6,7 @@ type Props = {
   stockProd: any[];
   produccionEventos: any[];
   fetchMovements: () => Promise<void>;
+  cocinaActiva: any[];
 };
 
 const CAT_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string; bar: string }> = {
@@ -24,9 +25,10 @@ const DEFAULT_CFG = { emoji: '📋', color: 'text-slate-400', bg: 'bg-slate-500/
 // Orden preferido de categorías
 const CAT_ORDER = ['lomito', 'burger', 'milanesa', 'pan', 'salsa', 'dip', 'verdura', 'fiambre', 'caja'];
 
-export default function TabProduccion({ stockProd, produccionEventos, fetchMovements }: Props) {
+export default function TabProduccion({ stockProd, produccionEventos, fetchMovements, cocinaActiva }: Props) {
   const [selectedProdItem, setSelectedProdItem] = useState<any | null>(null);
   const [filterCat, setFilterCat] = useState<string | null>(null);
+  const [selectedActiva, setSelectedActiva] = useState<any | null>(null);
 
   // Todas las categorías presentes, en orden preferido
   const allCats = [
@@ -46,6 +48,98 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+
+      {/* ── PRODUCCIONES ACTIVAS EN COCINA ── */}
+      {cocinaActiva.length > 0 && (
+        <div className="bg-slate-900 border border-green-500/30 rounded-2xl overflow-hidden">
+          <div className="px-6 py-3 bg-green-500/10 border-b border-green-500/20 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <h2 className="font-black text-sm text-green-400 uppercase">Producciones activas ahora</h2>
+            </div>
+            <span className="text-xs text-slate-500">{cocinaActiva.length} en curso</span>
+          </div>
+          <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {cocinaActiva.map((prod: any) => {
+              const mins = Math.floor((Date.now() - (prod.start_time ?? 0)) / 60000);
+              const hh = Math.floor(mins / 60);
+              const mm = mins % 60;
+              const timer = hh > 0 ? `${hh}h ${mm}m` : `${mm}m`;
+              return (
+                <div key={prod.id}
+                  onClick={() => setSelectedActiva(prod)}
+                  className="bg-slate-800 border border-green-500/20 hover:border-green-500/50 rounded-xl p-4 cursor-pointer transition-all hover:bg-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-xs font-black text-green-400">{timer}</span>
+                  </div>
+                  <p className="font-black text-white text-sm leading-tight mb-1">{prod.recipe_name ?? prod.recipeName ?? '—'}</p>
+                  <p className="text-xs text-slate-400">{prod.operador ?? 'Operador'}</p>
+                  {prod.target_units && (
+                    <p className="text-xs text-slate-500 mt-1">{prod.target_units} {prod.unit ?? ''}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Modal detalle de producción activa */}
+      {selectedActiva && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setSelectedActiva(null)}>
+          <div className="bg-slate-900 border border-green-500/30 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-xs font-black text-green-400 uppercase">En curso</span>
+              </div>
+              <button onClick={() => setSelectedActiva(null)} className="text-slate-500 hover:text-white">✕</button>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-white">{selectedActiva.recipe_name ?? selectedActiva.recipeName ?? '—'}</p>
+              <p className="text-slate-400 text-sm mt-1">Operador: <span className="text-white font-bold">{selectedActiva.operador ?? '—'}</span></p>
+            </div>
+            <div className="bg-slate-800 rounded-xl p-4 space-y-2 text-sm">
+              {selectedActiva.target_units && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Cantidad</span>
+                  <span className="font-black text-white">{selectedActiva.target_units} {selectedActiva.unit ?? ''}</span>
+                </div>
+              )}
+              {selectedActiva.base_kg && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Kg base</span>
+                  <span className="font-black text-white">{selectedActiva.base_kg} kg</span>
+                </div>
+              )}
+              {selectedActiva.start_time && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Inició</span>
+                  <span className="font-black text-white">
+                    {new Date(selectedActiva.start_time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
+              {selectedActiva.start_time && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Tiempo transcurrido</span>
+                  <span className="font-black text-green-400">
+                    {(() => {
+                      const mins = Math.floor((Date.now() - selectedActiva.start_time) / 60000);
+                      const hh = Math.floor(mins / 60);
+                      const mm = mins % 60;
+                      return hh > 0 ? `${hh}h ${mm}m` : `${mm} minutos`;
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filtro por categoría */}
       <div className="flex gap-2 flex-wrap">

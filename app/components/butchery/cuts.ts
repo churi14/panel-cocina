@@ -64,7 +64,6 @@ export type CutConfig = {
 
 export const CUTS: CutConfig[] = [
   { id: 'lomo',         label: 'Lomo',            emoji: '🥩', stockDestino: 'Stock Lomo',            defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
-  { id: 'roast_beef',   label: 'Roast Beef',      emoji: '🥩', stockDestino: 'Stock Roast Beef',      defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_asado',   label: 'Tapa de Asado',   emoji: '🥩', stockDestino: 'Stock Tapa de Asado',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_nalga',   label: 'Tapa de Nalga',   emoji: '🥩', stockDestino: 'Stock Tapa de Nalga',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'nalga',        label: 'Nalga',            emoji: '🥩', stockDestino: 'Stock Nalga',            defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
@@ -73,6 +72,7 @@ export const CUTS: CutConfig[] = [
   { id: 'vacio',        label: 'Vacío',            emoji: '🥩', stockDestino: 'Stock Vacío',           defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'picana',       label: 'Picaña',           emoji: '🥩', stockDestino: 'Stock Picaña',          defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'ojo_bife',     label: 'Ojo de Bife',      emoji: '🥩', stockDestino: 'Stock Ojo de Bife',     defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
+  { id: 'grasa',        label: 'Grasa',           emoji: '🫙', stockDestino: 'Stock Grasa',           defaultUnit: 'kg',   kinds: ['limpieza'] },
   { id: 'grasa_pella',  label: 'Grasa de Pella',   emoji: '🫙', stockDestino: 'Stock Grasa de Pella',  defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'pollo',        label: 'Pollo',           emoji: '🍗', stockDestino: 'Stock Pollo',           defaultUnit: 'kg',   kinds: ['milanesa'] },
   { id: 'cuadril',      label: 'Cuadril',         emoji: '🥩', stockDestino: 'Stock Cuadril',         defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
@@ -88,7 +88,6 @@ export function getCutsByKind(kind: ProductionKind): CutConfig[] {
 
 export const ALL_STOCKS: string[] = [
   'Stock Lomo',
-  'Stock Roast Beef',
   'Stock Tapa de Asado',
   'Stock Tapa de Nalga',
   'Stock Nalga',
@@ -100,6 +99,7 @@ export const ALL_STOCKS: string[] = [
   'Stock Cuadril',
   'Stock Cuadrada',
   'Stock Aguja',
+  'Stock Grasa',
   'Stock Grasa de Pella',
   'Stock Pollo',
   'Stock Burger',

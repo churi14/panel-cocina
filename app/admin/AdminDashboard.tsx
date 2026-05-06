@@ -218,7 +218,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} />}
         {activeTab === 'reports'    && <TabReportes    movements={movements} />}
         {activeTab === 'stock'      && <TabStock       stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />}
-        {activeTab === 'produccion' && <TabProduccion  stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} />}
+        {activeTab === 'produccion' && <TabProduccion  stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />}
         {activeTab === 'analytics'  && <TabAnalytics   movements={movements} produccionEventos={produccionEventos} prodHistorial={prodHistorial} />}
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'usuarios'   && <TabUsuarios />}
