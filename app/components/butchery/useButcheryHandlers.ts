@@ -107,7 +107,7 @@ export function createButcheryHandlers(s: Setters) {
       startTime: now, status: 'step1_running' as const, date: new Date().toLocaleDateString(),
       startTimeFormatted: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }));
-    s.setButcheryProductions(prev => [...prev, ...newProds]);
+    s.setButcheryProductions(prev => [...prev, ...(newProds as any[])]);
     s.setView('list');
     saveProduccionesMany(newProds);
     entries.forEach(e => {
