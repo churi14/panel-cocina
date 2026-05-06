@@ -36,7 +36,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const { user } = useAuth();
   const [stockCat, setStockCat]           = useState('all');
   const [stockSearch, setStockSearch]     = useState('');
-  const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion'>('materiales');
+  const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion' | 'carne_limpia'>('materiales');
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
   const [facturaQty, setFacturaQty]           = useState('');
   const [facturaProveedor, setFacturaProveedor] = useState('');
@@ -114,13 +114,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   return (
     <div className="max-w-6xl mx-auto space-y-6">
 
-            {/* Sub-tabs Materiales / Producción */}
+            {/* Sub-tabs Materiales / Carne Limpia / Producción */}
             <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 w-fit">
               {([
-                { id: 'materiales', label: '📦 Materiales' },
-                { id: 'produccion', label: '🍔 Producción' },
+                { id: 'materiales',   label: '🥩 Carnes y Materiales' },
+                { id: 'carne_limpia', label: '🔪 Carne Limpia' },
+                { id: 'produccion',   label: '🍔 Producción' },
               ] as const).map(t => (
-                <button key={t.id} onClick={() => setStockSubTab(t.id)}
+                <button key={t.id} onClick={() => setStockSubTab(t.id as any)}
                   className={`px-5 py-2 rounded-xl text-sm font-bold transition-all
                     ${stockSubTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
                   {t.label}
@@ -220,15 +221,69 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               </>
             )}
 
-            {/* ── SUB-TAB PRODUCCIÓN ── */}
+            {/* ── SUB-TAB CARNE LIMPIA ── */}
+            {stockSubTab === 'carne_limpia' && (() => {
+              const cfg = PROD_CFG['carnes_limpias'] ?? DEFAULT_CFG;
+              const items = stockProd.filter((s: any) => s.categoria === 'carnes_limpias');
+              const total = items.reduce((sum: number, s: any) => sum + (parseFloat(s.cantidad) || 0), 0);
+              return (
+                <>
+                  {/* Totalizador */}
+                  <div className={`rounded-2xl border-2 p-5 ${cfg.bg} ${cfg.border} flex items-center gap-4`}>
+                    <span className="text-4xl">🔪</span>
+                    <div>
+                      <p className={`text-xs font-black uppercase ${cfg.color}`}>Stock total de carne limpia</p>
+                      <p className={`text-4xl font-black ${cfg.color}`}>
+                        {total.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')} <span className="text-lg opacity-60">kg</span>
+                      </p>
+                      <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{items.length} cortes</p>
+                    </div>
+                  </div>
+
+                  {/* Grid de cortes */}
+                  <div className={`bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden`}>
+                    <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
+                      <h2 className={`font-black text-sm uppercase ${cfg.color}`}>🔪 Carne Limpia — por corte</h2>
+                      <span className="text-xs text-slate-500">{items.length} cortes</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                      {items.length === 0 ? (
+                        <div className="col-span-4 text-center py-8 text-slate-600">
+                          <p className="text-3xl mb-2">🔪</p>
+                          <p className="font-bold">Sin carne limpia en stock</p>
+                        </div>
+                      ) : items.map((item: any) => (
+                        <div key={item.id}
+                          onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('carga'); }}
+                          className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
+                          <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
+                          <p className={`text-3xl font-black ${parseFloat(item.cantidad) === 0 ? 'text-slate-600' : cfg.color}`}>
+                            {parseFloat(item.cantidad).toFixed(3).replace(/\.?0+$/, '').replace('.', ',')}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">kg</p>
+                          {parseFloat(item.cantidad) === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
+                          {item.ultima_prod && (
+                            <p className="text-xs text-slate-600 mt-2">
+                              {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── SUB-TAB PRODUCCIÓN (sin carne limpia) ── */}
             {stockSubTab === 'produccion' && (
               <>
-                {/* Totales dinámicos */}
+                {/* Totales dinámicos — excluye carnes_limpias */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {prodCats.map(cat => {
+                  {prodCats.filter(cat => cat !== 'carnes_limpias').map(cat => {
                     const cfg = PROD_CFG[cat] ?? DEFAULT_CFG;
                     const catItems = stockProd.filter((s: any) => s.categoria === cat);
-                    const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
+                    const total = catItems.reduce((sum: number, s: any) => sum + (parseFloat(s.cantidad) || 0), 0);
                     const units = [...new Set(catItems.map((s: any) => s.unidad))];
                     const unit = units.length === 1 ? units[0] : 'u';
                     return (
@@ -244,8 +299,8 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   })}
                 </div>
 
-                {/* Detalle por categoría — dinámico */}
-                {prodCats.map(cat => {
+                {/* Detalle por categoría — excluye carnes_limpias */}
+                {prodCats.filter(cat => cat !== 'carnes_limpias').map(cat => {
                   const cfg = PROD_CFG[cat] ?? DEFAULT_CFG;
                   const catItems = stockProd.filter((s: any) => s.categoria === cat);
                   if (catItems.length === 0) return null;
@@ -369,48 +424,82 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   {editandoProdStock && (
                     <div className="px-5 py-4 border-b border-amber-500/30 bg-amber-500/10">
                       <p className="text-xs font-black text-amber-400 uppercase mb-2">⚠️ Corregir stock directamente</p>
-                      <div className="flex gap-2 items-center">
-                        <input type="number" inputMode="decimal" step="0.001"
-                          value={prodStockValor} onChange={e => setProdStockValor(e.target.value)}
-                          className="flex-1 bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none" />
-                        <span className="text-slate-400 font-bold">{selectedProdItem.unidad}</span>
-                        <button
-                          onClick={async () => {
-                            const nuevoValor = parseFloat(String(prodStockValor).replace(',', '.'));
-                            if (isNaN(nuevoValor) || savingProdStockRef.current) return;
-                            savingProdStockRef.current = true;
-                            setSavingProdStock(true);
-                            const diff = nuevoValor - selectedProdItem.cantidad;
-                            await supabase.from('stock_produccion').update({ cantidad: nuevoValor, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
-                            if (Math.abs(diff) > 0) {
-                              await supabase.from('stock_movements').insert({
-                                nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
-                                tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
-                                unidad: selectedProdItem.unidad,
-                                motivo: `Corrección directa (${selectedProdItem.cantidad} → ${nuevoValor})`,
-                                operador: 'Admin', fecha: new Date().toISOString(),
-                              });
-                            }
-                            setSavingProdStock(false); savingProdStockRef.current = false;
-                            setEditandoProdStock(false);
-                            setSelectedProdItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
-                            await fetchMovements();
-                          }}
-                          disabled={savingProdStock || prodStockValor === ''}
-                          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
-                          {savingProdStock ? '...' : '✓'} Guardar
-                        </button>
-                        <button onClick={() => setEditandoProdStock(false)}
-                          className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
-                      </div>
-                      {prodStockValor !== '' && parseFloat(prodStockValor) !== selectedProdItem.cantidad && (
-                        <p className="text-xs text-slate-400 mt-2">
-                          Actual: <span className="text-white font-bold">{selectedProdItem.cantidad}</span>{' → '}
-                          <span className={`font-black ${parseFloat(prodStockValor) > selectedProdItem.cantidad ? 'text-green-400' : 'text-red-400'}`}>
-                            {prodStockValor} {selectedProdItem.unidad}
-                          </span>
-                        </p>
-                      )}
+                      <p className="text-xs text-slate-400 mb-2">
+                        Ingresá en <strong className="text-white">{selectedProdItem.unidad}</strong>.
+                        {selectedProdItem.unidad === 'kg' ? ' Si tenés 8 kg, escribí 8 (no 8000).' : ''}
+                      </p>
+                      {(() => {
+                        const val = parseFloat(String(prodStockValor).replace(',','.')) || 0;
+                        const actual = parseFloat(selectedProdItem.cantidad) || 0;
+                        const isKg = selectedProdItem.unidad === 'kg';
+                        const warnGramos = isKg && val > 500;
+                        const sugerirKg = warnGramos ? parseFloat((val / 1000).toFixed(3)) : null;
+                        const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0;
+                        return (<>
+                          <div className="flex gap-2 items-center">
+                            <input type="number" inputMode="decimal" step="0.001"
+                              value={prodStockValor} onChange={e => setProdStockValor(e.target.value)}
+                              className={`flex-1 bg-slate-800 border-2 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none
+                                ${warnGramos || warnMucho ? 'border-red-500' : 'border-amber-500'}`} />
+                            <span className="text-slate-400 font-bold">{selectedProdItem.unidad}</span>
+                            <button
+                              onClick={async () => {
+                                const nuevoValor = parseFloat(String(prodStockValor).replace(',', '.'));
+                                if (isNaN(nuevoValor) || savingProdStockRef.current) return;
+                                savingProdStockRef.current = true;
+                                setSavingProdStock(true);
+                                const diff = nuevoValor - selectedProdItem.cantidad;
+                                await supabase.from('stock_produccion').update({ cantidad: nuevoValor, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
+                                if (Math.abs(diff) > 0) {
+                                  await supabase.from('stock_movements').insert({
+                                    nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
+                                    tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
+                                    unidad: selectedProdItem.unidad,
+                                    motivo: `Corrección directa (${selectedProdItem.cantidad} → ${nuevoValor})`,
+                                    operador: 'Admin', fecha: new Date().toISOString(),
+                                  });
+                                }
+                                setSavingProdStock(false); savingProdStockRef.current = false;
+                                setEditandoProdStock(false);
+                                setSelectedProdItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
+                                await fetchMovements();
+                              }}
+                              disabled={savingProdStock || prodStockValor === '' || warnGramos || warnMucho}
+                              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
+                              {savingProdStock ? '...' : '✓'} Guardar
+                            </button>
+                            <button onClick={() => setEditandoProdStock(false)}
+                              className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
+                          </div>
+                          {warnGramos && (
+                            <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                              <div>
+                                <p className="text-xs font-black text-red-300">⛔ ¿Pusiste gramos en vez de kg?</p>
+                                <p className="text-xs text-red-400">{val} gr = {sugerirKg} kg</p>
+                              </div>
+                              {sugerirKg && (
+                                <button onClick={() => setProdStockValor(String(sugerirKg))}
+                                  className="px-3 py-1.5 bg-amber-500 text-slate-900 font-black text-xs rounded-lg">
+                                  Usar {sugerirKg} kg
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {warnMucho && !warnGramos && (
+                            <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2">
+                              <p className="text-xs font-black text-red-300">⛔ {val} kg es {Math.round(val/actual)}x más que el actual ({actual} kg). ¿Está bien?</p>
+                            </div>
+                          )}
+                          {prodStockValor !== '' && val !== actual && !warnGramos && !warnMucho && (
+                            <p className="text-xs text-slate-400 mt-2">
+                              Actual: <span className="text-white font-bold">{actual}</span>{' → '}
+                              <span className={`font-black ${val > actual ? 'text-green-400' : 'text-red-400'}`}>
+                                {prodStockValor} {selectedProdItem.unidad}
+                              </span>
+                            </p>
+                          )}
+                        </>);
+                      })()}
                     </div>
                   )}
 
@@ -727,48 +816,82 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     {editandoMatStock && (
                       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4">
                         <p className="text-xs font-black text-amber-400 uppercase mb-2">⚠️ Corregir stock directamente</p>
-                        <div className="flex gap-2 items-center">
-                          <input type="number" inputMode="decimal" step="0.001"
-                            value={matStockValor} onChange={e => setMatStockValor(e.target.value)}
-                            className="flex-1 bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none" />
-                          <span className="text-slate-400 font-bold">{selectedStockItem.unidad}</span>
-                          <button
-                            onClick={async () => {
-                              const nuevoValor = parseFloat(String(matStockValor).replace(',', '.'));
-                              if (isNaN(nuevoValor) || savingMatStockRef.current) return;
-                              savingMatStockRef.current = true;
-                              setSavingMatStock(true);
-                              const diff = nuevoValor - selectedStockItem.cantidad;
-                              await supabase.from('stock').update({ cantidad: nuevoValor, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
-                              if (Math.abs(diff) > 0) {
-                                await supabase.from('stock_movements').insert({
-                                  stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria,
-                                  tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
-                                  unidad: selectedStockItem.unidad,
-                                  motivo: `Corrección directa (${selectedStockItem.cantidad} → ${nuevoValor})`,
-                                  operador: 'Admin', fecha: new Date().toISOString(),
-                                });
-                              }
-                              setSavingMatStock(false); savingMatStockRef.current = false;
-                              setEditandoMatStock(false);
-                              setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
-                              await fetchMovements();
-                            }}
-                            disabled={savingMatStock || matStockValor === ''}
-                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
-                            {savingMatStock ? '...' : '✓'} Guardar
-                          </button>
-                          <button onClick={() => setEditandoMatStock(false)}
-                            className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
-                        </div>
-                        {matStockValor !== '' && parseFloat(matStockValor) !== selectedStockItem.cantidad && (
-                          <p className="text-xs text-slate-400 mt-2">
-                            Actual: <span className="text-white font-bold">{selectedStockItem.cantidad} {selectedStockItem.unidad}</span>{' → '}
-                            <span className={`font-black ${parseFloat(matStockValor) > selectedStockItem.cantidad ? 'text-green-400' : 'text-red-400'}`}>
-                              {matStockValor} {selectedStockItem.unidad}
-                            </span>
-                          </p>
-                        )}
+                        <p className="text-xs text-slate-400 mb-2">
+                          Ingresá en <strong className="text-white">{selectedStockItem.unidad}</strong>.
+                          {selectedStockItem.unidad === 'kg' ? ' Si tenés 8 kg, escribí 8 (no 8000).' : ''}
+                        </p>
+                        {(() => {
+                          const val = parseFloat(String(matStockValor).replace(',','.')) || 0;
+                          const actual = parseFloat(selectedStockItem.cantidad) || 0;
+                          const isKg = selectedStockItem.unidad === 'kg';
+                          const warnGramos = isKg && val > 1000;
+                          const sugerirKg = warnGramos ? parseFloat((val / 1000).toFixed(3)) : null;
+                          const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0;
+                          return (<>
+                            <div className="flex gap-2 items-center">
+                              <input type="number" inputMode="decimal" step="0.001"
+                                value={matStockValor} onChange={e => setMatStockValor(e.target.value)}
+                                className={`flex-1 bg-slate-800 border-2 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none
+                                  ${warnGramos || warnMucho ? 'border-red-500' : 'border-amber-500'}`} />
+                              <span className="text-slate-400 font-bold">{selectedStockItem.unidad}</span>
+                              <button
+                                onClick={async () => {
+                                  const nuevoValor = parseFloat(String(matStockValor).replace(',', '.'));
+                                  if (isNaN(nuevoValor) || savingMatStockRef.current) return;
+                                  savingMatStockRef.current = true;
+                                  setSavingMatStock(true);
+                                  const diff = nuevoValor - selectedStockItem.cantidad;
+                                  await supabase.from('stock').update({ cantidad: nuevoValor, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                                  if (Math.abs(diff) > 0) {
+                                    await supabase.from('stock_movements').insert({
+                                      stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria,
+                                      tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
+                                      unidad: selectedStockItem.unidad,
+                                      motivo: `Corrección directa (${selectedStockItem.cantidad} → ${nuevoValor})`,
+                                      operador: 'Admin', fecha: new Date().toISOString(),
+                                    });
+                                  }
+                                  setSavingMatStock(false); savingMatStockRef.current = false;
+                                  setEditandoMatStock(false);
+                                  setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
+                                  await fetchMovements();
+                                }}
+                                disabled={savingMatStock || matStockValor === '' || warnGramos || warnMucho}
+                                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
+                                {savingMatStock ? '...' : '✓'} Guardar
+                              </button>
+                              <button onClick={() => setEditandoMatStock(false)}
+                                className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
+                            </div>
+                            {warnGramos && (
+                              <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-xs font-black text-red-300">⛔ ¿Pusiste gramos en vez de kg?</p>
+                                  <p className="text-xs text-red-400">{val} gr = {sugerirKg} kg</p>
+                                </div>
+                                {sugerirKg && (
+                                  <button onClick={() => setMatStockValor(String(sugerirKg))}
+                                    className="px-3 py-1.5 bg-amber-500 text-slate-900 font-black text-xs rounded-lg">
+                                    Usar {sugerirKg} kg
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {warnMucho && !warnGramos && (
+                              <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2">
+                                <p className="text-xs font-black text-red-300">⛔ {val} kg es {Math.round(val/actual)}x más que el actual ({actual} kg). ¿Está bien?</p>
+                              </div>
+                            )}
+                            {matStockValor !== '' && val !== actual && !warnGramos && !warnMucho && (
+                              <p className="text-xs text-slate-400 mt-2">
+                                Actual: <span className="text-white font-bold">{actual} {selectedStockItem.unidad}</span>{' → '}
+                                <span className={`font-black ${val > actual ? 'text-green-400' : 'text-red-400'}`}>
+                                  {matStockValor} {selectedStockItem.unidad}
+                                </span>
+                              </p>
+                            )}
+                          </>);
+                        })()}
                       </div>
                     )}
 
