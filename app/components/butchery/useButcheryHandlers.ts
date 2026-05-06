@@ -98,7 +98,7 @@ export function createButcheryHandlers(s: Setters) {
       }
     }
     const now = Date.now();
-    const newProds: ButcheryProduction[] = entries.map((e, i) => ({
+    const newProds = entries.map((e, i) => ({
       id: now + i, batchId: now, type: e.type,
       typeName: e.carneLinpiaName
         ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
