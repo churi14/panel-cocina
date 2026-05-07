@@ -27,7 +27,6 @@ const CORTE_STOCK_MAP: Record<string, string> = {
   'Vacío':           'VACIO',
   'Picaña':          'PICAÑA',
   'Ojo de Bife':     'OJO DE BIFE',
-  'Grasa':           'GRASA',
   'Grasa de Pella':  'GRASA DE PELLA',
   'Pollo':           'POLLO',
   'Cuadril':         'CUADRIL',
