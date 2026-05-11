@@ -224,32 +224,41 @@ export function createButcheryHandlers(s: Setters) {
 
   const handleFinishLimpieza = async (prod: ButcheryProduction, params: {
     carneLinpiaKg: number;
+    carneLinpia2?: { kg: number; producto: string };
     grasaKg: number;
     desperdicioKg: number;
     destino: 'burger' | 'carne_limpia';
   }) => {
-    const corteNorm = prod.typeName.toLowerCase().includes('nalga') ? 'Nalga' : prod.typeName;
+    const isNalgaConTapa = (prod.type as string) === 'nalga_con_tapa';
+    const corteNorm = isNalgaConTapa ? 'Nalga' : (prod.typeName ?? '').replace(/_L$/, '').trim();
+    const stockNombre = isNalgaConTapa ? 'NALGA CON TAPA' : corteNorm.toUpperCase();
 
     // 1. Descontar carne cruda del stock materias primas
-    await deductStockByName(corteNorm, prod.weightKg, 'limpieza');
+    await deductStockByName(stockNombre, prod.weightKg, 'limpieza');
 
-    // 2. Agregar carne limpia a stock_produccion
-    const productoCarne = getCarneLinpiaName(corteNorm, params.destino);
+    // 2. Agregar carne limpia principal (Nalga_L)
+    const productoCarne = `${corteNorm}_L`;
     if (params.carneLinpiaKg > 0) {
       await addToStockProduccion({ producto: productoCarne, categoria: 'carnes_limpias', cantidad: params.carneLinpiaKg, unidad: 'kg' });
     }
 
-    // 3. Grasa → stock_produccion
+    // 3. Segundo producto — Tapa_Nalga_L (solo nalga_con_tapa)
+    if (params.carneLinpia2 && params.carneLinpia2.kg > 0) {
+      await addToStockProduccion({ producto: params.carneLinpia2.producto, categoria: 'carnes_limpias', cantidad: params.carneLinpia2.kg, unidad: 'kg' });
+    }
+
+    // 4. Grasa → stock_produccion
     if (params.grasaKg > 0) {
       await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'carnes_limpias', cantidad: params.grasaKg, unidad: 'kg' });
     }
 
-    // 4. Log + push
-    await logProduccionEvento('fin_paso2', 'limpieza', corteNorm, prod.weightKg,
-      `Limpieza ${corteNorm}: ${params.carneLinpiaKg}kg → ${productoCarne} | ${params.grasaKg}kg grasa | ${params.desperdicioKg}kg desperdicio`,
-      operador, params.desperdicioKg);
+    // 5. Log + push
+    const detalle = isNalgaConTapa
+      ? `Nalga con Tapa: ${params.carneLinpiaKg}kg → Nalga_L | ${params.carneLinpia2?.kg ?? 0}kg → Tapa_Nalga_L | ${params.grasaKg}kg grasa`
+      : `Limpieza ${corteNorm}: ${params.carneLinpiaKg}kg → ${productoCarne} | ${params.grasaKg}kg grasa | ${params.desperdicioKg}kg desperdicio`;
+    await logProduccionEvento('fin_paso2', 'limpieza', corteNorm, prod.weightKg, detalle, operador, params.desperdicioKg);
     await fetch('/api/push', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ title:`🔪 Limpieza · ${operador}`, body:`${corteNorm}: ${params.carneLinpiaKg}kg → ${productoCarne}`, tag:'limpieza-fin', url:'/admin' }) });
+      body: JSON.stringify({ title:`🔪 Limpieza · ${operador}`, body:`${corteNorm}: ${params.carneLinpiaKg}kg limpio`, tag:'limpieza-fin', url:'/admin' }) });
 
     markProduccionDone(prod.id);
 

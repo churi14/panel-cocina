@@ -9,6 +9,7 @@ type Props = {
   production: ButcheryProduction;
   onFinish: (params: {
     carneLinpiaKg: number;
+    carneLinpia2?: { kg: number; producto: string };
     grasaKg: number;
     desperdicioKg: number;
     destino: Destino;
@@ -19,16 +20,20 @@ type Props = {
 export default function LimpiezaView({ production, onFinish, onBack }: Props) {
   const [grasaKg, setGrasaKg]             = useState('');
   const [carneLinpiaKg, setCarneLinpiaKg] = useState('');
-  const destino: Destino = 'carne_limpia'; // siempre va a carne limpia
+  const [tapaKg, setTapaKg]               = useState('');
+  const destino: Destino = 'carne_limpia';
   const [submitting, setSubmitting]       = useState(false);
   const submittingRef                     = useRef(false);
 
+  const isNalgaConTapa = (production.type as string) === 'nalga_con_tapa';
+
   const grasa       = parseFloat(grasaKg.replace(',', '.'))       || 0;
   const carne       = parseFloat(carneLinpiaKg.replace(',', '.')) || 0;
-  const desperdicio = Math.max(0, parseFloat((production.weightKg - grasa - carne).toFixed(3)));
-  const canFinish   = carne > 0;
+  const tapa        = isNalgaConTapa ? (parseFloat(tapaKg.replace(',', '.')) || 0) : 0;
+  const desperdicio = Math.max(0, parseFloat((production.weightKg - grasa - carne - tapa).toFixed(3)));
+  const canFinish   = carne > 0 && (!isNalgaConTapa || tapa > 0);
 
-  const corteNorm = production.typeName;
+  const corteNorm     = isNalgaConTapa ? 'Nalga' : (production.typeName ?? '').replace(/_L$/, '').trim();
   const productoDestino = `${corteNorm}_L`;
 
   return (
@@ -40,72 +45,47 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
 
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-full text-sm font-black mb-2">
-          🔪 LIMPIEZA — {corteNorm}
+          🔪 LIMPIEZA — {isNalgaConTapa ? 'Nalga con Tapa' : corteNorm}
         </div>
         <p className="text-slate-500 text-sm">Peso bruto: <span className="font-black text-slate-800">{production.weightKg} kg</span></p>
+        {isNalgaConTapa && (
+          <p className="text-xs text-amber-600 font-bold mt-1">⚠️ Ingresá los pesos separados — Nalga y Tapa van a stocks distintos</p>
+        )}
       </div>
 
       <div className="space-y-4">
 
         {/* Grasa usable */}
-        <div className="bg-white border-2 border-orange-200 rounded-3xl p-5">
+        <div className="bg-amber-50 border-2 border-amber-100 rounded-3xl p-5">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-2xl">🫙</span>
+            <span className="text-xl">🫙</span>
             <div>
-              <h4 className="font-black text-slate-800">Grasa usable</h4>
+              <p className="font-black text-slate-700">Grasa usable</p>
               <p className="text-xs text-slate-400">La que se puede reutilizar</p>
             </div>
           </div>
           <div className="relative">
-            <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-              value={grasaKg} onChange={e => {
-                setGrasaKg(e.target.value);
-                const g = parseFloat(e.target.value.replace(',', '.')) || 0;
-                const autoC = parseFloat((production.weightKg - g).toFixed(3));
-                if (autoC > 0) setCarneLinpiaKg(String(autoC));
-              }}
-              className="w-full p-4 text-4xl font-black text-center border-2 border-orange-200 rounded-2xl outline-none text-orange-600 bg-orange-50 focus:border-orange-400 focus:bg-white transition-all" />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-orange-300">KG</span>
+            <input type="number" inputMode="decimal" step="0.1" placeholder="0,000"
+              value={grasaKg} onChange={e => setGrasaKg(e.target.value)}
+              className="w-full py-4 px-5 text-4xl font-black text-center text-amber-600 bg-white border-2 border-amber-200 rounded-2xl outline-none focus:border-amber-400" />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-amber-300">KG</span>
           </div>
-          {grasa > 0 && grasa > production.weightKg * 1.05 && (() => {
-            const sug = grasa > 50 ? parseFloat((grasa / 1000).toFixed(3))
-              : grasa > production.weightKg * 5 ? parseFloat((grasa / 10).toFixed(3))
-              : null;
-            return (
-              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-                <p className="text-sm text-amber-700 font-bold">
-                  ⚠️ {grasa} kg de grasa parece más que el bruto ({production.weightKg} kg).
-                  {sug ? ` ¿Quisiste decir ${sug} kg?` : ' ¿Es correcto?'}
-                </p>
-                {sug && (
-                  <button onClick={() => {
-                    setGrasaKg(String(sug));
-                    const autoC = parseFloat((production.weightKg - sug).toFixed(3));
-                    if (autoC > 0) setCarneLinpiaKg(String(autoC));
-                  }}
-                    className="mt-1.5 w-full py-1.5 bg-blue-600 text-white text-sm font-black rounded-xl">
-                    Corregir a {sug} kg
-                  </button>
-                )}
-              </div>
-            );
-          })()}
         </div>
 
-        {/* Carne limpia */}
-        <div className="bg-white border-2 border-green-200 rounded-3xl p-5">
+        {/* Carne limpia (Nalga) */}
+        <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-5">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-2xl">✅</span>
+            <CheckCircle2 size={20} className="text-green-600" />
             <div>
-              <h4 className="font-black text-slate-800">Carne limpia</h4>
-              <p className="text-xs text-slate-400">Lista para procesar</p>
+              <p className="font-black text-slate-700">{isNalgaConTapa ? 'Nalga limpia' : 'Carne neta limpia'} <span className="text-red-500">*</span></p>
+              <p className="text-xs text-slate-400">{isNalgaConTapa ? 'Solo el peso de la nalga sin la tapa' : 'Peso real de carne limpia pesada'}</p>
             </div>
           </div>
           <div className="relative">
-            <input type="number" inputMode="decimal" step="0.01" placeholder="0,00"
+            <input type="number" inputMode="decimal" step="0.1" placeholder="0,000"
               value={carneLinpiaKg} onChange={e => setCarneLinpiaKg(e.target.value)}
-              className="w-full p-4 text-4xl font-black text-center border-2 border-green-200 rounded-2xl outline-none text-green-700 bg-green-50 focus:border-green-400 focus:bg-white transition-all" />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-green-300">KG</span>
+              className="w-full py-4 px-5 text-4xl font-black text-center text-blue-600 bg-white border-2 border-blue-200 rounded-2xl outline-none focus:border-blue-500" />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-blue-300">KG</span>
           </div>
           {carne > 0 && carne > production.weightKg * 1.05 && (() => {
             const sug = carne > 50 ? parseFloat((carne / 1000).toFixed(3))
@@ -128,6 +108,25 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
           })()}
         </div>
 
+        {/* Tapa de Nalga — solo cuando es nalga_con_tapa */}
+        {isNalgaConTapa && (
+          <div className="bg-green-50 border-2 border-green-300 rounded-3xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle2 size={20} className="text-green-700" />
+              <div>
+                <p className="font-black text-slate-700">Tapa de Nalga limpia <span className="text-red-500">*</span></p>
+                <p className="text-xs text-slate-400">Se guarda en stock de Tapa de Nalga por separado</p>
+              </div>
+            </div>
+            <div className="relative">
+              <input type="number" inputMode="decimal" step="0.1" placeholder="0,000"
+                value={tapaKg} onChange={e => setTapaKg(e.target.value)}
+                className="w-full py-4 px-5 text-4xl font-black text-center text-green-700 bg-white border-2 border-green-300 rounded-2xl outline-none focus:border-green-500" />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-green-400">KG</span>
+            </div>
+          </div>
+        )}
+
         {/* Desperdicios auto */}
         <div className="bg-red-50 border-2 border-red-100 rounded-3xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -139,35 +138,50 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
           </div>
           <div className="text-right">
             <p className="text-3xl font-black text-red-500">{desperdicio.toFixed(3).replace('.', ',')} kg</p>
-            {(carne > 0 || grasa > 0) && (
-              <p className="text-xs text-slate-400">{production.weightKg} − {grasa.toFixed(2)} − {carne.toFixed(2)}</p>
+            {(carne > 0 || grasa > 0 || tapa > 0) && (
+              <p className="text-xs text-slate-400">
+                {production.weightKg} − {grasa.toFixed(2)} − {carne.toFixed(2)}{isNalgaConTapa ? ` − ${tapa.toFixed(2)}` : ''}
+              </p>
             )}
           </div>
         </div>
 
-        {/* Destino — siempre carne limpia */}
-        <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-4 flex items-center gap-3">
-          <span className="text-2xl">🥩</span>
-          <div>
+        {/* Destino */}
+        <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xl">🥩</span>
             <p className="font-black text-green-800 text-sm">Destino: stock de carne limpia</p>
-            <p className="text-xs text-green-600 mt-0.5">→ <span className="font-bold">{productoDestino}</span></p>
           </div>
+          {isNalgaConTapa ? (
+            <div className="space-y-0.5 ml-8">
+              <p className="text-xs text-green-600">→ <span className="font-bold">Nalga_L</span> {carne > 0 ? `(${carne.toFixed(3)} kg)` : ''}</p>
+              <p className="text-xs text-green-600">→ <span className="font-bold">Tapa_Nalga_L</span> {tapa > 0 ? `(${tapa.toFixed(3)} kg)` : ''}</p>
+            </div>
+          ) : (
+            <p className="text-xs text-green-600 ml-8">→ <span className="font-bold">{productoDestino}</span></p>
+          )}
         </div>
 
         {/* Resumen */}
         {canFinish && (
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-slate-500">Carne limpia</span>
-              <span className="font-black text-green-700">+{carne.toFixed(3)} kg → {productoDestino}</span>
+              <span className="text-slate-500">Nalga limpia</span>
+              <span className="font-black text-green-700">+{carne.toFixed(3)} kg → Nalga_L</span>
             </div>
+            {isNalgaConTapa && tapa > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tapa de Nalga</span>
+                <span className="font-black text-green-700">+{tapa.toFixed(3)} kg → Tapa_Nalga_L</span>
+              </div>
+            )}
             {grasa > 0 && (
               <div className="flex justify-between">
                 <span className="text-slate-500">Grasa</span>
                 <span className="font-black text-orange-600">+{grasa.toFixed(3)} kg → Grasa de Pella</span>
               </div>
             )}
-            <div className="flex justify-between">
+            <div className="flex justify-between border-t border-slate-200 pt-1.5 mt-1">
               <span className="text-slate-500">Desperdicio</span>
               <span className="font-black text-red-500">{desperdicio.toFixed(3)} kg</span>
             </div>
@@ -179,7 +193,13 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
             if (submittingRef.current) return;
             submittingRef.current = true;
             setSubmitting(true);
-            await onFinish({ carneLinpiaKg: carne, grasaKg: grasa, desperdicioKg: desperdicio, destino });
+            await onFinish({
+              carneLinpiaKg: carne,
+              carneLinpia2: isNalgaConTapa && tapa > 0 ? { kg: tapa, producto: 'Tapa_Nalga_L' } : undefined,
+              grasaKg: grasa,
+              desperdicioKg: desperdicio,
+              destino,
+            });
           }}
           disabled={!canFinish || submitting}
           className={`w-full py-5 rounded-2xl font-black text-xl transition-all flex items-center justify-center gap-3

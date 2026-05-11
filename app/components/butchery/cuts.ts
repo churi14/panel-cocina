@@ -66,6 +66,7 @@ export const CUTS: CutConfig[] = [
   { id: 'lomo',         label: 'Lomo',            emoji: '🥩', stockDestino: 'Stock Lomo',            defaultUnit: 'unid', kinds: ['lomito', 'milanesa'] },
   { id: 'tapa_asado',   label: 'Tapa de Asado',   emoji: '🥩', stockDestino: 'Stock Tapa de Asado',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'tapa_nalga',   label: 'Tapa de Nalga',   emoji: '🥩', stockDestino: 'Stock Tapa de Nalga',   defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
+  { id: 'nalga_con_tapa', label: 'Nalga con Tapa', emoji: '🥩', stockDestino: 'Stock Nalga', defaultUnit: 'kg', kinds: ['limpieza'] },
   { id: 'nalga',        label: 'Nalga',            emoji: '🥩', stockDestino: 'Stock Nalga',            defaultUnit: 'kg',   kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'bife_chorizo', label: 'Bife de Chorizo',  emoji: '🥩', stockDestino: 'Stock Bife de Chorizo', defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
   { id: 'bife_angosto', label: 'Bife Angosto',     emoji: '🥩', stockDestino: 'Stock Bife Angosto',    defaultUnit: 'unid', kinds: ['lomito', 'burger', 'milanesa'] },
