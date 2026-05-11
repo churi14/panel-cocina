@@ -31,6 +31,99 @@ type Props = {
   fetchMovements: () => Promise<void>;
 };
 
+// ── Cálculo automático de descuentos de materia prima ────────────────────────
+type Descuento = {
+  nombre: string;
+  tabla: 'stock' | 'stock_produccion';
+  cantidad: number;
+  unidad: string;
+};
+
+function calcularDescuentos(producto: string, cantidad: number): Descuento[] {
+  const p = producto.toLowerCase();
+
+  // Medallones Burger — cada medallón ~150g, blend 66% carne / 34% grasa
+  if (p.includes('medallones burger')) {
+    const kgTotal = cantidad * 0.150;
+    return [
+      { nombre: 'Carne Limpia (blend)', tabla: 'stock_produccion', cantidad: parseFloat((kgTotal * 0.66).toFixed(3)), unidad: 'kg' },
+      { nombre: 'Grasa de Pella',       tabla: 'stock_produccion', cantidad: parseFloat((kgTotal * 0.34).toFixed(3)), unidad: 'kg' },
+    ];
+  }
+
+  // Bifes Lomito_{Corte} — cada bife ~180g de carne limpia
+  const bifesMatch = producto.match(/Bifes Lomito_(.+)/);
+  if (bifesMatch) {
+    return [{ nombre: `${bifesMatch[1]}_L`, tabla: 'stock_produccion', cantidad: parseFloat((cantidad * 0.180).toFixed(3)), unidad: 'kg' }];
+  }
+
+  // Milanesa de Carne Empanada — menjunje + pan rallado + huevo
+  if (p.includes('milanesa de carne empanada')) {
+    return [
+      { nombre: 'Menjunje Milanesa Carne', tabla: 'stock_produccion', cantidad, unidad: 'kg' },
+      { nombre: 'PAN RALLADO', tabla: 'stock', cantidad: parseFloat((cantidad * 0.15).toFixed(3)), unidad: 'kg' },
+      { nombre: 'HUEVO',       tabla: 'stock', cantidad: Math.ceil(cantidad), unidad: 'u' },
+    ];
+  }
+
+  // Milanesa de Pollo Empanada
+  if (p.includes('milanesa de pollo empanada')) {
+    return [
+      { nombre: 'Menjunje Milanesa Pollo', tabla: 'stock_produccion', cantidad, unidad: 'kg' },
+      { nombre: 'PAN RALLADO', tabla: 'stock', cantidad: parseFloat((cantidad * 0.15).toFixed(3)), unidad: 'kg' },
+      { nombre: 'HUEVO',       tabla: 'stock', cantidad: Math.ceil(cantidad), unidad: 'u' },
+    ];
+  }
+
+  // Menjunje Milanesa Carne/Pollo
+  if (p.includes('menjunje milanesa carne')) {
+    return [
+      { nombre: 'HUEVO', tabla: 'stock', cantidad: Math.ceil(cantidad * 4.2), unidad: 'u' },
+      { nombre: 'SAL',   tabla: 'stock', cantidad: parseFloat((cantidad * 0.0195).toFixed(3)), unidad: 'kg' },
+    ];
+  }
+  if (p.includes('menjunje milanesa pollo')) {
+    return [
+      { nombre: 'HUEVO', tabla: 'stock', cantidad: Math.ceil(cantidad * 4.2), unidad: 'u' },
+      { nombre: 'SAL',   tabla: 'stock', cantidad: parseFloat((cantidad * 0.0195).toFixed(3)), unidad: 'kg' },
+    ];
+  }
+
+  // Milanesa cruda (sin empanar) — desde carne limpia 1:1
+  const milaMatch = producto.match(/Milanesa - (.+)/);
+  if (milaMatch) {
+    return [{ nombre: `${milaMatch[1]}_L`, tabla: 'stock_produccion', cantidad, unidad: 'kg' }];
+  }
+
+  // Fiambres — 1:1 desde stock admin
+  if (p.includes('jamón') || p.includes('jamon')) return [{ nombre: 'JAMÓN', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('panceta'))   return [{ nombre: 'PANCETA', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('provoleta')) return [{ nombre: 'PROVOLETA', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('queso muzza') || p.includes('muzza')) return [{ nombre: 'QUESO MUZZA', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('queso tybo') || p.includes('tybo'))   return [{ nombre: 'QUESO TYBO', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('cheddar en feta'))   return [{ nombre: 'CHEDDAR EN FETA', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('cheddar para burg')) return [{ nombre: 'CHEDDAR PARA BURGUER', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('cheddar líquido') || p.includes('cheddar liquido')) return [{ nombre: 'CHEDDAR LIQUIDO', tabla: 'stock', cantidad, unidad: 'kg' }];
+
+  // Salsas base mayonesa
+  if (p.includes('salsa club') || p.includes('mayo mila') || p.includes('salsa spread') || p.includes('mayo con ajo') || p.includes('salsa de ajo'))
+    return [{ nombre: 'MAYONESA', tabla: 'stock', cantidad: parseFloat((cantidad * 0.97).toFixed(3)), unidad: 'kg' }];
+  if (p.includes('salsa crema') || p.includes('crema'))
+    return [{ nombre: 'QUESO CREMA', tabla: 'stock', cantidad, unidad: 'kg' }];
+  if (p.includes('napolitana'))
+    return [{ nombre: 'TOMATE TRITURADO', tabla: 'stock', cantidad: parseFloat((cantidad * 0.97).toFixed(3)), unidad: 'kg' }];
+  if (p.includes('criolla'))
+    return [{ nombre: 'TOMATE', tabla: 'stock', cantidad: parseFloat((cantidad * 0.50).toFixed(3)), unidad: 'kg' }];
+
+  // Verduras — 1:1 con merma ~20%
+  if (p.includes('tomate'))  return [{ nombre: 'TOMATE',  tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];
+  if (p.includes('lechuga')) return [{ nombre: 'LECHUGA', tabla: 'stock', cantidad: parseFloat((cantidad * 1.3).toFixed(3)), unidad: 'kg' }];
+  if (p.includes('cebolla')) return [{ nombre: 'CEBOLLA', tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];
+  if (p.includes('morrón') || p.includes('morron')) return [{ nombre: 'MORRON', tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];
+
+  return [];
+}
+
 export default function TabStock({ stock, stockProd, movements, fetchMovements }: Props) {
   const [showEntryModal, setShowEntryModal] = useState(false);
   const { user } = useAuth();
@@ -364,11 +457,17 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
             const tieneAlerta = selectedProdItem.alerta_umbral > 0;
 
+            const descuentos = parseFloat(cargaQty) > 0
+              ? calcularDescuentos(selectedProdItem.producto, parseFloat(cargaQty.replace(',','.')))
+              : [];
+
             const handleCargarStock = async () => {
               const qty = parseFloat(cargaQty.replace(',', '.'));
               if (!qty || qty <= 0) return;
               setSavingCarga(true);
               const newQty = parseFloat((Number(selectedProdItem.cantidad) + qty).toFixed(3));
+
+              // 1. Sumar al stock producción
               await supabase.from('stock_produccion').update({
                 cantidad: newQty,
                 ultima_prod: new Date().toISOString(),
@@ -383,6 +482,38 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 operador: 'Admin',
                 fecha: new Date().toISOString(),
               });
+
+              // 2. Descontar materias primas automáticamente
+              for (const d of descuentos) {
+                if (d.tabla === 'stock_produccion') {
+                  const { data: sp } = await supabase.from('stock_produccion')
+                    .select('id, cantidad').ilike('producto', d.nombre).maybeSingle();
+                  if (sp) {
+                    const newCant = parseFloat((Number(sp.cantidad) - d.cantidad).toFixed(3));
+                    await supabase.from('stock_produccion').update({ cantidad: newCant, ultima_prod: new Date().toISOString() }).eq('id', sp.id);
+                    await supabase.from('stock_movements').insert({
+                      nombre: d.nombre, categoria: selectedProdItem.categoria,
+                      tipo: 'egreso', cantidad: d.cantidad, unidad: d.unidad,
+                      motivo: `Descuento automático por carga manual de ${selectedProdItem.producto}`,
+                      operador: 'Admin', fecha: new Date().toISOString(),
+                    });
+                  }
+                } else {
+                  const { data: st } = await supabase.from('stock')
+                    .select('id, cantidad').ilike('nombre', d.nombre).maybeSingle();
+                  if (st) {
+                    const newCant = parseFloat((Number(st.cantidad) - d.cantidad).toFixed(3));
+                    await supabase.from('stock').update({ cantidad: newCant, fecha_actualizacion: new Date().toISOString().slice(0,10) }).eq('id', st.id);
+                    await supabase.from('stock_movements').insert({
+                      nombre: d.nombre,
+                      tipo: 'egreso', cantidad: d.cantidad, unidad: d.unidad,
+                      motivo: `Descuento automático por carga manual de ${selectedProdItem.producto}`,
+                      operador: 'Admin', fecha: new Date().toISOString(),
+                    });
+                  }
+                }
+              }
+
               await fetchMovements();
               setSavingCarga(false);
               setSelectedProdItem(null);
@@ -547,6 +678,25 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             </p>
                           )}
                         </div>
+
+                        {/* Preview de descuentos automáticos */}
+                        {descuentos.length > 0 && (
+                          <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 space-y-2">
+                            <p className="text-xs font-black text-red-400 uppercase">📉 Se descuenta automáticamente:</p>
+                            {descuentos.map((d, i) => (
+                              <div key={i} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-slate-400">{d.tabla === 'stock' ? '📦 Admin' : '🍳 Producción'}</span>
+                                  <span className="text-sm font-bold text-white">{d.nombre}</span>
+                                </div>
+                                <span className="text-sm font-black text-red-400">−{d.cantidad} {d.unidad}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {cargaQty && parseFloat(cargaQty) > 0 && descuentos.length === 0 && (
+                          <p className="text-xs text-slate-600 italic">Sin descuento automático de materias primas para este producto.</p>
+                        )}
 
                         <div>
                           <label className="text-xs font-black text-slate-400 uppercase mb-2 block">Motivo</label>
