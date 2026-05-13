@@ -92,10 +92,11 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
 
   const fetchProducts = async (catId: string) => {
     setLoadingProducts(true);
+    // Buscar con ilike para no depender de mayúsculas ni singular/plural
     const { data } = await supabase
       .from('stock')
       .select('*')
-      .eq('categoria', catId)
+      .ilike('categoria', `${catId}%`)
       .order('nombre');
     setProducts(data ?? []);
     setLoadingProducts(false);
