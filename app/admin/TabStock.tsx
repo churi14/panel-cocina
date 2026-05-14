@@ -182,6 +182,12 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [matStockValor, setMatStockValor]         = useState('');
   const [savingMatStock, setSavingMatStock]       = useState(false);
   const savingMatStockRef = React.useRef(false);
+  // Edición de unidad
+  const [editandoUnidad, setEditandoUnidad]       = useState(false);
+  const [nuevaUnidad, setNuevaUnidad]             = useState('');
+  const [nuevaCantidadUnidad, setNuevaCantidadUnidad] = useState('');
+  const [responsableUnidad, setResponsableUnidad] = useState('');
+  const [savingUnidad, setSavingUnidad]           = useState(false);
   const [showNuevoModal, setShowNuevoModal]       = useState(false);
   const [nuevoCat, setNuevoCat]                   = useState('');
   const [nuevoNombre, setNuevoNombre]             = useState('');
@@ -950,9 +956,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         <p className="text-xs text-slate-500">{selectedStockItem.unidad} en stock</p>
                       </div>
                       <button
-                        onClick={() => { setEditandoMatStock(v => !v); setMatStockValor(String(selectedStockItem.cantidad)); }}
+                        onClick={() => { setEditandoMatStock(v => !v); setMatStockValor(String(selectedStockItem.cantidad)); setEditandoUnidad(false); }}
                         className="px-3 py-1.5 text-xs font-black bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-all">
                         ✏️ Corregir stock
+                      </button>
+                      <button
+                        onClick={() => { setEditandoUnidad(v => !v); setNuevaUnidad(selectedStockItem.unidad); setNuevaCantidadUnidad(String(selectedStockItem.cantidad)); setResponsableUnidad(''); setEditandoMatStock(false); }}
+                        className="px-3 py-1.5 text-xs font-black bg-blue-700 hover:bg-blue-600 text-blue-200 rounded-xl transition-all">
+                        📐 Cambiar unidad
                       </button>
                       <button onClick={() => { setSelectedStockItem(null); setEditingUmbrales(false); setEditandoMatStock(false); }}
                         className="p-2 hover:bg-slate-800 rounded-xl text-slate-400">
@@ -962,6 +973,125 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                    {/* Panel cambio de unidad */}
+                    {editandoUnidad && (
+                      <div className="bg-blue-500/10 border-2 border-blue-500/40 rounded-2xl px-5 py-4 space-y-4">
+                        <p className="text-xs font-black text-blue-400 uppercase">📐 Cambiar unidad de medida</p>
+                        <p className="text-xs text-slate-400">
+                          Unidad actual: <span className="font-black text-white">{selectedStockItem.unidad}</span> · Cantidad: <span className="font-black text-white">{selectedStockItem.cantidad}</span>
+                        </p>
+
+                        {/* Nueva unidad */}
+                        <div>
+                          <label className="text-xs font-black text-slate-400 uppercase mb-2 block">Nueva unidad</label>
+                          <div className="flex gap-2">
+                            {(['kg', 'u', 'lt'] as const).map(u => (
+                              <button key={u} onClick={() => setNuevaUnidad(u)}
+                                className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all border-2
+                                  ${nuevaUnidad === u ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}>
+                                {u === 'kg' ? '⚖️ kg' : u === 'u' ? '🔢 Unidades' : '💧 lt'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Nueva cantidad */}
+                        <div>
+                          <label className="text-xs font-black text-slate-400 uppercase mb-1 block">
+                            Cantidad en la nueva unidad
+                            {nuevaUnidad !== selectedStockItem.unidad && (
+                              <span className="text-blue-400 normal-case font-normal ml-2">
+                                (ajustá si el número no tiene sentido en {nuevaUnidad})
+                              </span>
+                            )}
+                          </label>
+                          <input type="number" inputMode="decimal" step="0.001"
+                            value={nuevaCantidadUnidad}
+                            onChange={e => setNuevaCantidadUnidad(e.target.value)}
+                            className="w-full bg-slate-800 border-2 border-blue-500/50 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none focus:border-blue-400" />
+                        </div>
+
+                        {/* Responsable — obligatorio */}
+                        <div>
+                          <label className="text-xs font-black text-slate-400 uppercase mb-1 block">
+                            Nombre de quien hace el cambio <span className="text-red-400">*</span>
+                          </label>
+                          <input type="text"
+                            value={responsableUnidad}
+                            onChange={e => setResponsableUnidad(e.target.value)}
+                            placeholder="ej: Julian, Romina..."
+                            className={`w-full bg-slate-800 border-2 text-white rounded-xl px-4 py-2.5 text-sm outline-none transition-colors
+                              ${!responsableUnidad.trim() ? 'border-red-500/50' : 'border-green-500/50 focus:border-green-400'}`} />
+                          {!responsableUnidad.trim() && (
+                            <p className="text-xs text-red-400 mt-1">⚠️ El nombre es obligatorio para registrar el cambio</p>
+                          )}
+                        </div>
+
+                        {/* Preview del cambio */}
+                        {nuevaUnidad && nuevaCantidadUnidad && responsableUnidad.trim() && (
+                          <div className="bg-slate-800 rounded-xl p-3 text-xs space-y-1.5">
+                            <p className="font-black text-slate-300 uppercase">Se va a registrar:</p>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Producto</span>
+                              <span className="text-white font-bold">{selectedStockItem.nombre}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Unidad</span>
+                              <span className="text-white font-bold">{selectedStockItem.unidad} → <span className="text-blue-400">{nuevaUnidad}</span></span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Cantidad</span>
+                              <span className="text-white font-bold">{selectedStockItem.cantidad} → <span className="text-blue-400">{nuevaCantidadUnidad}</span></span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Responsable</span>
+                              <span className="text-blue-400 font-bold">{responsableUnidad}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              if (!responsableUnidad.trim() || savingUnidad) return;
+                              const cantNum = parseFloat(nuevaCantidadUnidad.replace(',', '.'));
+                              if (isNaN(cantNum)) return;
+                              setSavingUnidad(true);
+                              // Actualizar en stock
+                              await supabase.from('stock').update({
+                                unidad: nuevaUnidad,
+                                cantidad: cantNum,
+                                fecha_actualizacion: new Date().toISOString().slice(0, 10),
+                              }).eq('id', selectedStockItem.id);
+                              // Registrar en historial
+                              await supabase.from('stock_movements').insert({
+                                stock_id: selectedStockItem.id,
+                                nombre: selectedStockItem.nombre,
+                                categoria: selectedStockItem.categoria,
+                                tipo: 'ingreso',
+                                cantidad: cantNum,
+                                unidad: nuevaUnidad,
+                                motivo: `CAMBIO DE UNIDAD: ${selectedStockItem.unidad} → ${nuevaUnidad} | Cantidad: ${selectedStockItem.cantidad} → ${cantNum} | Responsable: ${responsableUnidad.trim()}`,
+                                operador: responsableUnidad.trim(),
+                                fecha: new Date().toISOString(),
+                              });
+                              setSavingUnidad(false);
+                              setEditandoUnidad(false);
+                              setSelectedStockItem((prev: any) => prev ? { ...prev, unidad: nuevaUnidad, cantidad: cantNum } : null);
+                              await fetchMovements();
+                            }}
+                            disabled={savingUnidad || !responsableUnidad.trim() || !nuevaCantidadUnidad || nuevaUnidad === selectedStockItem.unidad}
+                            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-sm disabled:opacity-40 transition-colors">
+                            {savingUnidad ? 'Guardando...' : '✓ Confirmar cambio'}
+                          </button>
+                          <button onClick={() => setEditandoUnidad(false)}
+                            className="px-4 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {editandoMatStock && (
                       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4">
