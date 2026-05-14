@@ -149,14 +149,31 @@ export function createButcheryHandlers(s: Setters) {
   const handleFinishStep2 = async (quantity: number, unit: 'unid' | 'kg', wasteKg: number, grasaKg: number, stockDestino: string) => {
     const prod = step2Queue[step2Index];
     if (!prod) return;
-    await deductStockByName(prod.typeName, prod.weightKg, prod.kind ?? 'lomito');
-    // Normalizar: Tapa de Nalga y Nalga Feteada → Nalga
-    const corteNorm = (prod.typeName ?? '').replace(/_L$/, '').trim();
+
+    // Normalizar nombre del corte
+    const corteNorm    = (prod.typeName ?? '').replace(/_L$/, '').trim();
     const corteDisplay = corteNorm.toLowerCase().includes('nalga') ? 'Nalga' : corteNorm;
-    await logProduccionEvento('fin_paso2', prod.kind ?? 'lomito', corteDisplay, prod.weightKg,
+    const kindLabel    = prod.kind ?? 'lomito';
+
+    // 1. Descontar de carnes_limpias (stock_produccion) — el corte limpio que se usó
+    const carneLinpiaName = `${corteDisplay}_L`;
+    const { data: carneLinpia } = await supabase.from('stock_produccion')
+      .select('id, cantidad').eq('producto', carneLinpiaName).maybeSingle();
+    if (carneLinpia) {
+      const newCant = parseFloat((Number(carneLinpia.cantidad) - prod.weightKg).toFixed(3));
+      await supabase.from('stock_produccion')
+        .update({ cantidad: newCant, ultima_prod: new Date().toISOString() })
+        .eq('id', carneLinpia.id);
+      await supabase.from('stock_movements').insert({
+        nombre: carneLinpiaName, categoria: 'carnes_limpias', tipo: 'egreso',
+        cantidad: prod.weightKg, unidad: 'kg',
+        motivo: `Paso 2 ${kindLabel} — ${operador}`,
+        operador: 'Sistema', fecha: new Date().toISOString(),
+      });
+    }
+    await logProduccionEvento('fin_paso2', kindLabel, corteDisplay, prod.weightKg,
       `Finalizo paso 2 - ${quantity} ${unit} de ${corteDisplay} - ${operador}`, operador, wasteKg);
-    await PushEvents.finProduccion(prod.kind ?? 'lomito', corteDisplay, quantity, unit, operador);
-    const kindLabel = prod.kind ?? 'lomito';
+    await PushEvents.finProduccion(kindLabel, corteDisplay, quantity, unit, operador);
     if (kindLabel === 'lomito') await addToStockProduccion({ producto: `Bifes Lomito_${corteDisplay}`, categoria: 'lomito', cantidad: quantity, unidad: 'u' });
     else if (kindLabel === 'milanesa') await addToStockProduccion({ producto: `Milanesa - ${corteDisplay}`, categoria: 'milanesa', cantidad: parseFloat((prod.weightKg - wasteKg).toFixed(3)), unidad: 'kg' });
     const now = Date.now(); const netWeight = prod.weightKg - wasteKg;

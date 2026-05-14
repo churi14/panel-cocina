@@ -28,6 +28,7 @@ const CAT_ORDER = ['lomito', 'burger', 'milanesa', 'pan', 'salsa', 'dip', 'verdu
 export default function TabProduccion({ stockProd, produccionEventos, fetchMovements, cocinaActiva }: Props) {
   const [selectedProdItem, setSelectedProdItem] = useState<any | null>(null);
   const [filterCat, setFilterCat] = useState<string | null>(null);
+  const [subTab, setSubTab]       = useState<'produccion' | 'desperdicios'>('produccion');
   const [selectedActiva, setSelectedActiva] = useState<any | null>(null);
 
   // Todas las categorías presentes, en orden preferido
@@ -140,6 +141,154 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
           </div>
         </div>
       )}
+
+      {/* Sub-tabs Producción / Desperdicios */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1.5">
+          {([
+            { id: 'produccion',   label: '📊 Producción' },
+            { id: 'desperdicios', label: '🗑️ Desperdicios' },
+          ] as const).map(t => (
+            <button key={t.id} onClick={() => setSubTab(t.id)}
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all
+                ${subTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {/* Exportar CSV */}
+        <button
+          onClick={() => {
+            const eventos = produccionEventos.filter(e => e.tipo === 'fin_paso2' || e.tipo === 'fin_cocina');
+            const rows = [
+              ['Fecha', 'Tipo', 'Corte/Receta', 'Kg entrada', 'Desperdicio kg', 'Operador', 'Detalle'].join(','),
+              ...eventos.map(e => [
+                (e.fecha ?? '').slice(0, 16),
+                e.kind ?? e.tipo ?? '',
+                e.corte ?? '',
+                e.peso_kg ?? 0,
+                e.desperdicio_kg ?? 0,
+                e.operador ?? '',
+                `"${(e.detalle ?? '').replace(/"/g, "'")}"`,
+              ].join(','))
+            ].join('\n');
+            const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = `produccion_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click(); URL.revokeObjectURL(url);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-black text-sm rounded-xl transition-all">
+          📥 Exportar CSV
+        </button>
+      </div>
+
+      {/* ── SUB-TAB DESPERDICIOS ── */}
+      {subTab === 'desperdicios' && (() => {
+        const evDesp = produccionEventos.filter(e =>
+          (e.tipo === 'fin_paso2' || e.tipo === 'fin_cocina') && (e.desperdicio_kg ?? 0) > 0
+        ).sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''));
+
+        const totalDesp = evDesp.reduce((s, e) => s + (e.desperdicio_kg ?? 0), 0);
+
+        // Agrupar por corte/receta
+        const porCorte: Record<string, { total: number; count: number }> = {};
+        evDesp.forEach(e => {
+          const k = e.corte ?? e.detalle?.split(' de ')[1]?.split(' - ')[0] ?? 'Desconocido';
+          if (!porCorte[k]) porCorte[k] = { total: 0, count: 0 };
+          porCorte[k].total += e.desperdicio_kg ?? 0;
+          porCorte[k].count++;
+        });
+        const ranking = Object.entries(porCorte).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
+
+        return (
+          <div className="space-y-6">
+            {/* Totalizador */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-5">
+                <p className="text-xs font-black text-red-400 uppercase mb-1">🗑️ Total desperdicios registrados</p>
+                <p className="text-3xl font-black text-red-400">{totalDesp.toFixed(2)} <span className="text-lg opacity-60">kg</span></p>
+                <p className="text-xs text-slate-500 mt-1">{evDesp.length} producciones con desperdicio</p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <p className="text-xs font-black text-slate-400 uppercase mb-1">📊 Promedio por producción</p>
+                <p className="text-3xl font-black text-white">
+                  {evDesp.length > 0 ? (totalDesp / evDesp.length).toFixed(2) : '0'} <span className="text-lg opacity-60">kg</span>
+                </p>
+                <p className="text-xs text-slate-500 mt-1">por producción con desperdicio</p>
+              </div>
+            </div>
+
+            {/* Ranking por corte */}
+            {ranking.length > 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                <div className="px-6 py-3 border-b border-slate-800">
+                  <h3 className="font-black text-sm text-slate-300 uppercase">Mayor desperdicio por corte / receta</h3>
+                </div>
+                <div className="divide-y divide-slate-800">
+                  {ranking.map(([corte, data], i) => (
+                    <div key={corte} className="px-6 py-3 flex items-center gap-4">
+                      <span className="text-lg font-black text-slate-600 w-6">{i + 1}</span>
+                      <span className="flex-1 font-bold text-slate-300 text-sm">{corte}</span>
+                      <span className="text-xs text-slate-500">{data.count} prod.</span>
+                      <span className="font-black text-red-400 text-sm">{data.total.toFixed(2)} kg</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Historial detallado */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+              <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="font-black text-sm text-slate-300 uppercase">Historial detallado</h3>
+                <span className="text-xs text-slate-500">{evDesp.length} registros</span>
+              </div>
+              {evDesp.length === 0 ? (
+                <p className="text-center py-10 text-slate-600">Sin desperdicios registrados todavía</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-800 text-slate-400 text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left">Fecha</th>
+                      <th className="px-4 py-2.5 text-left">Tipo</th>
+                      <th className="px-4 py-2.5 text-left">Corte / Receta</th>
+                      <th className="px-4 py-2.5 text-right">Kg entrada</th>
+                      <th className="px-4 py-2.5 text-right text-red-400">Desperdicio</th>
+                      <th className="px-4 py-2.5 text-right">%</th>
+                      <th className="px-4 py-2.5 text-left">Operador</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {evDesp.slice(0, 50).map((e, i) => {
+                      const pct = e.peso_kg > 0 ? ((e.desperdicio_kg / e.peso_kg) * 100).toFixed(1) : '—';
+                      return (
+                        <tr key={i} className="hover:bg-slate-800/40">
+                          <td className="px-4 py-2.5 text-slate-400 font-mono text-xs whitespace-nowrap">
+                            {new Date(e.fecha).toLocaleDateString('es-AR')} {new Date(e.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold">{e.kind ?? e.tipo}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-300 font-bold text-xs">{e.corte ?? '—'}</td>
+                          <td className="px-4 py-2.5 text-right text-slate-400 text-xs">{(e.peso_kg ?? 0).toFixed(2)} kg</td>
+                          <td className="px-4 py-2.5 text-right font-black text-red-400 text-xs">{(e.desperdicio_kg ?? 0).toFixed(3)} kg</td>
+                          <td className="px-4 py-2.5 text-right text-xs">
+                            <span className={`font-bold ${parseFloat(pct) > 20 ? 'text-red-400' : 'text-slate-400'}`}>{pct}%</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate-400 text-xs">{e.operador ?? '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {subTab === 'produccion' && <>
 
       {/* Filtro por categoría */}
       <div className="flex gap-2 flex-wrap">
@@ -373,6 +522,8 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
           </div>
         );
       })()}
+
+      </>}
     </div>
   );
 }

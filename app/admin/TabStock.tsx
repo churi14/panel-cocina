@@ -51,10 +51,13 @@ function calcularDescuentos(producto: string, cantidad: number): Descuento[] {
     ];
   }
 
-  // Bifes Lomito_{Corte} — cada bife ~180g de carne limpia
+  // Bifes Lomito_{Corte} — deducir de carnes_limpias correspondiente
+  // Nota: no calculamos kg por bife porque varía — solo referencia informativa
   const bifesMatch = producto.match(/Bifes Lomito_(.+)/);
   if (bifesMatch) {
-    return [{ nombre: `${bifesMatch[1]}_L`, tabla: 'stock_produccion', cantidad: parseFloat((cantidad * 0.180).toFixed(3)), unidad: 'kg' }];
+    // No hay forma de saber exactamente cuánto pesaba cada bife sin el dato original
+    // Se muestra como referencia pero no se descuenta automáticamente para evitar errores
+    return [];
   }
 
   // Milanesa de Carne Empanada — menjunje + pan rallado + huevo
