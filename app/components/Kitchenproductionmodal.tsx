@@ -19,6 +19,7 @@ import KitchenFinalizarMenjunje from './KitchenFinalizarMenjunje';
 import KitchenFinalizarEmpanado from './KitchenFinalizarEmpanado';
 import KitchenFinalizarFiambre  from './KitchenFinalizarFiambre';
 import KitchenFinalizarVerdura  from './KitchenFinalizarVerdura';
+import HelpButton from './HelpButton';
 
 const KITCHEN_CATEGORIES = [
   { id: 'Panificados', label: 'Panificados',  border: 'border-amber-200',  hover: 'hover:border-amber-400',  icon: <Wheat   size={48} className="text-amber-600 mb-4" /> },
@@ -518,6 +519,36 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+      <HelpButton
+        titulo="Cocina General"
+        items={[
+          {
+            tipo: 'ok',
+            pregunta: '¿Cómo empiezo una producción?',
+            respuesta: 'Tocá "+ NUEVA PRODUCCIÓN", elegí la categoría (Panificados, Salsas, Verduras, etc.), elegí la receta y poné la cantidad. Eso queda como "activa" con un cronómetro.',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Qué hago cuando termino?',
+            respuesta: 'Tocá "Finalizar" en la producción activa. Ahí te va a pedir cuánto salió en KG. Poné el peso real que pesaste, no el que ibas a hacer.',
+          },
+          {
+            tipo: 'no',
+            pregunta: '¿Tengo que poner gramos?',
+            respuesta: 'NO. SIEMPRE EN KILOS. Si pesaste 2.300 gramos, escribí "2,3" (no "2300"). El sistema te avisa si el número parece raro.',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Y si me equivoco al elegir la receta?',
+            respuesta: 'Podés tocar "Cancelar" en la producción activa antes de finalizarla, y empezar de nuevo con la receta correcta.',
+          },
+          {
+            tipo: 'ok',
+            pregunta: 'Recordá elegir tu nombre',
+            respuesta: 'Al iniciar la producción, elegí quién la está haciendo. Así queda registrado quién produjo cada cosa.',
+          },
+        ]}
+      />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* HEADER */}

@@ -8,6 +8,7 @@ import { supabase } from '../../supabase';
 import { ButcheryProduction } from '../../types';
 import { getCut, formatWeight, formatGrams, ALL_STOCKS } from './cuts';
 import { FinishStep2Overlay } from './Overlays';
+import HelpButton from '../HelpButton';
 
 export function Step2View({ production, totalInBatch, currentIndex, kindLabel, onFinish, onBack }: {
   production: ButcheryProduction;
@@ -124,6 +125,36 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
 
   return (
     <div className="max-w-4xl mx-auto w-full">
+      <HelpButton
+        titulo="Paso 2 — Producción"
+        items={[
+          {
+            tipo: 'info',
+            pregunta: '¿UNID o KG? ¿Cuál elijo?',
+            respuesta: 'UNID = contás piezas (ej: 159 bifes, 200 medallones). KG = pesaste todo junto en la balanza. Usá la que te resulte más fácil medir.',
+          },
+          {
+            tipo: 'ok',
+            pregunta: 'Elegí "UNID" → ¿qué pongo en el número grande?',
+            respuesta: 'La cantidad de piezas que salieron. Si hiciste 159 bifes, escribí 159 (no kilos).',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Qué es "Desperdicio (Directo)"?',
+            respuesta: 'Es lo más simple: si no tiraste casi nada, dejalo en 0 y confirmá. Si tiraste algo de carne/grasa, poné cuántos KG tiraste ahí.',
+          },
+          {
+            tipo: 'no',
+            pregunta: '¿Tengo que calcular el peso por unidad?',
+            respuesta: 'NO es obligatorio. Esa opción ("Por unidad") es solo si querés más precisión. Si no sabés cuánto pesa cada pieza, usá "Directo" y dejalo en 0.',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Para qué sirve "Stock destino"?',
+            respuesta: 'Ya viene elegido automáticamente, normalmente NO hay que tocarlo. Solo cambialo si te lo pide un encargado.',
+          },
+        ]}
+      />
       {validacionPendiente && (
         <ConfirmacionCantidad
           titulo={validacionPendiente.titulo}

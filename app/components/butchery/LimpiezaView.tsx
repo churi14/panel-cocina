@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
+import HelpButton from '../HelpButton';
 
 type Destino = 'carne_limpia';
 
@@ -38,6 +39,36 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto w-full px-4 pb-10">
+      <HelpButton
+        titulo="Limpieza de carne"
+        items={[
+          {
+            tipo: 'ok',
+            pregunta: '¿Qué es "Grasa usable"?',
+            respuesta: 'La grasa que sacaste de la carne y SE PUEDE REUTILIZAR (grasa de pella, para burger). Si no sacaste nada de grasa, dejalo en 0.',
+          },
+          {
+            tipo: 'ok',
+            pregunta: '¿Qué es "Carne neta limpia"?',
+            respuesta: 'Lo que quedó de la carne YA LIMPIA, lista para usar (sin grasa, sin nervios, sin huesos). Es el número más importante — pesalo bien.',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Y el desperdicio?',
+            respuesta: 'NO lo calculás vos. El sistema lo calcula solo: Peso bruto − Grasa − Carne limpia = Desperdicio. Si pusiste bien los dos números de arriba, el desperdicio sale solo.',
+          },
+          {
+            tipo: 'no',
+            pregunta: '¿Tengo que elegir a dónde va la carne?',
+            respuesta: 'NO. Siempre va a "Carne Limpia" automáticamente. Vos solo poné los kilos.',
+          },
+          {
+            tipo: 'info',
+            pregunta: 'Si me equivoco con la unidad (kg vs gramos)',
+            respuesta: 'TODO ES EN KILOS. Si pesaste 2,500 gramos, eso es 2,5 kg — escribí "2,5", no "2500". El sistema te va a avisar si el número parece raro.',
+          },
+        ]}
+      />
       <button onClick={onBack}
         className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold text-base mb-6 mt-2 px-2 py-2 rounded-xl hover:bg-slate-100 transition-all">
         <ArrowLeft size={18} /> Volver

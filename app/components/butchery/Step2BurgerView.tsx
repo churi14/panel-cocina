@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Scale, Flame, Trash2, Package, ChevronLeft, Clock, AlertTriangle } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
 import { formatWeight, formatGrams } from './cuts';
+import HelpButton from '../HelpButton';
 
 const GRASA_TARGET_PCT = 34; // % objetivo de grasa sobre carne neta
 const GRASA_TOLERANCE_G = 100; // tolerancia ±100 gramos para considerar OK
@@ -171,6 +172,31 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
   if (subStep === 'peso') {
     return (
       <div className="max-w-5xl mx-auto w-full">
+        <HelpButton
+          titulo="Burger — Pesaje y separación"
+          items={[
+            {
+              tipo: 'ok',
+              pregunta: '¿Qué es "Carne neta limpia"?',
+              respuesta: 'El peso REAL de toda la carne limpia que vas a usar para hacer los medallones. Pesala junta en la balanza.',
+            },
+            {
+              tipo: 'ok',
+              pregunta: '¿Qué es "Grasa separada"?',
+              respuesta: 'La grasa que sacaste y separaste durante la limpieza de estos cortes. Si no separaste nada, dejalo en 0.',
+            },
+            {
+              tipo: 'no',
+              pregunta: '¿Puede haber más carne o grasa que el peso bruto del lote?',
+              respuesta: 'NO, es imposible. Si el sistema te marca error, revisá el número — probablemente pusiste gramos en vez de kilos.',
+            },
+            {
+              tipo: 'info',
+              pregunta: '¿Cómo sé si puse gramos en vez de kilos?',
+              respuesta: 'Si pesaste 2,9 kg y escribiste "2900", el sistema te va a avisar y te ofrece el botón para corregirlo automáticamente a 2,9.',
+            },
+          ]}
+        />
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-100 transition-all">
@@ -370,6 +396,26 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
   if (subStep === 'medallones') {
     return (
       <div className="max-w-4xl mx-auto w-full">
+        <HelpButton
+          titulo="Burger — Medallones"
+          items={[
+            {
+              tipo: 'ok',
+              pregunta: '¿Qué pongo acá?',
+              respuesta: 'La cantidad de MEDALLONES (unidades) que salieron de toda esta mezcla. Si hiciste 80 medallones, escribí 80.',
+            },
+            {
+              tipo: 'info',
+              pregunta: '¿Y la grasa extra del stock?',
+              respuesta: 'Eso ya lo calcula el sistema solo, para que la mezcla quede en el 34% de grasa. No hace falta que hagas nada ahí, solo revisá que el número tenga sentido.',
+            },
+            {
+              tipo: 'no',
+              pregunta: '¿Tengo que pesar los medallones?',
+              respuesta: 'NO. Solo contá cuántos salieron.',
+            },
+          ]}
+        />
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => setSubStep('peso')} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-100 transition-all">

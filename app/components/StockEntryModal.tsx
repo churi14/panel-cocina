@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Truck, Check, ChevronLeft, Search, RefreshCw } from 'lucide-react';
 import { supabase } from '../supabase';
+import HelpButton from './HelpButton';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
 
@@ -170,6 +171,31 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+      <HelpButton
+        titulo="Cargar Stock / Facturas"
+        items={[
+          {
+            tipo: 'ok',
+            pregunta: '¿Para qué sirve esta pantalla?',
+            respuesta: 'Para SUMAR cosas que llegaron al local. Ejemplo: llegó la factura del proveedor con 10 kg de carne → la cargás acá y el stock sube +10 kg.',
+          },
+          {
+            tipo: 'no',
+            pregunta: '¿Sirve para descontar o restar stock?',
+            respuesta: 'NO. Esta pantalla SOLO SUMA. Si necesitás restar (por ejemplo, se rompió algo, o usaste algo a mano sin pasar por una producción), tenés que cerrar esto y usar el botón "Uso Manual / Mermas" que está en la pantalla principal.',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Qué pongo en "Cantidad"?',
+            respuesta: 'La cantidad que LLEGÓ, en la unidad que diga el producto (kg, litros o unidades). Si el producto es en KG, fijate que el número tenga sentido — 5 kg de cebolla es razonable, 5000 kg no.',
+          },
+          {
+            tipo: 'info',
+            pregunta: 'Elegí siempre tu nombre',
+            respuesta: 'Arriba de todo tenés que elegir quién está cargando la factura. Eso queda guardado para saber quién hizo cada movimiento.',
+          },
+        ]}
+      />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* HEADER */}

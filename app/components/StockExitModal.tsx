@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, PackageMinus, ChevronLeft, Search, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
+import HelpButton from './HelpButton';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
 
@@ -122,6 +123,31 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+      <HelpButton
+        titulo="Uso Manual / Mermas"
+        items={[
+          {
+            tipo: 'ok',
+            pregunta: '¿Para qué sirve esta pantalla?',
+            respuesta: 'Para RESTAR cosas del stock que no pasaron por una producción normal. Ejemplo: se rompió un paquete, se venció algo y lo tiraste, o usaste algo "a mano" sin registrar la producción.',
+          },
+          {
+            tipo: 'no',
+            pregunta: '¿Sirve para cargar facturas o sumar stock?',
+            respuesta: 'NO. Esta pantalla SOLO RESTA. Si llegó mercadería y tenés que sumarla, cerrá esto y usá "Cargar Stock / Facturas".',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Qué pongo en "Motivo"?',
+            respuesta: 'Siempre explicá por qué descontás: "se rompió", "se venció", "lo usamos para tal cosa". Eso ayuda a entender después por qué bajó el stock.',
+          },
+          {
+            tipo: 'info',
+            pregunta: '¿Cuándo NO debería usar esta pantalla?',
+            respuesta: 'Si estás haciendo una producción normal (limpieza, lomito, milanesa, etc.) NO uses esto — esa producción ya descuenta sola desde la pantalla de Carnicería o Cocina.',
+          },
+        ]}
+      />
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* HEADER */}
