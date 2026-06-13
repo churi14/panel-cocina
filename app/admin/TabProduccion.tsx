@@ -508,7 +508,7 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-black ${tl.color}`}>{tl.label}</span>
                               </td>
                               <td className="px-4 py-2.5 text-slate-300 text-xs max-w-[180px] truncate">{e.detalle ?? e.corte ?? "—"}</td>
-                              <td className="px-4 py-2.5 text-right font-black text-white">{e.peso_kg ?? "—"} {selectedProdItem.unidad}</td>
+                              <td className="px-4 py-2.5 text-right font-black text-white">{e.peso_kg ?? "—"} kg</td>
                             </tr>
                           );
                         })}
