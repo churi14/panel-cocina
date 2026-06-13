@@ -30,7 +30,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const [quantity, setQuantity]     = useState('');
   const [pesoFinalKg, setPesoFinalKg] = useState('');
   const [wasteKg, setWasteKg]       = useState('');
-  const [wasteMode, setWasteMode]   = useState<'por_unidad' | 'peso' | 'desperdicio'>('por_unidad');
+  const [wasteMode, setWasteMode]   = useState<'por_unidad' | 'peso' | 'desperdicio'>('desperdicio');
   const [pesoporUnidadGr, setPesoporUnidadGr] = useState('');
   const [grasaKg, setGrasaKg]       = useState('');
   const [showGrasa, setShowGrasa]   = useState(false);
@@ -115,7 +115,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
     setWasteKg('');
     setPesoFinalKg('');
     setPesoporUnidadGr('');
-    setWasteMode('por_unidad');
+    setWasteMode('desperdicio');
   };
 
   const kindDisplay = kindLabel
@@ -505,9 +505,12 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
         <button
           onClick={() => {
             const categoria = kindLabel === 'lomito' || kindLabel === 'burger' || kindLabel === 'milanesa' ? 'carne' : 'general';
-            const val = validarCantidad(qty, categoria);
-            const sugerencia = detectarPosibleErrorDecimal(qty);
             const finalStock = stockDestinoOverride ?? effectiveStockDestino;
+            // La validación de límites en kg ("carne" = 150kg) solo aplica cuando se ingresa en KG.
+            // Cuando la cantidad producida es en UNIDADES (ej: 159 churrasquitos), no corresponde
+            // validarla contra límites de peso.
+            const val = unit === 'kg' ? validarCantidad(qty, categoria) : { ok: true as const };
+            const sugerencia = unit === 'kg' ? detectarPosibleErrorDecimal(qty) : null;
             if (val.ok) {
               onFinish(qty, unit, waste, grasa, finalStock, observacion || undefined);
             } else if (val.tipo === 'bloqueo') {
