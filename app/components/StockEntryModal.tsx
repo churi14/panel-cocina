@@ -17,7 +17,7 @@ const CATEGORIES = [
   { id: 'DESCARTABLES', label: 'Descartables', emoji: '📦', color: 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' },
 ];
 
-const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 // ─── Configuración de aderezos en doypack/sachet ──────────────────────────────
 // Variantes según imagen de proveedor + formatos comunes del mercado

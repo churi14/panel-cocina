@@ -61,7 +61,7 @@ type EditTarget = {
   tabla: 'stock' | 'stock_produccion'; nombreCampo: 'nombre' | 'producto';
 };
 
-const OPERADORES_STOCK = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES_STOCK = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 function EditModal({ item, onClose, onSaved }: {
   item: EditTarget; onClose: () => void; onSaved: () => void;

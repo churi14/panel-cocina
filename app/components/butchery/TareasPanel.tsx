@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../supabase';
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, RefreshCw, Plus, X, User, Users, AlertTriangle } from 'lucide-react';
 
-const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 type Tarea = {
   id: number;

@@ -12,7 +12,7 @@ import { Step2BurgerView } from './butchery/Step2BurgerView';
 import LimpiezaView from './butchery/LimpiezaView';
 import { groupByBatch, createButcheryHandlers } from './butchery/useButcheryHandlers';
 
-const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 export default function ButcheryModal({ onClose, butcheryProductions, setButcheryProductions, butcheryRecords, setButcheryRecords }: {
   onClose: () => void;

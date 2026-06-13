@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { Plus, RefreshCw, CheckCircle2, Clock, AlertTriangle, Trash2, X, User, Users } from 'lucide-react';
 
-const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 const PRIORIDADES = [
   { id: 'alta',  label: 'Alta',  color: 'text-red-400',    bg: 'bg-red-900/30',   border: 'border-red-700' },
   { id: 'media', label: 'Media', color: 'text-amber-400',  bg: 'bg-amber-900/30', border: 'border-amber-700' },

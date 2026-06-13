@@ -30,7 +30,7 @@ const KITCHEN_CATEGORIES = [
   { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
 ];
 
-const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 export default function KitchenProductionModal({ onClose, activeProductions, setActiveProductions, recipesDB, setProductionHistory, operadorNombre }: {
   onClose: () => void;

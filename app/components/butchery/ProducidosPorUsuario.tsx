@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { RefreshCw, X, Clock, ChevronDown } from 'lucide-react';
 
-const OPERADORES = ['Franco', 'Gisela', 'Julian', 'Milagros', 'Daiana', 'Emmanuel'];
+const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 type Evento = {
   id: number;
