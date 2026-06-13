@@ -50,18 +50,19 @@ export function NewProductionWizard({ onStart, onCancel }: {
     ];
 
     if (kind === 'lomito' || kind === 'milanesa') {
-      // Buscar stock existente
+      // Buscar stock existente — formato real en DB es "Cuadril_L", "Lomo_L", etc.
       const { data } = await supabase
         .from('stock_produccion')
         .select('producto, cantidad')
-        .ilike('producto', '% Limpia')
-        .not('producto', 'ilike', 'Carne Limpia Burger%');
+        .eq('categoria', 'carnes_limpias')
+        .not('producto', 'ilike', 'Grasa%')
+        .not('producto', 'ilike', 'Tapa_Nalga%');
       const stockMap: Record<string, number> = {};
       (data ?? []).forEach((r: any) => { stockMap[r.producto] = Number(r.cantidad); });
-      // Mostrar todos los cortes, con stock 0 si no existe
+      // Mostrar todos los cortes con el formato _L
       const todos = TODOS_CORTES.map(c => ({
-        producto: `${c} Limpia`,
-        cantidad: stockMap[`${c} Limpia`] ?? 0,
+        producto: `${c}_L`,
+        cantidad: stockMap[`${c}_L`] ?? 0,
       }));
       setCarnesLimpias(todos);
     } else if (kind === 'burger') {
@@ -241,10 +242,11 @@ export function NewProductionWizard({ onStart, onCancel }: {
                 {selectedKind === 'burger' ? 'Seleccioná los cortes a usar (puede ser más de uno)' : 'Elegí el corte a procesar'}
               </p>
               {carnesLimpias.map(c => {
-                // Nombre corto: "Lomo_L", "Cuadril_L", etc.
+                // Nombre corto: strip _L and old "Limpia" formats
                 const corteLabel = c.producto
                   .replace('Carne Limpia Burger - ', '')
-                  .replace(' Limpia', '');
+                  .replace(' Limpia', '')
+                  .replace('_L', '');
                 const isSelectedMulti = selectedCarnesMulti.includes(c.producto);
                 const isSelectedSingle = selectedCarneLinpia === c.producto;
                 const isSelected = selectedKind === 'burger' ? isSelectedMulti : isSelectedSingle;
@@ -293,7 +295,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                     </span>
                   )) : selectedCarneLinpia ? (
                     <span className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">
-                      {selectedCarneLinpia.replace(' Limpia', '')}_L
+                      {selectedCarneLinpia.replace('_L','').replace(' Limpia','')}_L
                     </span>
                   ) : null}
                 </div>
@@ -328,7 +330,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     <div className="flex flex-col h-full overflow-hidden">
       {showConfirm && (
         <StartConfirmOverlay
-          entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','') + '_L' : getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
+          entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','').replace('_L','') : getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
           onConfirm={handleConfirm}
           onCancel={() => setShowConfirm(false)}
         />
@@ -368,7 +370,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                 <div className="shrink-0 w-28">
                   <p className="font-black text-slate-800 text-sm leading-tight">
                     {entry.carneLinpiaName
-                      ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '')}<span className="text-green-600">_L</span></>
+                      ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '').replace('_L', '')}<span className="text-green-600">_L</span></>
                       : cut.label}
                   </p>
                   <p className="text-xs text-slate-400 truncate">{cut.emoji}</p>

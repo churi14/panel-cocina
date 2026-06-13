@@ -5,11 +5,15 @@ export async function addToStockProduccion({
   categoria,
   cantidad,
   unidad,
+  motivo,
+  operador,
 }: {
   producto: string;
   categoria: 'lomito' | 'burger' | 'milanesa' | 'carnes_limpias';
   cantidad: number;
   unidad: 'u' | 'kg';
+  motivo?: string;
+  operador?: string;
 }) {
   if (!cantidad || cantidad <= 0) return;
 
@@ -57,8 +61,8 @@ export async function addToStockProduccion({
       tipo: 'ingreso',
       cantidad,
       unidad,
-      motivo: `Producción finalizada`,
-      operador: 'Sistema',
+      motivo: motivo ?? `Producción finalizada`,
+      operador: operador ?? 'Sistema',
       fecha: new Date().toISOString(),
     });
   } catch (e) {

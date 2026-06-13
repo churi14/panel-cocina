@@ -20,6 +20,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   const [editNombre, setEditNombre] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Movement | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
   const filtered = movements.filter(m => {
     if (filterType !== 'all' && m.tipo !== filterType) return false;
@@ -122,7 +123,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
                 <th className="px-4 py-3 text-left">Operador</th>
                 <th className="px-4 py-3 text-left">Producto</th>
                 <th className="px-4 py-3 text-left">Tipo</th>
-                <th className="px-4 py-3 text-left">Motivo</th>
+                <th className="px-4 py-3 text-left">Motivo / Destino</th>
                 <th className="px-4 py-3 text-right">Cantidad</th>
                 <th className="px-4 py-3 text-center">Acc.</th>
               </tr>
@@ -132,14 +133,21 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
                 <tr key={m.id} className="hover:bg-slate-800/30 transition-colors group">
                   <td className="px-4 py-3 text-slate-500 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
                   <td className="px-4 py-3 font-bold text-slate-300 text-xs">{m.operador ?? '—'}</td>
-                  <td className="px-4 py-3 font-bold text-white text-xs">{m.nombre}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setSelectedProduct(m.nombre)}
+                      className="font-bold text-white text-xs hover:text-blue-400 hover:underline text-left transition-colors">
+                      {m.nombre}
+                    </button>
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-black
                       ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                       {m.tipo === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs max-w-[160px] truncate">{m.motivo ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-400 text-xs max-w-[220px]" title={m.motivo ?? ''}>
+                    <span className="block truncate">{m.motivo ?? '—'}</span>
+                  </td>
                   <td className="px-4 py-3 text-right font-black text-white">
                     {m.unidad === 'kg' || m.unidad === 'lt'
                       ? m.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
@@ -249,6 +257,81 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
           </div>
         </div>
       )}
+
+      {/* ── MODAL: todos los movimientos de un producto ── */}
+      {selectedProduct && (() => {
+        const prodMovs = movements
+          .filter(m => m.nombre === selectedProduct)
+          .sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''));
+        const totalIngreso = prodMovs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.cantidad), 0);
+        const totalEgreso  = prodMovs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + Number(m.cantidad), 0);
+        const balance      = totalIngreso - totalEgreso;
+        const unidad       = prodMovs[0]?.unidad ?? '';
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+            onClick={() => setSelectedProduct(null)}>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
+              onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="font-black text-white text-lg">{selectedProduct}</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">{prodMovs.length} movimientos registrados</p>
+                </div>
+                <button onClick={() => setSelectedProduct(null)} className="text-slate-500 hover:text-white p-1.5 rounded-xl hover:bg-slate-800">✕</button>
+              </div>
+              {/* Resumen */}
+              <div className="px-6 py-4 grid grid-cols-3 gap-3 border-b border-slate-800 shrink-0">
+                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-green-400 font-bold uppercase mb-1">Total ingresos</p>
+                  <p className="text-xl font-black text-green-400">{totalIngreso.toFixed(2)} {unidad}</p>
+                </div>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-red-400 font-bold uppercase mb-1">Total egresos</p>
+                  <p className="text-xl font-black text-red-400">{totalEgreso.toFixed(2)} {unidad}</p>
+                </div>
+                <div className={`border rounded-xl p-3 text-center ${balance >= 0 ? 'bg-blue-500/10 border-blue-500/20' : 'bg-orange-500/10 border-orange-500/20'}`}>
+                  <p className={`text-xs font-bold uppercase mb-1 ${balance >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>Balance</p>
+                  <p className={`text-xl font-black ${balance >= 0 ? 'text-blue-400' : 'text-orange-400'}`}>{balance.toFixed(2)} {unidad}</p>
+                </div>
+              </div>
+              {/* Historial completo */}
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-800 text-slate-400 text-xs uppercase sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left">Fecha</th>
+                      <th className="px-4 py-2.5 text-left">Tipo</th>
+                      <th className="px-4 py-2.5 text-left">Motivo / Destino</th>
+                      <th className="px-4 py-2.5 text-left">Operador</th>
+                      <th className="px-4 py-2.5 text-right">Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {prodMovs.map((m, i) => (
+                      <tr key={i} className="hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5 text-slate-500 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-black
+                            ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {m.tipo === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-300 text-xs max-w-[200px]">
+                          <span className="block" title={m.motivo ?? ''}>{m.motivo ?? '—'}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-400 text-xs">{m.operador ?? '—'}</td>
+                        <td className={`px-4 py-2.5 text-right font-black text-xs ${m.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'}`}>
+                          {m.tipo === 'ingreso' ? '+' : '−'}{Number(m.cantidad).toFixed(m.unidad === 'u' ? 0 : 3)} {m.unidad}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
