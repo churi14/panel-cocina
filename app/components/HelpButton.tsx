@@ -21,7 +21,7 @@ export default function HelpButton({ titulo, items }: Props) {
       {/* Botón flotante — siempre visible, bien grande */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-[200] flex items-center gap-2 px-5 py-3.5
+        className="fixed bottom-5 left-5 z-[200] flex items-center gap-2 px-5 py-3.5
           bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-full
           shadow-[0_4px_20px_rgba(37,99,235,0.5)] active:scale-95 transition-all
           animate-pulse"
