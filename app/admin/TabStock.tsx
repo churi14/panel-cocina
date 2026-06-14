@@ -176,7 +176,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [cargaQty, setCargaQty]                   = useState('');
   const [cargaMotivo, setCargaMotivo]             = useState('Producción manual');
   const [savingCarga, setSavingCarga]             = useState(false);
-  const [prodTab, setProdTab]                     = useState<'carga' | 'alerta'>('carga');
+  const [prodTab, setProdTab]                     = useState<'carga' | 'alerta' | 'historial'>('carga');
   const [editandoProdStock, setEditandoProdStock] = useState(false);
   const [prodStockValor, setProdStockValor]       = useState('');
   const [savingProdStock, setSavingProdStock]     = useState(false);
@@ -646,8 +646,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   {/* Tabs */}
                   <div className="flex border-b border-slate-800">
                     {([
-                      { id: 'carga', label: '📦 Cargar Stock' },
-                      { id: 'alerta', label: '🔔 Alerta' },
+                      { id: 'carga',     label: '📦 Cargar Stock' },
+                      { id: 'historial', label: '📋 Historial' },
+                      { id: 'alerta',    label: '🔔 Alerta' },
                     ] as const).map(t => (
                       <button key={t.id} onClick={() => setProdTab(t.id)}
                         className={`flex-1 py-3 text-sm font-black transition-all
@@ -850,6 +851,91 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       </p>
                     )}
                     </>}
+
+                    {/* ── TAB HISTORIAL ── */}
+                    {prodTab === 'historial' && (() => {
+                      const prodMovs = movements
+                        .filter(m => m.nombre === selectedProdItem.producto)
+                        .sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''));
+                      const totalIngreso = prodMovs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.cantidad), 0);
+                      const totalEgreso  = prodMovs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + Number(m.cantidad), 0);
+                      return (
+                        <div className="space-y-4">
+                          {/* Resumen */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center">
+                              <p className="text-xs text-green-400 font-bold mb-1">↑ Ingresos</p>
+                              <p className="text-lg font-black text-green-400">{totalIngreso.toFixed(2)} {selectedProdItem.unidad}</p>
+                            </div>
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                              <p className="text-xs text-red-400 font-bold mb-1">↓ Egresos</p>
+                              <p className="text-lg font-black text-red-400">{totalEgreso.toFixed(2)} {selectedProdItem.unidad}</p>
+                            </div>
+                            <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-center">
+                              <p className="text-xs text-slate-400 font-bold mb-1">Stock actual</p>
+                              <p className="text-lg font-black text-white">{parseFloat(selectedProdItem.cantidad).toFixed(2)} {selectedProdItem.unidad}</p>
+                            </div>
+                          </div>
+
+                          {prodMovs.length === 0 ? (
+                            <div className="text-center py-8 text-slate-600">
+                              <p className="text-2xl mb-2">📋</p>
+                              <p className="font-bold text-sm">Sin movimientos registrados</p>
+                              <p className="text-xs mt-1">Los movimientos anteriores al sistema no se muestran aquí</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1 max-h-[280px] overflow-y-auto">
+                              {prodMovs.map((m, i) => (
+                                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition-all">
+                                  <span className={`text-xs font-black px-2 py-0.5 rounded-full shrink-0
+                                    ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    {m.tipo === 'ingreso' ? '↑' : '↓'}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-slate-300 truncate" title={m.motivo ?? ''}>{m.motivo ?? '—'}</p>
+                                    <p className="text-[10px] text-slate-600">{m.operador ?? '—'} · {new Date(m.fecha).toLocaleDateString('es-AR')} {new Date(m.fecha).toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' })}</p>
+                                  </div>
+                                  <span className={`font-black text-sm shrink-0 ${m.tipo === 'ingreso' ? 'text-green-400' : 'text-red-400'}`}>
+                                    {m.tipo === 'ingreso' ? '+' : '−'}{Number(m.cantidad).toFixed(m.unidad === 'u' ? 0 : 2)} {m.unidad}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Corrección rápida desde historial */}
+                          <div className="border-t border-slate-700 pt-4">
+                            <p className="text-xs font-black text-slate-400 uppercase mb-2">Corregir stock directo</p>
+                            <div className="flex gap-2">
+                              <input type="number" inputMode="decimal" step="0.001"
+                                placeholder={`Nuevo valor (${selectedProdItem.unidad})`}
+                                className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                id="correccion-directa-input"
+                              />
+                              <button
+                                onClick={async () => {
+                                  const input = document.getElementById('correccion-directa-input') as HTMLInputElement;
+                                  const val = parseFloat(input.value.replace(',', '.'));
+                                  if (isNaN(val)) return;
+                                  await supabase.from('stock_produccion').update({ cantidad: val, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
+                                  await supabase.from('stock_movements').insert({
+                                    nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
+                                    tipo: 'ingreso', cantidad: val, unidad: selectedProdItem.unidad,
+                                    motivo: `Corrección manual admin: ${parseFloat(selectedProdItem.cantidad).toFixed(2)} → ${val}`,
+                                    operador: 'Admin', fecha: new Date().toISOString(),
+                                  });
+                                  await fetchMovements();
+                                  setSelectedProdItem((prev: any) => prev ? { ...prev, cantidad: val } : null);
+                                  input.value = '';
+                                }}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-all">
+                                ✓ Aplicar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
