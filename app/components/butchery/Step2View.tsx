@@ -31,7 +31,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const [quantity, setQuantity]     = useState('');
   const [pesoFinalKg, setPesoFinalKg] = useState('');
   const [wasteKg, setWasteKg]       = useState('');
-  const [wasteMode, setWasteMode]   = useState<'por_unidad' | 'peso' | 'desperdicio'>('desperdicio');
+  const [wasteMode, setWasteMode]   = useState<'peso' | 'desperdicio'>('desperdicio');
   const [pesoporUnidadGr, setPesoporUnidadGr] = useState('');
   const [grasaKg, setGrasaKg]       = useState('');
   const [showGrasa, setShowGrasa]   = useState(false);
@@ -74,11 +74,9 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
   const wasteAuto =
     unit === 'kg' && qty > 0
       ? Math.max(0, parseFloat((production.weightKg - qty).toFixed(3)))
-      : unit === 'unid' && wasteMode === 'por_unidad' && qty > 0 && pesoporUnidadKg > 0
-        ? Math.max(0, parseFloat((production.weightKg - qty * pesoporUnidadKg).toFixed(3)))
-        : unit === 'unid' && wasteMode === 'peso' && pesoFinal > 0
-          ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
-          : null;
+      : unit === 'unid' && wasteMode === 'peso' && pesoFinal > 0
+        ? Math.max(0, parseFloat((production.weightKg - pesoFinal).toFixed(3)))
+        : null;
 
   const waste =
     unit === 'unid' && wasteMode === 'desperdicio'
@@ -105,7 +103,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
 
   // canFinish: en modo por_unidad requiere peso por unidad ingresado
   const canFinish  = qty > 0 && !warnKgMayorBruto && !warnPesoTotalAlto && !warnDesperdicio &&
-    (unit !== 'unid' || wasteMode !== 'por_unidad' || grPorUnidad > 0);
+    true; // sin modo por_unidad, siempre se puede confirmar con qty > 0
   const isLastInBatch = currentIndex === totalInBatch - 1;
   // Milanesa siempre va a Stock Milanesas sin importar el corte usado
   const effectiveStockDestino = kindLabel === 'milanesa' ? 'Stock Milanesas' : cut.stockDestino;
@@ -314,79 +312,23 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Toggle: por unidad / peso total / desperdicio directo */}
+                {/* Toggle: peso total / desperdicio directo — "Por unidad" eliminado, causaba errores */}
                 <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
                   <button
-                    onClick={() => { setWasteMode('por_unidad'); setWasteKg(''); setPesoFinalKg(''); }}
-                    className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1
-                      ${wasteMode === 'por_unidad' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
-                    ⚖️ Por unidad
-                  </button>
-                  <button
-                    onClick={() => { setWasteMode('peso'); setWasteKg(''); setPesoporUnidadGr(''); }}
+                    onClick={() => { setWasteMode('peso'); setWasteKg(''); }}
                     className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1
                       ${wasteMode === 'peso' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
-                    📦 Peso total
+                    📦 Peso total producido
                   </button>
                   <button
-                    onClick={() => { setWasteMode('desperdicio'); setPesoFinalKg(''); setPesoporUnidadGr(''); }}
+                    onClick={() => { setWasteMode('desperdicio'); setPesoFinalKg(''); }}
                     className={`flex-1 py-2.5 rounded-lg font-black text-xs transition-all flex items-center justify-center gap-1
                       ${wasteMode === 'desperdicio' ? 'bg-red-500 text-white shadow' : 'text-slate-500'}`}>
-                    🗑️ Directo
+                    🗑️ Desperdicio directo (KG)
                   </button>
                 </div>
 
-                {wasteMode === 'por_unidad' ? (
-                  <div className="space-y-2">
-                    <p className="text-xs font-black text-slate-400 uppercase">Peso por unidad (gr)</p>
-                    <div className="relative">
-                      <input
-                        type="number" inputMode="decimal" step="1" placeholder="0"
-                        value={pesoporUnidadGr} onChange={e => setPesoporUnidadGr(e.target.value)}
-                        className={`w-full p-4 text-4xl font-black text-center border-2 rounded-2xl outline-none transition-all
-                          ${warnGrMuyBajo || warnGrMuyAlto ? 'bg-amber-50 border-amber-400 text-amber-700' : 'text-red-600 bg-red-50 border-red-200 focus:border-red-500 focus:bg-white'}`}
-                      />
-                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-black text-red-300">GR</span>
-                    </div>
-                    {/* Advertencias de peso */}
-                    {warnGrMuyBajo && grSugerido && (
-                      <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl px-4 py-3 flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-2">
-                          <span className="text-amber-500 shrink-0">⚠️</span>
-                          <div>
-                            <p className="text-sm font-black text-amber-800">¿Pusiste kg en vez de gramos?</p>
-                            <p className="text-xs text-amber-600">{pesoporUnidadGr} kg = {grSugerido} gr por unidad</p>
-                          </div>
-                        </div>
-                        <button onClick={() => setPesoporUnidadGr(String(grSugerido))}
-                          className="text-xs font-black text-amber-700 bg-amber-200 hover:bg-amber-300 px-3 py-1.5 rounded-lg shrink-0">
-                          Usar {grSugerido} gr
-                        </button>
-                      </div>
-                    )}
-                    {warnGrMuyBajo && !grSugerido && (
-                      <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl px-4 py-2">
-                        <p className="text-xs font-black text-amber-800">⚠️ {grPorUnidad} gr es muy poco — ¿está bien? Este campo espera gramos, no kg.</p>
-                      </div>
-                    )}
-                    {warnGrMuyAlto && (
-                      <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl px-4 py-2">
-                        <p className="text-xs font-black text-amber-800">⚠️ {grPorUnidad} gr parece mucho por unidad. ¿Está bien?</p>
-                      </div>
-                    )}
-                    {qty > 0 && pesoporUnidadKg > 0 && !warnGrMuyBajo && !warnGrMuyAlto && (
-                      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3 text-center">
-                        <p className="text-2xl font-black text-red-600">{waste.toFixed(3).replace('.', ',')} kg desperdicio</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {production.weightKg} kg − ({qty} × {pesoporUnidadGr} gr) = {waste.toFixed(3)} kg
-                        </p>
-                      </div>
-                    )}
-                    {qty > 0 && pesoporUnidadGr === '' && (
-                      <p className="text-xs text-center text-slate-400">⚖️ Ingresá el peso de cada pieza para calcular el desperdicio</p>
-                    )}
-                  </div>
-                ) : wasteMode === 'peso' ? (
+                {wasteMode === 'peso' ? (
                   <div className="space-y-2">
                     <p className="text-xs font-black text-slate-400 uppercase">Peso total que salió (kg)</p>
                     <div className="relative">
@@ -535,13 +477,16 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
       <div className="mt-8">
         <button
           onClick={() => {
-            const categoria = kindLabel === 'lomito' || kindLabel === 'burger' || kindLabel === 'milanesa' ? 'carne' : 'general';
             const finalStock = stockDestinoOverride ?? effectiveStockDestino;
-            // La validación de límites en kg ("carne" = 150kg) solo aplica cuando se ingresa en KG.
-            // Cuando la cantidad producida es en UNIDADES (ej: 159 churrasquitos), no corresponde
-            // validarla contra límites de peso.
-            const val = unit === 'kg' ? validarCantidad(qty, categoria) : { ok: true as const };
-            const sugerencia = unit === 'kg' ? detectarPosibleErrorDecimal(qty) : null;
+            // NUNCA validar cantidad como kg cuando se está contando en UNIDADES
+            // 125 churrasquitos NO son 125 kg — la validación de límites solo aplica en KG
+            if (unit === 'unid') {
+              onFinish(qty, unit, waste, grasa, finalStock, observacion || undefined);
+              return;
+            }
+            const categoria = kindLabel === 'lomito' || kindLabel === 'burger' || kindLabel === 'milanesa' ? 'carne' : 'general';
+            const val = validarCantidad(qty, categoria);
+            const sugerencia = detectarPosibleErrorDecimal(qty);
             if (val.ok) {
               onFinish(qty, unit, waste, grasa, finalStock, observacion || undefined);
             } else if (val.tipo === 'bloqueo') {
