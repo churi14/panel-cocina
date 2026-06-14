@@ -356,7 +356,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         </div>
                       ) : items.map((item: any) => (
                         <div key={item.id}
-                          onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('carga'); }}
+                          onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('historial'); }}
                           className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                           <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
                           <p className={`text-3xl font-black ${parseFloat(item.cantidad) === 0 ? 'text-slate-600' : cfg.color}`}>
@@ -414,7 +414,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
                         {catItems.map((item: any) => (
-                          <div key={item.id} onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('carga'); }}
+                          <div key={item.id} onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('historial'); }}
                             className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                             <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
                             <p className={`text-3xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
@@ -646,8 +646,8 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   {/* Tabs */}
                   <div className="flex border-b border-slate-800">
                     {([
-                      { id: 'carga',     label: '📦 Cargar Stock' },
                       { id: 'historial', label: '📋 Historial' },
+                      { id: 'carga',     label: '📦 Cargar Stock' },
                       { id: 'alerta',    label: '🔔 Alerta' },
                     ] as const).map(t => (
                       <button key={t.id} onClick={() => setProdTab(t.id)}
