@@ -18,6 +18,7 @@ import StockExitModal from './components/StockExitModal';
 import RecipeManagerModal from './components/Recipemanagermodal';
 import SuppliersModal from './components/Suppliersmodal';
 import KitchenProductionModal from './components/Kitchenproductionmodal';
+import CamaraFrioModal from './components/CamaraFrioModal';
 import { NavItem, StationCard, QuickActionCard } from './components/Uicomponents';
 import KitchenTour from './components/KitchenTour';
 import type { Ingredient, Recipe, ProductionRecord, Supplier, ActiveProduction, ButcheryProduction, ButcheryRecord } from './types';
@@ -27,7 +28,7 @@ import TareasPanel from './components/butchery/TareasPanel';
 import ProducidosPorUsuario from './components/butchery/ProducidosPorUsuario';
 import { supabase } from './supabase';
 import { useTestMode } from './components/TestModeContext';
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical, Snowflake } from 'lucide-react';
 
 // ── PWA: registrar service worker ────────────────────────────────────────────
 function usePWA() {
@@ -109,6 +110,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const [isButcheryModalOpen, setIsButcheryModalOpen] = useState(false);
   const [showProducidos, setShowProducidos] = useState(false);
   const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
+  const [isCamaraOpen, setIsCamaraOpen]             = useState(false);
   const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
   const [isRecipeManagerOpen, setIsRecipeManagerOpen] = useState(false);
 
@@ -539,9 +541,17 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                     <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProductions.length > 0 ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div id="tour-card-camara" className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-blue-200">
+                    <div className="flex justify-between items-start mb-6"><div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-blue-100 text-blue-600"><Snowflake size={28}/></div></div>
+                    <h3 className="text-xl font-bold mb-1 text-slate-800">Cámara de Frío</h3>
+                    <p className="text-sm font-medium mb-4 text-slate-400">Carne, Pan Kalis y Medallones</p>
+                    <button onClick={() => setIsCamaraOpen(true)} className="w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 bg-slate-900 hover:bg-blue-600 text-white">ABRIR CÁMARA <ChevronRight size={16} /></button>
+                </div>
                 <div id="tour-card-stock-entry"><QuickActionCard title="Cargar Stock / Facturas" subtitle="Sumá mercadería al stock" icon={<Truck size={24} />} color="blue" onClick={() => setIsEntryModalOpen(true)} /></div>
                 <div id="tour-card-stock-exit"><QuickActionCard title="Uso Manual / Mermas" subtitle="Descontar stock manualmente" icon={<PackageMinus size={24} />} color="orange" onClick={() => setIsStockModalOpen(true)} /></div>
+            </section>
+            <section className="grid grid-cols-1 gap-6">
                 <div id="tour-card-stock-view"><QuickActionCard title="Ver Stock" subtitle="Stock actual por categoría" icon={<BarChart3 size={24} />} color="green" onClick={() => setIsStockViewOpen(true)} /></div>
             </section>
             <ProduccionDelDia />
@@ -562,6 +572,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         <ProducidosPorUsuario operadorActual={perfil.nombre} onClose={() => setShowProducidos(false)} />
       )}
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} operadorNombre={perfil?.nombre ?? ''} />}
+      {isCamaraOpen && <CamaraFrioModal onClose={() => setIsCamaraOpen(false)} operadorNombre={perfil?.nombre ?? ''} />}
 
       {/* ── TOUR ── */}
       <KitchenTour />
