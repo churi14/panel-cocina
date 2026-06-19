@@ -41,7 +41,7 @@ function buscarEnMapa(nombreFudo: string): StockDescuento[] | null {
   return null;
 }
 
-type SaleItem = { name?: string; nombre?: string; quantity?: number; cantidad?: number; };
+type SaleItem = { name?: string; nombre?: string; productName?: string; quantity?: number; cantidad?: number; };
 type Sale     = { id: string | number; fecha?: string; date?: string; created_at?: string; total?: number; items?: SaleItem[]; subitems?: SaleItem[]; };
 type SyncResumen = { ventas: number; itemsReconocidos: number; itemsNoReconocidos: string[]; descuentos: { producto: string; total: number; unidad: string }[]; };
 
