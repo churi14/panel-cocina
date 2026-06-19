@@ -67,6 +67,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ status: res.status, body });
     }
 
+    // ── RECETAS: productos con sus ingredientes ───────────────────────────────
+    if (action === 'recipes') {
+      const token = await getToken();
+      // Traer productos con ingredientes incluidos
+      const res = await fetch(`${FUDO_API_BASE}/products?page[size]=500&include=ingredients`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      const body = await res.json();
+      // Si no soporta include, traer ingredients por separado
+      const ingredients_res = await fetch(`${FUDO_API_BASE}/ingredients?page[size]=500`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      const ingredients_body = await ingredients_res.json();
+      return NextResponse.json({
+        products: body,
+        ingredients: ingredients_body,
+      });
+    }
+
     // ── LISTAR PRODUCTOS del catálogo ────────────────────────────────────────
     if (action === 'products') {
       const { data } = await fudoGetAll('/products');
