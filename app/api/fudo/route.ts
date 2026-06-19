@@ -74,12 +74,22 @@ export async function GET(req: NextRequest) {
     if (action === 'sales') {
       const desde = req.nextUrl.searchParams.get('desde') ?? '';
       const hasta = req.nextUrl.searchParams.get('hasta') ?? '';
-      const params: Record<string, string> = {};
-      // Fudo acepta distintos formatos de filtro — probamos el correcto
-      if (desde) params['filter[openedAt][from]'] = desde;
-      if (hasta) params['filter[openedAt][to]']   = hasta;
-      const sales = await fudoGetAll('/sales', params);
-      return NextResponse.json({ sales });
+      // Traer sin filtros de fecha (Fudo no documenta bien los filtros)
+      // y filtrar por fecha del lado del servidor
+      const todas = await fudoGetAll('/sales', {});
+      let sales = todas;
+      if (desde || hasta) {
+        sales = todas.filter((s: any) => {
+          // Buscar el campo de fecha en el objeto — puede ser date, openedAt, createdAt, closedAt
+          const fechaRaw = s.openedAt ?? s.closedAt ?? s.date ?? s.createdAt ?? s.created_at ?? '';
+          if (!fechaRaw) return true;
+          const fecha = fechaRaw.slice(0, 10); // YYYY-MM-DD
+          if (desde && fecha < desde) return false;
+          if (hasta && fecha > hasta) return false;
+          return true;
+        });
+      }
+      return NextResponse.json({ sales, total_raw: todas.length });
     }
 
     if (action === 'sale_detail') {
