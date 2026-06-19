@@ -67,6 +67,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ status: res.status, body });
     }
 
+    // ── DEBUG: ver modificadores de producto (ej: elegir carne/pollo) ────────
+    if (action === 'modifiers') {
+      const token = await getToken();
+      const res = await fetch(`${FUDO_API_BASE}/productModifiersGroups?page[size]=100&include=productModifiers`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      const body = await res.json();
+      // También traer una venta reciente con subitems para ver si los modificadores aparecen ahí
+      const salesRes = await fetch(`${FUDO_API_BASE}/sales?page[size]=10&include=items,subitems`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      const salesBody = await salesRes.json();
+      return NextResponse.json({ status: res.status, modifierGroups: body, sampleSales: salesBody });
+    }
+
     // ── RECETAS: productos con sus ingredientes ───────────────────────────────
     if (action === 'recipes') {
       const token = await getToken();
