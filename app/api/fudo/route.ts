@@ -30,7 +30,10 @@ async function fudoGet(path: string, params: Record<string, string> = {}) {
   const res   = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   });
-  if (!res.ok) throw new Error(`Fudo API error ${res.status}: ${path}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Fudo API error ${res.status}: ${path} — ${body.slice(0, 300)}`);
+  }
   return res.json();
 }
 
@@ -41,7 +44,7 @@ async function fudoGetAll(path: string, extraParams: Record<string, string> = {}
   const all: any[] = [];
   while (true) {
     const data = await fudoGet(path, { 'page[size]': pageSize, 'page[number]': String(pageNumber), ...extraParams });
-    const items = Array.isArray(data) ? data : (data.data ?? data.items ?? []);
+    const items = Array.isArray(data) ? data : (data.data ?? data.items ?? data.sales ?? []);
     all.push(...items);
     if (items.length < parseInt(pageSize)) break;
     pageNumber++;
@@ -54,18 +57,27 @@ export async function GET(req: NextRequest) {
 
   try {
     if (action === 'products') {
-      // Traer todos los productos/items de Fudo para crear el mapeo
       const items = await fudoGetAll('/items');
       return NextResponse.json({ items });
     }
 
+    if (action === 'debug') {
+      // Sin filtros — ver qué trae la API de sales cruda
+      const token = await getToken();
+      const res = await fetch(`${FUDO_API_BASE}/sales?page[size]=5`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      const body = await res.text();
+      return NextResponse.json({ status: res.status, body: JSON.parse(body) });
+    }
+
     if (action === 'sales') {
-      // Traer ventas — parámetros opcionales: desde, hasta
       const desde = req.nextUrl.searchParams.get('desde') ?? '';
       const hasta = req.nextUrl.searchParams.get('hasta') ?? '';
       const params: Record<string, string> = {};
-      if (desde) params['filter[date][from]'] = desde;
-      if (hasta) params['filter[date][to]']   = hasta;
+      // Fudo acepta distintos formatos de filtro — probamos el correcto
+      if (desde) params['filter[openedAt][from]'] = desde;
+      if (hasta) params['filter[openedAt][to]']   = hasta;
       const sales = await fudoGetAll('/sales', params);
       return NextResponse.json({ sales });
     }
