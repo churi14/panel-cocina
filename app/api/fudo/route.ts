@@ -73,42 +73,54 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ products: data });
     }
 
-    // ── VENTAS con items incluidos ───────────────────────────────────────────
+    // ── VENTAS con items y nombres de producto ───────────────────────────────
     if (action === 'sales') {
       const desde = req.nextUrl.searchParams.get('desde') ?? '';
       const hasta = req.nextUrl.searchParams.get('hasta') ?? '';
 
-      // Traer ventas con items incluidos (JSON:API include)
-      const { data: salesData, included } = await fudoGetAll('/sales', { 'include': 'items,subitems' });
+      // 1. Traer catálogo de productos para mapear id → nombre
+      const { data: productsData } = await fudoGetAll('/products');
+      const productById: Record<string, string> = {};
+      for (const p of productsData) {
+        productById[p.id] = p.attributes?.name ?? p.attributes?.nombre ?? `Producto #${p.id}`;
+      }
 
-      // Crear mapa id → item para resolución rápida
-      const itemsById: Record<string, any> = {};
+      // 2. Traer ventas con items incluidos
+      const { data: salesData, included } = await fudoGetAll('/sales', { include: 'items' });
+
+      // 3. Crear mapa de items incluidos: itemId → { quantity, productId }
+      const itemsById: Record<string, { quantity: number; productId: string }> = {};
       for (const inc of included) {
-        if (inc.type === 'Item' || inc.type === 'Subitem') {
-          itemsById[inc.id] = inc;
+        if (inc.type === 'Item') {
+          itemsById[inc.id] = {
+            quantity:  inc.attributes?.quantity ?? 1,
+            productId: inc.relationships?.product?.data?.id ?? '',
+          };
         }
       }
 
-      // Filtrar por closedAt y mapear al formato que usa TabVentas
+      // 4. Filtrar por fecha (closedAt) y armar la respuesta
       const sales = salesData
         .filter((s: any) => {
-          const closedAt = s.attributes?.closedAt ?? '';
-          const fecha    = closedAt.slice(0, 10);
+          const fecha = (s.attributes?.closedAt ?? s.attributes?.createdAt ?? '').slice(0, 10);
           if (desde && fecha < desde) return false;
           if (hasta && fecha > hasta) return false;
           return true;
         })
         .map((s: any) => {
           const itemRefs: any[] = s.relationships?.items?.data ?? [];
-          const items = itemRefs.map((ref: any) => {
-            const item = itemsById[ref.id];
-            return {
-              id:       ref.id,
-              name:     item?.attributes?.name ?? item?.attributes?.productName ?? `Item #${ref.id}`,
-              quantity: item?.attributes?.quantity ?? 1,
-              price:    item?.attributes?.unitPrice ?? item?.attributes?.price ?? 0,
-            };
-          });
+          const items = itemRefs
+            .map((ref: any) => {
+              const item      = itemsById[ref.id];
+              const productId = item?.productId ?? '';
+              return {
+                id:        ref.id,
+                name:      productById[productId] ?? `Producto #${productId}`,
+                productId,
+                quantity:  item?.quantity ?? 1,
+              };
+            })
+            .filter((i: any) => i.quantity > 0);
           return {
             id:       s.id,
             fecha:    s.attributes?.closedAt ?? s.attributes?.createdAt ?? '',
