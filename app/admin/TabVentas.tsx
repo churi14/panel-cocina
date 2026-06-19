@@ -42,7 +42,7 @@ function buscarEnMapa(nombreFudo: string): StockDescuento[] | null {
 }
 
 type SaleItem = { name?: string; nombre?: string; quantity?: number; cantidad?: number; };
-type Sale     = { id: string | number; date?: string; created_at?: string; total?: number; items?: SaleItem[]; subitems?: SaleItem[]; };
+type Sale     = { id: string | number; fecha?: string; date?: string; created_at?: string; total?: number; items?: SaleItem[]; subitems?: SaleItem[]; };
 type SyncResumen = { ventas: number; itemsReconocidos: number; itemsNoReconocidos: string[]; descuentos: { producto: string; total: number; unidad: string }[]; };
 
 export default function TabVentas() {
@@ -78,7 +78,7 @@ export default function TabVentas() {
       for (const sale of sales) {
         const items: SaleItem[] = sale.items ?? sale.subitems ?? [];
         for (const item of items) {
-          const nombre = item.name ?? item.nombre ?? '';
+          const nombre = item.name ?? item.nombre ?? item.productName ?? '';
           const qty    = item.quantity ?? item.cantidad ?? 1;
           const descuentos = buscarEnMapa(nombre);
           if (descuentos) {
@@ -237,7 +237,7 @@ export default function TabVentas() {
             {salesRaw.slice(0, 100).map((s, i) => (
               <div key={i} className="px-5 py-2.5 flex items-center justify-between hover:bg-slate-800/30">
                 <div>
-                  <p className="text-xs text-slate-400 font-mono">{(s.date ?? s.created_at ?? '').slice(0, 16).replace('T', ' ')}</p>
+                  <p className="text-xs text-slate-400 font-mono">{(s.fecha ?? s.date ?? s.created_at ?? '').slice(0, 16).replace('T', ' ')}</p>
                   <p className="text-xs text-slate-500">{(s.items ?? s.subitems ?? []).length} items</p>
                 </div>
                 {s.total != null && <p className="font-bold text-white text-sm">${s.total}</p>}

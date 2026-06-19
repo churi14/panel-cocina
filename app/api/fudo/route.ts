@@ -5,7 +5,6 @@ const FUDO_API_BASE  = 'https://api.fu.do/v1alpha1';
 const API_KEY        = process.env.FUDO_API_KEY!;
 const API_SECRET     = process.env.FUDO_API_SECRET!;
 
-// Cache token en memoria (dura 24hs, se renueva si expira)
 let cachedToken: string | null = null;
 let tokenExp: number           = 0;
 
@@ -22,6 +21,113 @@ async function getToken(): Promise<string> {
   tokenExp    = data.exp;
   return cachedToken!;
 }
+
+async function fudoFetch(path: string, params: Record<string, string> = {}) {
+  const token = await getToken();
+  const url   = new URL(`${FUDO_API_BASE}${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res   = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Fudo API error ${res.status}: ${path} — ${body.slice(0, 400)}`);
+  }
+  return res.json();
+}
+
+// Paginar y traer todo — maneja formato JSON:API {data: [...], included: [...]}
+async function fudoGetAll(path: string, params: Record<string, string> = {}) {
+  let pageNumber = 1;
+  const allData: any[]     = [];
+  const allIncluded: any[] = [];
+  while (true) {
+    const res  = await fudoFetch(path, { 'page[size]': '500', 'page[number]': String(pageNumber), ...params });
+    const data     = Array.isArray(res) ? res : (res.data ?? []);
+    const included = res.included ?? [];
+    allData.push(...data);
+    allIncluded.push(...included);
+    if (data.length < 500) break;
+    pageNumber++;
+  }
+  return { data: allData, included: allIncluded };
+}
+
+export async function GET(req: NextRequest) {
+  const action = req.nextUrl.searchParams.get('action');
+
+  try {
+    // ── DEBUG: ver estructura cruda ──────────────────────────────────────────
+    if (action === 'debug') {
+      const token = await getToken();
+      const res   = await fetch(`${FUDO_API_BASE}/sales?page[size]=2&include=items,subitems`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      const body = await res.json();
+      return NextResponse.json({ status: res.status, body });
+    }
+
+    // ── LISTAR PRODUCTOS del catálogo ────────────────────────────────────────
+    if (action === 'products') {
+      const { data } = await fudoGetAll('/products');
+      return NextResponse.json({ products: data });
+    }
+
+    // ── VENTAS con items incluidos ───────────────────────────────────────────
+    if (action === 'sales') {
+      const desde = req.nextUrl.searchParams.get('desde') ?? '';
+      const hasta = req.nextUrl.searchParams.get('hasta') ?? '';
+
+      // Traer ventas con items incluidos (JSON:API include)
+      const { data: salesData, included } = await fudoGetAll('/sales', { 'include': 'items,subitems' });
+
+      // Crear mapa id → item para resolución rápida
+      const itemsById: Record<string, any> = {};
+      for (const inc of included) {
+        if (inc.type === 'Item' || inc.type === 'Subitem') {
+          itemsById[inc.id] = inc;
+        }
+      }
+
+      // Filtrar por closedAt y mapear al formato que usa TabVentas
+      const sales = salesData
+        .filter((s: any) => {
+          const closedAt = s.attributes?.closedAt ?? '';
+          const fecha    = closedAt.slice(0, 10);
+          if (desde && fecha < desde) return false;
+          if (hasta && fecha > hasta) return false;
+          return true;
+        })
+        .map((s: any) => {
+          const itemRefs: any[] = s.relationships?.items?.data ?? [];
+          const items = itemRefs.map((ref: any) => {
+            const item = itemsById[ref.id];
+            return {
+              id:       ref.id,
+              name:     item?.attributes?.name ?? item?.attributes?.productName ?? `Item #${ref.id}`,
+              quantity: item?.attributes?.quantity ?? 1,
+              price:    item?.attributes?.unitPrice ?? item?.attributes?.price ?? 0,
+            };
+          });
+          return {
+            id:       s.id,
+            fecha:    s.attributes?.closedAt ?? s.attributes?.createdAt ?? '',
+            total:    s.attributes?.total ?? 0,
+            saleType: s.attributes?.saleType ?? '',
+            items,
+          };
+        });
+
+      return NextResponse.json({ sales, total_raw: salesData.length });
+    }
+
+    return NextResponse.json({ error: 'action no reconocida' }, { status: 400 });
+
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
 
 async function fudoGet(path: string, params: Record<string, string> = {}) {
   const token = await getToken();
