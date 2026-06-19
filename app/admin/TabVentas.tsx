@@ -7,25 +7,73 @@ import { supabase } from '../supabase';
 type StockDescuento = { producto: string; cantidad: number; unidad: 'u' | 'kg' };
 
 const FUDO_STOCK_MAP: Record<string, StockDescuento[]> = {
-  // BURGER — ajustar nombres según los productos reales en Fudo
-  'burger club':           [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'burger simple':         [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'burger doble':          [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'burger triple':         [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'burger':                [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
+  // ── LOMITO (1 bife por sandwich) ─────────────────────────────────────────
+  '1 lomo clasico':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  '1 lomo provoleta':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  '1 lomo criollo':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  '1 lomo provoleta.':           [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  'simple tucumano':             [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  'clasico tucumano':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  'especial cebolla tucumano':   [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  'lomito clasico':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  'lomito':                      [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
 
-  // LOMITO — ajustar según corte real
-  'lomito clasico':        [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  'lomito clasico cuadril':[{ producto: 'Bifes Lomito_Cuadril', cantidad: 1, unidad: 'u' }],
-  'lomito':                [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  'completo':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
+  // ── PROMOS LOMITO ─────────────────────────────────────────────────────────
+  'promo clasico x2':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 2, unidad: 'u' }],
+  'promo sanguche clasico x2':   [{ producto: 'Bifes Lomito_Lomo', cantidad: 2, unidad: 'u' }],
 
-  // MILANESA — 200g por porción aprox
-  'milanesa de carne':     [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.2, unidad: 'kg' }],
-  'milanesa de pollo':     [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
-  'mila de carne':         [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.2, unidad: 'kg' }],
-  'mila de pollo':         [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
-  'milanesa':              [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.2, unidad: 'kg' }],
+  // ── BURGER (medallones según cantidad) ────────────────────────────────────
+  // Simple = 1, Doble = 2, Triple = 3, Cuádruple = 4
+  'cheese simple':               [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
+  'cheese triple':               [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'cheese cuadruple':            [{ producto: 'Medallones Burger', cantidad: 4, unidad: 'u' }],
+  'cheese cuadruple':            [{ producto: 'Medallones Burger', cantidad: 4, unidad: 'u' }],
+  'bacon doble':                 [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'bacon triple':                [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'bacon cuadruple':             [{ producto: 'Medallones Burger', cantidad: 4, unidad: 'u' }],
+  'bacon jam triple':            [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'bacon jam doble':             [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'bacon crispy doble':          [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'bacon crispy simple':         [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
+  'animal style doble':          [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'hamburguesa bacon triple':    [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'hamburguesa cheese doble':    [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'hamburguesa bacon doble':     [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'hamburguesa peaky triple':    [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'hamburguesa la club doble':   [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'peaky triple':                [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'la club doble':               [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'la club triple':              [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+  'burger club':                 [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
+  'burger simple':               [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
+  'burger doble':                [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'burger triple':               [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+
+  // ── MILANESA (200g por porción aprox) ────────────────────────────────────
+  'milanesa de carne':           [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.2, unidad: 'kg' }],
+  'milanesa de pollo':           [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
+  'mila de carne':               [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.2, unidad: 'kg' }],
+  'mila de pollo':               [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
+  'promo mila clasica x2':       [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.4, unidad: 'kg' }],
+  'promo suprema clasica x2':    [{ producto: 'Milanesa de Carne Empanada', cantidad: 0.4, unidad: 'kg' }],
+
+  // ── SUPREMA = milanesa de pollo ──────────────────────────────────────────
+  'suprema delux':               [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
+  'suprema delux f':             [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
+  'suprema portena al plato':    [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.25, unidad: 'kg' }],
+  'suprema portena al plato f':  [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.25, unidad: 'kg' }],
+  'promo suprema clasica x2':    [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.4, unidad: 'kg' }],
+  'suprema':                     [{ producto: 'Milanesa de Pollo Empanada', cantidad: 0.2, unidad: 'kg' }],
+
+  // ── ANIMAL STYLE = burger ─────────────────────────────────────────────────
+  'animal style doble':          [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
+  'animal style triple':         [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
+
+  // ── BROLA = helados → no afectan stock de producción ─────────────────────
+  // brola kinder, brola de chocotorta → ignorar
+
+  // ── IGNORAR (bebidas, papas, envío, helados) ──────────────────────────────
+  // coca cola, sprite, aguarius, papas, costo de envio, producto generico, brola
 };
 
 function normalizar(s: string) {
