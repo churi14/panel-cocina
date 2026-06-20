@@ -18,40 +18,19 @@ export async function addToStockProduccion({
   if (!cantidad || cantidad <= 0) return;
 
   try {
-    // maybeSingle() no tira error si no encuentra nada (a diferencia de single())
-    const { data, error: fetchError } = await supabase
-      .from('stock_produccion')
-      .select('id, cantidad')
-      .eq('producto', producto)
-      .maybeSingle();
+    // Suma atómica vía función de Postgres (INSERT ... ON CONFLICT DO UPDATE)
+    // Esto evita la condición de carrera que generaba filas duplicadas cuando
+    // dos producciones del mismo producto se finalizaban casi al mismo tiempo.
+    const { error: rpcError } = await supabase.rpc('increment_stock_produccion', {
+      p_producto: producto,
+      p_categoria: categoria,
+      p_cantidad: cantidad,
+      p_unidad: unidad,
+    });
 
-    if (fetchError) {
-      console.error('Error buscando stock_produccion:', fetchError);
+    if (rpcError) {
+      console.error('Error en increment_stock_produccion:', rpcError);
       return;
-    }
-
-    if (data) {
-      // Ya existe — suma
-      const { error: updateError } = await supabase
-        .from('stock_produccion')
-        .update({
-          cantidad: Number(data.cantidad) + cantidad,
-          ultima_prod: new Date().toISOString(),
-        })
-        .eq('id', data.id);
-      if (updateError) console.error('Error actualizando stock_produccion:', updateError);
-    } else {
-      // No existe — crea nuevo
-      const { error: insertError } = await supabase
-        .from('stock_produccion')
-        .insert({
-          producto,
-          categoria,
-          cantidad,
-          unidad,
-          ultima_prod: new Date().toISOString(),
-        });
-      if (insertError) console.error('Error insertando stock_produccion:', insertError);
     }
 
     // Registrar ingreso en stock_movements para visibilidad en admin
