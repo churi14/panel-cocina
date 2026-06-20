@@ -107,6 +107,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ products: data });
     }
 
+    // ── LISTADO LIMPIO de productos para armar recetas ───────────────────────
+    if (action === 'all_products') {
+      const { data } = await fudoGetAll('/products', { include: 'productCategory' });
+      const clean = data
+        .map((p: any) => ({
+          id:       p.id,
+          nombre:   p.attributes?.name ?? '',
+          precio:   p.attributes?.price ?? null,
+          activo:   p.attributes?.enabled ?? p.attributes?.active ?? true,
+        }))
+        .filter((p: any) => p.nombre.trim() !== '')
+        .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
+      return NextResponse.json({ total: clean.length, products: clean });
+    }
+
     // ── VENTAS con items y nombres de producto ───────────────────────────────
     if (action === 'sales') {
       const desde = req.nextUrl.searchParams.get('desde') ?? '';
