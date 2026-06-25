@@ -197,8 +197,8 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
         {canFinish && (
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-slate-500">Nalga limpia</span>
-              <span className="font-black text-green-700">+{carne.toFixed(3)} kg → Nalga_L</span>
+              <span className="text-slate-500">{isNalgaConTapa ? 'Nalga limpia' : `${corteNorm} limpio`}</span>
+              <span className="font-black text-green-700">+{carne.toFixed(3)} kg → {productoDestino}</span>
             </div>
             {isNalgaConTapa && tapa > 0 && (
               <div className="flex justify-between">

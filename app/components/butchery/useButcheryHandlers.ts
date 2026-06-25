@@ -255,7 +255,7 @@ export function createButcheryHandlers(s: Setters) {
   }) => {
     const isNalgaConTapa = (prod.type as string) === 'nalga_con_tapa';
     const corteNorm = isNalgaConTapa ? 'Nalga' : (prod.typeName ?? '').replace(/_L$/, '').trim();
-    const stockNombre = isNalgaConTapa ? 'NALGA CON TAPA' : corteNorm.toUpperCase();
+    const stockNombre = isNalgaConTapa ? 'NALGA CON TAPA' : corteNorm;
 
     // 1. Descontar carne cruda del stock materias primas
     await deductStockByName(stockNombre, prod.weightKg, 'limpieza');
