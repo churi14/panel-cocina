@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, Award, CheckCircle2, Sun, Moon, AlertTriangle
+  RefreshCw, BarChart3, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -15,8 +15,7 @@ import TabStock       from './TabStock';
 import TabReportes    from './TabReportes';
 import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
-import TabUsuarios    from './TabUsuarios';
-import TabOperadores  from './TabOperadores';
+import TabEquipo      from './TabEquipo';
 import TabProyeccion  from './TabProyeccion';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
@@ -44,7 +43,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'usuarios' | 'operadores' | 'proyeccion' | 'tareas' | 'auditoria'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'proyeccion' | 'tareas' | 'auditoria'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -149,8 +148,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'produccion', label: 'Producción',  icon: <TrendingUp size={16} /> },
     { id: 'analytics',  label: 'Analytics',   icon: <BarChart3 size={16} /> },
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
-    { id: 'usuarios',   label: 'Usuarios',    icon: <Users size={16} /> },
-    { id: 'operadores', label: 'Operadores',  icon: <Award size={16} /> },
+    { id: 'equipo',     label: 'Equipo',       icon: <Users size={16} /> },
     { id: 'proyeccion', label: 'Proyección',   icon: <TrendingUp size={16} /> },
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
     { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
@@ -221,8 +219,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'produccion' && <TabProduccion  stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />}
         {activeTab === 'analytics'  && <TabAnalytics   movements={movements} produccionEventos={produccionEventos} prodHistorial={prodHistorial} />}
         {activeTab === 'ventas'     && <TabVentas />}
-        {activeTab === 'usuarios'   && <TabUsuarios />}
-        {activeTab === 'operadores' && <TabOperadores />}
+        {activeTab === 'equipo'     && <TabEquipo />}
         {activeTab === 'proyeccion' && <TabProyeccion />}
         {activeTab === 'tareas'     && <TabTareas />}
         {activeTab === 'auditoria'  && <TabAuditoria />}

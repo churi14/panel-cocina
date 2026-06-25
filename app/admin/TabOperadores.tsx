@@ -77,7 +77,7 @@ export default function TabOperadores() {
 
   // Build stats per operador
   const stats: OperadorStats[] = perfiles
-    .filter(p => p.rol === 'operador' || p.rol === 'admin')
+    .filter(p => p.activo !== false)
     .map(p => {
       // Match eventos by operador name or user_id
       const evOp = eventosFiltrados.filter(e =>
