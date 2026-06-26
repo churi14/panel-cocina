@@ -10,7 +10,7 @@ async function fetchOperadores(): Promise<string[]> {
   if (!pending) {
     pending = Promise.resolve(
       supabase
-        .from('perfiles')
+        .from('operadores')
         .select('nombre')
         .eq('activo', true)
         .order('nombre')
