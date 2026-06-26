@@ -284,7 +284,4 @@ export default function TabTareas() {
             );
           })}
         </div>
-      )}
-    </div>
-  );
-}
+      )

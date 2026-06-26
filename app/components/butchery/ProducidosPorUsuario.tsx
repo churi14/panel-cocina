@@ -281,7 +281,4 @@ export default function ProducidosPorUsuario({ operadorActual, onClose }: Props)
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
+      </

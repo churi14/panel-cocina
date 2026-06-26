@@ -329,7 +329,4 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
+      </div

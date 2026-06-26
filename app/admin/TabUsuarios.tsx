@@ -461,12 +461,4 @@ export default function TabUsuarios() {
                 className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-black rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {sendingNotif
                   ? <><RefreshCw size={16} className="animate-spin" /> Enviando...</>
-                  : <><Send size={16} /> Enviar notificación</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                  : <><Send size={

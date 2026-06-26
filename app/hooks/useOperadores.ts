@@ -8,15 +8,16 @@ let pending: Promise<string[]> | null = null;
 async function fetchOperadores(): Promise<string[]> {
   if (cached) return cached;
   if (!pending) {
-    pending = supabase
-      .from('perfiles')
-      .select('nombre')
-      .eq('activo', true)
-      .order('nombre')
-      .then(({ data }) => {
-        cached = (data ?? []).map((p: any) => p.nombre as string);
-        return cached;
-      });
+    pending = Promise.resolve(
+      supabase
+        .from('perfiles')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre')
+    ).then(({ data }) => {
+      cached = (data ?? []).map((p: any) => p.nombre as string);
+      return cached!;
+    });
   }
   return pending;
 }

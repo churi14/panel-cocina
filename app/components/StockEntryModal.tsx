@@ -523,7 +523,4 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
+      </div

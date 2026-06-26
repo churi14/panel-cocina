@@ -296,7 +296,4 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           }}
           onCancel={() => setFinishingBatchId(null)}
         />
-      )}
-    </div>
-  );
-}
+      )

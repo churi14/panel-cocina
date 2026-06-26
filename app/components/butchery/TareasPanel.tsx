@@ -279,6 +279,3 @@ export default function TareasPanel({ operadorActual }: { operadorActual?: strin
           )}
         </>
       )}
-    </section>
-  );
-}
