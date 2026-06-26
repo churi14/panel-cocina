@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, RefreshCw, TrendingDown, AlertTriangle, Edit2, Check, Plus, Minus } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useOperadores } from '../hooks/useOperadores';
 
 type StockItem = {
   id: number; nombre: string; categoria: string;
@@ -61,11 +62,10 @@ type EditTarget = {
   tabla: 'stock' | 'stock_produccion'; nombreCampo: 'nombre' | 'producto';
 };
 
-const OPERADORES_STOCK = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
-
 function EditModal({ item, onClose, onSaved }: {
   item: EditTarget; onClose: () => void; onSaved: () => void;
 }) {
+  const operadores = useOperadores();
   const [operador, setOperador] = useState('');
   const [modo, setModo]         = useState<'agregar' | 'reemplazar'>('agregar');
   const [valor, setValor]       = useState('');
@@ -150,7 +150,7 @@ function EditModal({ item, onClose, onSaved }: {
         <div>
           <p className="text-xs font-black text-slate-400 uppercase mb-2">¿Quién sos?</p>
           <div className="flex flex-wrap gap-2">
-            {OPERADORES_STOCK.map(op => (
+            {operadores.map(op => (
               <button key={op} onClick={() => setOperador(op)}
                 className={`px-3 py-1.5 rounded-xl text-sm font-black border transition-all
                   ${operador === op ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-400'}`}>

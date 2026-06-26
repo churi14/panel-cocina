@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import { useOperadores } from '../hooks/useOperadores';
 import {
   UtensilsCrossed, X, ArrowLeft, Play, CheckSquare, Square, Plus,
   CheckCircle2, Clock, Calculator, AlertCircle, Wheat, Droplet, ChefHat, Carrot
@@ -31,8 +32,6 @@ const KITCHEN_CATEGORIES = [
   { id: 'Prep',        label: 'Prep / Otros', border: 'border-blue-200',   hover: 'hover:border-blue-400',   icon: <Clock   size={48} className="text-blue-600 mb-4" /> },
 ];
 
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
-
 export default function KitchenProductionModal({ onClose, activeProductions, setActiveProductions, recipesDB, setProductionHistory, operadorNombre }: {
   onClose: () => void;
   activeProductions: import('../types').ActiveProductionItem[];
@@ -41,6 +40,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   setProductionHistory: any;
   operadorNombre?: string;
 }) {
+  const operadores = useOperadores();
   const [operador, setOperador] = useState(''); // Siempre mostrar selector — no auto-fill
   const [modalView, setModalView] = useState<'list' | 'new'>('list');
   const [view, setView] = useState<'category' | 'product' | 'recipe'>('category');
@@ -589,7 +589,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                 <p className="text-slate-400 text-sm mt-1">Seleccioná tu nombre para registrar la producción</p>
               </div>
               <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-                {OPERADORES.map(op => (
+                {operadores.map(op => (
                   <button key={op} onClick={() => setOperador(op)}
                     className="py-4 rounded-2xl border-2 border-slate-200 hover:border-amber-400 hover:bg-amber-50 transition-all font-black text-slate-700 hover:text-amber-700 active:scale-95">
                     {op}

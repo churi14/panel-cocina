@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, PackageMinus, ChevronLeft, Search, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useOperadores } from '../hooks/useOperadores';
 import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
 import HelpButton from './HelpButton';
 
@@ -28,9 +29,8 @@ const MOTIVOS = [
   'Otro',
 ];
 
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
-
 export default function StockExitModal({ onClose }: { onClose: () => void }) {
+  const operadores = useOperadores();
   const [step, setStep] = useState<'cat' | 'product' | 'form' | 'operador'>('operador');
   const [operador, setOperador] = useState('');
   const [selectedCat, setSelectedCat] = useState<typeof CATEGORIES[0] | null>(null);
@@ -184,7 +184,7 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-4">
               <p className="text-slate-500 text-sm text-center mb-6">Seleccioná tu nombre para registrar el movimiento</p>
               <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-                {OPERADORES.map(op => (
+                {operadores.map(op => (
                   <button key={op} onClick={() => { setOperador(op); setStep('cat'); }}
                     className="flex items-center justify-center gap-2 p-5 rounded-2xl border-2 border-slate-200 hover:border-orange-400 hover:bg-orange-50 transition-all active:scale-95 font-black text-lg text-slate-700 hover:text-orange-700">
                     👤 {op}

@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Beef, X, Plus, ChevronLeft, Download, FileText, CheckCircle2, ChevronRight } from 'lucide-react';
 import { ButcheryProduction, ButcheryRecord } from '../types';
+import { useOperadores } from '../hooks/useOperadores';
 import { CUTS } from './butchery/cuts';
 import { FinishStep1Overlay } from './butchery/Overlays';
 import { ProductionCard } from './butchery/ProductionCard';
@@ -12,8 +13,6 @@ import { Step2BurgerView } from './butchery/Step2BurgerView';
 import LimpiezaView from './butchery/LimpiezaView';
 import { groupByBatch, createButcheryHandlers } from './butchery/useButcheryHandlers';
 
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
-
 export default function ButcheryModal({ onClose, butcheryProductions, setButcheryProductions, butcheryRecords, setButcheryRecords }: {
   onClose: () => void;
   butcheryProductions: ButcheryProduction[];
@@ -21,6 +20,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   butcheryRecords: ButcheryRecord[];
   setButcheryRecords: React.Dispatch<React.SetStateAction<ButcheryRecord[]>>;
 }) {
+  const operadores = useOperadores();
   const [operador, setOperador] = useState('');
   const [view, setView] = useState<'list' | 'new' | 'step2'>('list');
   const [finishingBatchId, setFinishingBatchId] = useState<number | null>(null);
@@ -112,7 +112,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                 <p className="text-slate-400 text-sm mt-1">Seleccioná tu nombre para registrar la producción</p>
               </div>
               <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
-                {OPERADORES.map(op => (
+                {operadores.map(op => (
                   <button key={op} onClick={() => setOperador(op)}
                     className="py-4 rounded-2xl border-2 border-slate-200 hover:border-rose-400 hover:bg-rose-50 transition-all font-black text-slate-700 hover:text-rose-700 active:scale-95">
                     {op}

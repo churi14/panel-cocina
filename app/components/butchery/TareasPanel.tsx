@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../supabase';
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, RefreshCw, Plus, X, User, Users, AlertTriangle } from 'lucide-react';
-
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
+import { useOperadores } from '../../hooks/useOperadores';
 
 type Tarea = {
   id: number;
@@ -26,6 +25,7 @@ const PRIO_COLORS = {
 };
 
 export default function TareasPanel({ operadorActual }: { operadorActual?: string }) {
+  const operadores = useOperadores();
   const [tareas, setTareas]         = useState<Tarea[]>([]);
   const [loading, setLoading]       = useState(true);
   const [collapsed, setCollapsed]   = useState(false);
@@ -126,7 +126,7 @@ export default function TareasPanel({ operadorActual }: { operadorActual?: strin
             onChange={e => setOperador(e.target.value)}
             className="text-xs font-bold bg-slate-100 border-0 rounded-lg px-2 py-1.5 text-slate-600 outline-none">
             <option value="">¿Quién sos?</option>
-            {OPERADORES.map(op => <option key={op} value={op}>{op}</option>)}
+            {operadores.map(op => <option key={op} value={op}>{op}</option>)}
           </select>
           <button onClick={fetchTareas}
             className="p-1.5 rounded-lg hover:bg-slate-100 transition-all text-slate-400">
@@ -181,7 +181,7 @@ export default function TareasPanel({ operadorActual }: { operadorActual?: strin
                 <select value={asignadoA} onChange={e => setAsignadoA(e.target.value)}
                   className="text-xs font-bold border border-slate-200 rounded-lg px-2 py-1.5 bg-white outline-none">
                   <option value="todos">Para todos</option>
-                  {OPERADORES.map(op => <option key={op} value={op}>{op}</option>)}
+                  {operadores.map(op => <option key={op} value={op}>{op}</option>)}
                 </select>
               </div>
               <button onClick={handleCrear} disabled={!titulo.trim() || saving}

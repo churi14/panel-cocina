@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { RefreshCw, X, Clock, ChevronDown } from 'lucide-react';
-
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
+import { useOperadores } from '../../hooks/useOperadores';
 
 type Evento = {
   id: number;
@@ -51,6 +50,7 @@ type Props = {
 };
 
 export default function ProducidosPorUsuario({ operadorActual, onClose }: Props) {
+  const operadores = useOperadores();
   const [eventos, setEventos]     = useState<Evento[]>([]);
   const [loading, setLoading]     = useState(true);
   const [rango, setRango]         = useState<'hoy' | 'semana' | 'todo'>('hoy');
@@ -133,7 +133,7 @@ export default function ProducidosPorUsuario({ operadorActual, onClose }: Props)
                   ${operador === 'todos' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'}`}>
                 Todos
               </button>
-              {OPERADORES.map(op => (
+              {operadores.map(op => (
                 <button key={op} onClick={() => setOperador(op)}
                   className={`px-3 py-1.5 rounded-full text-xs font-black transition-all
                     ${operador === op ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'}`}>

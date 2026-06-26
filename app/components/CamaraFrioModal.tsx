@@ -2,14 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Snowflake, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useOperadores } from '../hooks/useOperadores';
 
 const CATEGORIAS = [
   { id: 'carne',      label: 'Carne',       emoji: '🥩', unidad: 'kg',  color: 'text-red-600',   bg: 'bg-red-50',   border: 'border-red-200' },
   { id: 'pan_kalis',  label: 'Pan Kalis',   emoji: '🍞', unidad: 'u',   color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
   { id: 'medallones', label: 'Medallones',  emoji: '🍔', unidad: 'u',   color: 'text-orange-600',bg: 'bg-orange-50',border: 'border-orange-200' },
 ];
-
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 type Item = {
   id: string;
@@ -34,10 +33,11 @@ function tiempoRestante(disponibleDesde: string): { horas: number; minutos: numb
 }
 
 export default function CamaraFrioModal({ onClose, operadorNombre }: { onClose: () => void; operadorNombre: string }) {
+  const operadores = useOperadores();
   const [view, setView]         = useState<'stock' | 'ingresar' | 'retirar'>('stock');
   const [items, setItems]       = useState<Item[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [operador, setOperador] = useState(operadorNombre || OPERADORES[0]);
+  const [operador, setOperador] = useState(operadorNombre || '');
 
   // Ingresar
   const [ingCategoria, setIngCategoria] = useState('carne');
@@ -155,7 +155,7 @@ export default function CamaraFrioModal({ onClose, operadorNombre }: { onClose: 
         <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-3 shrink-0">
           <span className="text-xs font-black text-slate-500 uppercase">Quién:</span>
           <div className="flex gap-2 flex-wrap">
-            {OPERADORES.map(op => (
+            {operadores.map(op => (
               <button key={op} onClick={() => setOperador(op)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-all
                   ${operador === op ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>

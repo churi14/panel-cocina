@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Truck, Check, ChevronLeft, Search, RefreshCw } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useOperadores } from '../hooks/useOperadores';
 import HelpButton from './HelpButton';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
@@ -17,8 +18,6 @@ const CATEGORIES = [
   { id: 'BROLAS',       label: 'Brolas',       emoji: '🍫', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
   { id: 'DESCARTABLES', label: 'Descartables', emoji: '📦', color: 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100' },
 ];
-
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
 
 // ─── Configuración de aderezos en doypack/sachet ──────────────────────────────
 // Variantes según imagen de proveedor + formatos comunes del mercado
@@ -69,6 +68,7 @@ const getFormatosAderezo = (nombre: string): { label: string; kg: number }[] => 
 
 
 export default function StockEntryModal({ onClose }: { onClose: () => void }) {
+  const operadores = useOperadores();
   const [step, setStep] = useState<'cat' | 'product' | 'form' | 'operador'>('operador');
   const [operador, setOperador] = useState('');
   const [selectedCat, setSelectedCat] = useState<typeof CATEGORIES[0] | null>(null);
@@ -231,7 +231,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
             <div className="space-y-4">
               <p className="text-slate-500 text-sm text-center mb-6">Seleccioná tu nombre para registrar el movimiento</p>
               <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-                {OPERADORES.map(op => (
+                {operadores.map(op => (
                   <button key={op} onClick={() => { setOperador(op); setStep('cat'); }}
                     className="flex items-center justify-center gap-2 p-5 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all active:scale-95 font-black text-lg text-slate-700 hover:text-blue-700">
                     👤 {op}

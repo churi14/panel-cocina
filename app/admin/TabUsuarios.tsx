@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { Users, Plus, X, Check, RefreshCw, Eye, EyeOff, ShieldCheck, Edit2, Bell, Send, Trash2 } from 'lucide-react';
+import { invalidateOperadoresCache } from '../hooks/useOperadores';
 
 type Rol = 'admin' | 'operador' | 'administrativa';
 
@@ -140,6 +141,7 @@ export default function TabUsuarios() {
         setSuccess('Usuario creado correctamente');
       }
 
+      invalidateOperadoresCache();
       await fetchUsuarios();
       setTimeout(() => { setShowForm(false); resetForm(); }, 1500);
     } catch (e: any) {
@@ -167,6 +169,7 @@ export default function TabUsuarios() {
         await supabase.from('perfiles').delete().eq('id', u.id);
       }
       setDeleteConfirm(null);
+      invalidateOperadoresCache();
       await fetchUsuarios();
     } catch (e) {
       console.error(e);

@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { Plus, RefreshCw, CheckCircle2, Clock, AlertTriangle, Trash2, X, User, Users } from 'lucide-react';
-
-const OPERADORES = ['Julian', 'Daiana', 'Milagros', 'Juliana', 'Teo'];
+import { useOperadores } from '../hooks/useOperadores';
 const PRIORIDADES = [
   { id: 'alta',  label: 'Alta',  color: 'text-red-400',    bg: 'bg-red-900/30',   border: 'border-red-700' },
   { id: 'media', label: 'Media', color: 'text-amber-400',  bg: 'bg-amber-900/30', border: 'border-amber-700' },
@@ -37,6 +36,7 @@ function horaCorta(iso: string) {
 }
 
 export default function TabTareas() {
+  const operadores = useOperadores();
   const [tareas, setTareas]         = useState<Tarea[]>([]);
   const [loading, setLoading]       = useState(true);
   const [filtro, setFiltro]         = useState<'todas' | 'pendiente' | 'completada'>('todas');
@@ -188,7 +188,7 @@ export default function TabTareas() {
                 <select value={asignadoA} onChange={e => setAsignadoA(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white font-bold outline-none focus:border-blue-500">
                   <option value="todos">Todos</option>
-                  {OPERADORES.map(op => <option key={op} value={op}>{op}</option>)}
+                  {operadores.map(op => <option key={op} value={op}>{op}</option>)}
                 </select>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function TabTareas() {
               <select value={creadoPor} onChange={e => setCreadoPor(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white font-bold outline-none focus:border-blue-500">
                 <option value="Admin">Admin</option>
-                {OPERADORES.map(op => <option key={op} value={op}>{op}</option>)}
+                {operadores.map(op => <option key={op} value={op}>{op}</option>)}
               </select>
             </div>
 
