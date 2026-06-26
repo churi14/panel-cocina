@@ -500,4 +500,6 @@ export default function StockViewModal({ onClose }: { onClose: () => void }) {
           onSaved={fetchAll}
         />
       )}
-    </div
+    </div>
+  );
+}

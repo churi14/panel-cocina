@@ -377,4 +377,6 @@ export default function CamaraFrioModal({ onClose, operadorNombre }: { onClose: 
           )}
         </div>
       </div>
-    </di
+    </div>
+  );
+}

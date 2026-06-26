@@ -260,4 +260,17 @@ export default function TabOperadores() {
                     </div>
                   )}
 
-                  {op.total
+                  {op.totalProducciones === 0 && (
+                    <p className="text-slate-600 text-sm text-center py-4">
+                      Sin producciones registradas en este período
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

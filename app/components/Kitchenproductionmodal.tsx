@@ -967,4 +967,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
           onFinalizado={() => finalizarProduccion()}
           onCancelar={() => setFinishingProd(null)}
         />
-      )
+      )}
+    </div>
+  );
+}
