@@ -238,7 +238,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     if (!prod) return;
     if (finishingRef.current) return;
     finishingRef.current = true;
-    if (isFraccion && !showFraccionModal) { setShowFraccionModal(true); return; }
+    if (isFraccion && !showFraccionModal) { setShowFraccionModal(true); finishingRef.current = false; return; }
     setShowFraccionModal(false);
     // Pan: pedir unidades
     if (isPanRecipe && !showPanModal) { setShowPanModal(true); return; }
