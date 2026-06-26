@@ -75,15 +75,23 @@ export default function TabOperadores() {
     ? eventos.filter(e => e.fecha >= desde)
     : eventos;
 
-  // Build stats per operador
-  const stats: OperadorStats[] = perfiles
+  // Deduplicar perfiles por nombre normalizado (evita "Julian" y "julian" como dos entradas)
+  const perfilesSinDuplicados = perfiles
     .filter(p => p.activo !== false)
+    .reduce((acc: any[], p: any) => {
+      const key = p.nombre.toLowerCase().trim();
+      if (!acc.find((x: any) => x.nombre.toLowerCase().trim() === key)) acc.push(p);
+      return acc;
+    }, []);
+
+  // Build stats per operador
+  const stats: OperadorStats[] = perfilesSinDuplicados
     .map(p => {
-      // Match eventos by operador name or user_id
+      const nombreNorm = p.nombre.toLowerCase().trim();
+      // Match case-insensitive por nombre o por id
       const evOp = eventosFiltrados.filter(e =>
-        e.operador === p.nombre ||
-        e.operador === p.id ||
-        (!e.operador && false) // eventos sin operador ignorados por ahora
+        (e.operador?.toLowerCase().trim() === nombreNorm) ||
+        e.operador === p.id
       );
 
       const finales = evOp.filter(e => e.tipo === 'fin_paso2');
