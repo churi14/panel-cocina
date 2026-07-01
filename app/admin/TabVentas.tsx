@@ -93,7 +93,7 @@ export default function TabVentas() {
         itemsReconocidos,
         itemsNoReconocidos: Array.from(noReconocidos),
         descuentos: Object.entries(descuentoMap).map(([key, v]) => ({
-          producto: key.split('::'')[1], total: parseFloat(v.total.toFixed(3)), unidad: v.unidad, tabla: v.tabla,
+          producto: key.split('::')[1], total: parseFloat(v.total.toFixed(3)), unidad: v.unidad, tabla: v.tabla,
         })),
       });
     } catch (e: any) { setError(e.message); }
