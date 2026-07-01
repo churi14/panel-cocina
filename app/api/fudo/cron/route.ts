@@ -144,6 +144,9 @@ export async function GET(req: NextRequest) {
     const nuevasVentas = salesRecientes.filter((s: any) => !procesadasSet.has(String(s.id)));
 
     if (nuevasVentas.length === 0) {
+      await supabase.from('fudo_sync_log').insert({
+        desde: yesterday, hasta: today, ventas: 0, descuentos: [], tipo: 'auto',
+      });
       return NextResponse.json({
         ok: true,
         message: 'Sin ventas nuevas para procesar',
