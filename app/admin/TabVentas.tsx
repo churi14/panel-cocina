@@ -352,8 +352,10 @@ function TiempoReal() {
     const all      = (data ?? []) as SyncLog[];
     const autoLogs = all.filter(l => !l.tipo || l.tipo === 'auto');
     const logs     = autoLogs.length > 0 ? autoLogs : all;
-    setSyncLogs(logs);
+    // lastAuto = última ejecución real del cron (cualquiera, incluye 0 ventas)
     setLastAuto(logs[0] ?? null);
+    // historial solo muestra syncs con ventas reales
+    setSyncLogs(logs.filter(l => (l.ventas ?? 0) > 0));
     setLoading(false);
   };
 
@@ -442,8 +444,8 @@ function TiempoReal() {
 
         {!loading && syncLogs.length === 0 && (
           <div className="px-5 py-8 text-center">
-            <p className="text-slate-500 text-sm">Sin syncs automaticas aun.</p>
-            <p className="text-slate-600 text-xs mt-1">El primer ciclo se ejecutara en los proximos 10 minutos.</p>
+            <p className="text-slate-500 text-sm">Sin ventas procesadas aun.</p>
+            <p className="text-slate-600 text-xs mt-1">Cuando el cron detecte ventas nuevas, aparecen acá.</p>
           </div>
         )}
 
