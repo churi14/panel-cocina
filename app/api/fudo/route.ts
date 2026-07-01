@@ -127,10 +127,11 @@ export async function GET(req: NextRequest) {
       const desde = req.nextUrl.searchParams.get('desde') ?? '';
       const hasta = req.nextUrl.searchParams.get('hasta') ?? '';
 
-      // 1+2. Traer productos y ventas en paralelo (ventas: máx 2 páginas = 1000 registros)
+      // 1+2. Traer productos y ventas en paralelo
+      // Ventas: sort por createdAt desc para tener las más recientes primero, máx 3 páginas (1500)
       const [{ data: productsData }, { data: salesData, included }] = await Promise.all([
         fudoGetAll('/products'),
-        fudoGetAll('/sales', { include: 'items' }, 2),
+        fudoGetAll('/sales', { include: 'items', sort: '-createdAt' }, 3),
       ]);
       const productById: Record<string, string> = {};
       for (const p of productsData) {
