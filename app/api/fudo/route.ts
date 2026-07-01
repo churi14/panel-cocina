@@ -134,11 +134,8 @@ export async function GET(req: NextRequest) {
         productById[p.id] = p.attributes?.name ?? p.attributes?.nombre ?? `Producto #${p.id}`;
       }
 
-      // 2. Traer ventas con items incluidos — filtrar por fecha en la API para evitar timeout
-      const dateParams: Record<string, string> = { include: 'items' };
-      if (desde) dateParams['filter[closedAt][gte]'] = `${desde}T00:00:00`;
-      if (hasta) dateParams['filter[closedAt][lte]'] = `${hasta}T23:59:59`;
-      const { data: salesData, included } = await fudoGetAll('/sales', dateParams);
+      // 2. Traer ventas con items incluidos (Fudo no soporta filtro por fecha en /sales)
+      const { data: salesData, included } = await fudoGetAll('/sales', { include: 'items' });
 
       // 3. Crear mapa de items incluidos: itemId → { quantity, productId }
       const itemsById: Record<string, { quantity: number; productId: string }> = {};

@@ -159,25 +159,15 @@ export default function TabVentas() {
         <div className="flex gap-4 items-end">
           <div className="flex-1">
             <label className="text-xs text-slate-500 mb-1 block">Desde</label>
-            <div className="relative">
-              <input type="date" value={desde} onChange={e => setDesde(e.target.value)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-              <div className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 pointer-events-none">
-                <span className="text-slate-400 text-xs">📅</span>
-                <span>{desde ? desde.split('-').reverse().join('/') : 'DD/MM/AAAA'}</span>
-              </div>
-            </div>
+            <input type="date" value={desde} onChange={e => setDesde(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500" />
+            <p className="text-sm font-bold text-slate-300 mt-1 pl-1">{desde.split('-').reverse().join('/')}</p>
           </div>
           <div className="flex-1">
             <label className="text-xs text-slate-500 mb-1 block">Hasta</label>
-            <div className="relative">
-              <input type="date" value={hasta} onChange={e => setHasta(e.target.value)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-              <div className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 pointer-events-none">
-                <span className="text-slate-400 text-xs">📅</span>
-                <span>{hasta ? hasta.split('-').reverse().join('/') : 'DD/MM/AAAA'}</span>
-              </div>
-            </div>
+            <input type="date" value={hasta} onChange={e => setHasta(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500" />
+            <p className="text-sm font-bold text-slate-300 mt-1 pl-1">{hasta.split('-').reverse().join('/')}</p>
           </div>
           <button onClick={fetchSales} disabled={loading || !mapLoaded}
             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-all disabled:opacity-40 flex items-center gap-2">
