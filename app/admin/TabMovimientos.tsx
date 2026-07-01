@@ -132,7 +132,13 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
               {filtered.map(m => (
                 <tr key={m.id} className="hover:bg-slate-800/30 transition-colors group">
                   <td className="px-4 py-3 text-slate-500 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
-                  <td className="px-4 py-3 font-bold text-slate-300 text-xs">{m.operador ?? '—'}</td>
+                  <td className="px-4 py-3 font-bold text-slate-300 text-xs">
+                    {m.operador === 'Fudo Cron'
+                      ? <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[10px] font-black">FUDO AUTO</span>
+                      : m.operador === 'Fudo API'
+                      ? <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px] font-black">FUDO MANUAL</span>
+                      : (m.operador ?? '—')}
+                  </td>
                   <td className="px-4 py-3">
                     <button onClick={() => setSelectedProduct(m.nombre)}
                       className="font-bold text-white text-xs hover:text-blue-400 hover:underline text-left transition-colors">
