@@ -254,9 +254,10 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
 
 // Sub-tab: Tiempo Real
 function TiempoReal() {
-  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [lastAuto, setLastAuto] = useState<SyncLog | null>(null);
+  const [syncLogs, setSyncLogs]   = useState<SyncLog[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [lastAuto, setLastAuto]   = useState<SyncLog | null>(null);
+  const [expanded, setExpanded]   = useState<number | null>(null);
 
   const loadLogs = async () => {
     setLoading(true);
@@ -364,24 +365,52 @@ function TiempoReal() {
         )}
 
         {!loading && syncLogs.length > 0 && (
-          <div className="divide-y divide-slate-800/50 max-h-96 overflow-y-auto">
-            {syncLogs.map((log, i) => (
-              <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-slate-800/20">
-                <div>
-                  <p className="text-sm font-bold text-white">
-                    {log.ventas ?? 0} venta{(log.ventas ?? 0) !== 1 ? 's' : ''} nuevas
-                    <span className="text-slate-500 font-normal"> | {descuentosCount(log)} descuentos</span>
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {new Date(log.created_at).toLocaleDateString('es-AR')}{' '}
-                    {new Date(log.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                    {log.tipo === 'auto'   && <span className="ml-2 px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px] font-bold">AUTO</span>}
-                    {log.tipo === 'manual' && <span className="ml-2 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px] font-bold">MANUAL</span>}
-                  </p>
+          <div className="divide-y divide-slate-800/50 max-h-[32rem] overflow-y-auto">
+            {syncLogs.map((log, i) => {
+              const desc = Array.isArray(log.descuentos) ? log.descuentos
+                : (() => { try { return JSON.parse(log.descuentos); } catch { return []; } })();
+              const isOpen = expanded === i;
+              return (
+                <div key={i}>
+                  <button
+                    onClick={() => setExpanded(isOpen ? null : i)}
+                    className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-800/20 transition-colors text-left">
+                    <div>
+                      <p className="text-sm font-bold text-white">
+                        {log.ventas ?? 0} venta{(log.ventas ?? 0) !== 1 ? 's' : ''} nuevas
+                        <span className="text-slate-500 font-normal"> · {descuentosCount(log)} descuentos</span>
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {new Date(log.created_at).toLocaleDateString('es-AR')}{' '}
+                        {new Date(log.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                        {log.tipo === 'auto'   && <span className="ml-2 px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px] font-bold">AUTO</span>}
+                        {log.tipo === 'manual' && <span className="ml-2 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px] font-bold">MANUAL</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs text-slate-500 font-mono">{tiempoRelativo(log.created_at)}</p>
+                      {desc.length > 0 && <span className="text-slate-600 text-xs">{isOpen ? '▲' : '▼'}</span>}
+                    </div>
+                  </button>
+                  {isOpen && desc.length > 0 && (
+                    <div className="px-5 pb-3 bg-slate-800/30">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Stock descontado:</p>
+                      <div className="space-y-1">
+                        {desc.map((d: any, j: number) => (
+                          <div key={j} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-300 font-bold">{d.producto}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-600">{d.tabla === 'stock_produccion' ? 'prod' : 'stock'}</span>
+                              <span className="text-red-400 font-black">−{d.total} {d.unidad}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-slate-500 font-mono">{tiempoRelativo(log.created_at)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
