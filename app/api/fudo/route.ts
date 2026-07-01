@@ -148,10 +148,10 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // 4. Filtrar por fecha (closedAt) y armar la respuesta
+      // 4. Filtrar por fecha (createdAt = apertura de venta, igual que Fudo) y armar la respuesta
       const sales = salesData
         .filter((s: any) => {
-          const fecha = (s.attributes?.closedAt ?? s.attributes?.createdAt ?? '').slice(0, 10);
+          const fecha = (s.attributes?.createdAt ?? s.attributes?.openedAt ?? s.attributes?.closedAt ?? '').slice(0, 10);
           if (desde && fecha < desde) return false;
           if (hasta && fecha > hasta) return false;
           return true;
