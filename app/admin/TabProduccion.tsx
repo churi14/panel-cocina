@@ -28,6 +28,7 @@ const CAT_ORDER = ['lomito', 'burger', 'milanesa', 'pan', 'salsa', 'dip', 'verdu
 export default function TabProduccion({ stockProd, produccionEventos, fetchMovements, cocinaActiva }: Props) {
   const [selectedProdItem, setSelectedProdItem] = useState<any | null>(null);
   const [filterCat, setFilterCat] = useState<string | null>(null);
+  const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [subTab, setSubTab]       = useState<'produccion' | 'desperdicios'>('produccion');
   const [selectedActiva, setSelectedActiva] = useState<any | null>(null);
 
@@ -318,9 +319,9 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
           const units = [...new Set(catItems.map((s: any) => s.unidad as string))];
           const unit = units.length === 1 ? units[0] : 'u';
           return (
-            <div key={cat} onClick={() => setFilterCat(filterCat === cat ? null : cat)}
-              className={`rounded-2xl border-2 p-4 cursor-pointer transition-all hover:opacity-80
-                ${filterCat === cat ? `${cfg.bg} ${cfg.border} ring-2 ring-offset-1 ring-offset-slate-950` : `${cfg.bg} ${cfg.border}`}`}>
+            <div key={cat} onClick={() => setSelectedCat(cat)}
+              className={`rounded-2xl border-2 p-4 cursor-pointer transition-all hover:opacity-80 hover:ring-2 hover:ring-offset-1 hover:ring-offset-slate-950 hover:ring-white/20
+                ${cfg.bg} ${cfg.border}`}>
               <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
               <p className={`text-3xl font-black ${cfg.color}`}>
                 {unit === 'kg' || unit === 'lt'
@@ -517,6 +518,56 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                   )}
                 </div>
 
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── MODAL CATEGORÍA ── */}
+      {selectedCat && (() => {
+        const cfg = CAT_CFG[selectedCat] ?? DEFAULT_CFG;
+        const catItems = stockProd
+          .filter((s: any) => s.categoria === selectedCat)
+          .sort((a: any, b: any) => b.cantidad - a.cantidad);
+        const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
+        const units = [...new Set(catItems.map((s: any) => s.unidad as string))];
+        const unit = units.length === 1 ? units[0] : '';
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+            onClick={() => setSelectedCat(null)}>
+            <div className={`bg-slate-900 border-2 ${cfg.border} rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl`}
+              onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className={`px-6 py-4 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg} rounded-t-2xl`}>
+                <div>
+                  <h3 className={`font-black text-xl ${cfg.color}`}>{cfg.emoji} {selectedCat}</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">{catItems.length} productos · Total: <span className="font-bold text-white">{typeof total === 'number' && (unit === 'kg' || unit === 'lt') ? total.toFixed(2).replace('.', ',') : Math.round(total)} {unit}</span></p>
+                </div>
+                <button onClick={() => setSelectedCat(null)} className="text-slate-500 hover:text-white p-1.5 rounded-xl hover:bg-slate-800">✕</button>
+              </div>
+              {/* Lista de productos */}
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {catItems.map((item: any) => (
+                    <div key={item.id}
+                      onClick={() => { setSelectedCat(null); setSelectedProdItem(item); }}
+                      className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
+                      <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
+                      <p className={`text-3xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
+                        {formatQty(item)}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                      {item.cantidad === 0 && <p className="text-[10px] text-red-500 font-black mt-1">SIN STOCK</p>}
+                      {item.ultima_prod && (
+                        <p className="text-xs text-slate-600 mt-2">
+                          {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-blue-500 mt-2 font-bold uppercase">Ver historial →</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -1,106 +1,21 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle2, ShoppingCart, Package } from 'lucide-react';
 import { supabase } from '../supabase';
 
-// ── MAPEO Fudo → stock_produccion ─────────────────────────────────────────────
-type StockDescuento = { producto: string; cantidad: number; unidad: 'u' | 'kg' };
-
-const FUDO_STOCK_MAP: Record<string, StockDescuento[]> = {
-  // ── LOMITO — solo productos que llevan "LOMO" en el nombre ───────────────
-  // (Lomito Vegetariano y Veggy Verduras NO llevan carne, no se mapean)
-  '1 lomo clasico':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  '1 lomo provoleta':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  '1 lomo provoleta.':           [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  '1 lomo criollo':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  '1 lomo americano':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  '1 lomo oklahoma':             [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  '1 lomo napolitano':           [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  'lomito clasico':              [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-  'lomito':                      [{ producto: 'Bifes Lomito_Lomo', cantidad: 1, unidad: 'u' }],
-
-  // ── PROMOS LOMITO ─────────────────────────────────────────────────────────
-  'promo clasico x2':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 2, unidad: 'u' }],
-  'promo sanguche clasico x2':   [{ producto: 'Bifes Lomito_Lomo', cantidad: 2, unidad: 'u' }],
-  'promo lomito 2x1':            [{ producto: 'Bifes Lomito_Lomo', cantidad: 2, unidad: 'u' }],
-
-  // ── BURGER (medallones según cantidad) ────────────────────────────────────
-  // Simple = 1, Doble = 2, Triple = 3, Cuádruple = 4
-  'cheese simple':               [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'cheese doble':                [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'cheese triple':               [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'cheese cuadruple':            [{ producto: 'Medallones Burger', cantidad: 4, unidad: 'u' }],
-  'bacon simple':                [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'bacon doble':                 [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'bacon triple':                [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'bacon cuadruple':             [{ producto: 'Medallones Burger', cantidad: 4, unidad: 'u' }],
-  'bacon jam simple':            [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'bacon jam doble':             [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'bacon jam triple':            [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'bacon crispy simple':         [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'bacon crispy doble':          [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'cuarto de libra simple':      [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'peaky doble':                 [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'peaky triple':                [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'la club doble':               [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'la club triple':              [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'animal style simple':         [{ producto: 'Medallones Burger', cantidad: 1, unidad: 'u' }],
-  'animal style doble':          [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'animal style triple':         [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  // Variantes con "hamburguesa" delante (otra forma en que aparecen en Fudo)
-  'hamburguesa bacon triple':    [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'hamburguesa cheese doble':    [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'hamburguesa bacon doble':     [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-  'hamburguesa peaky triple':    [{ producto: 'Medallones Burger', cantidad: 3, unidad: 'u' }],
-  'hamburguesa la club doble':   [{ producto: 'Medallones Burger', cantidad: 2, unidad: 'u' }],
-
-  // ── MILANESA DE CARNE (1 unidad por sandwich/plato) ───────────────────────
-  // Productos "MILANESA X" + sabores Tucumano (sin Suprema) = siempre carne
-  'milanesa napolitano':         [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa criollo':            [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa delux':              [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa cheddar':            [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa caramelizado':       [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa provoleta':          [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa al plato':           [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa box':                [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa bacon al plato':     [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa napolitana al plato':[{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa portena al plato':   [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'milanesa cebolla caramelizada al plato': [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'simple tucumano':             [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'clasico tucumano':            [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'especial cebolla tucumano':   [{ producto: 'Milanesa de Carne Empanada', cantidad: 1, unidad: 'u' }],
-  'promo mila clasica x2':       [{ producto: 'Milanesa de Carne Empanada', cantidad: 2, unidad: 'u' }],
-
-  // ── SUPREMA (1 unidad por sandwich/plato) — siempre pollo ────────────────
-  'suprema clasico':             [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema napolitano':          [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema delux':               [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema al plato':            [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema box':                 [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema bacon al plato':      [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema napolitana al plato': [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema portena al plato':    [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'suprema cebolla caramelizada al plato': [{ producto: 'Milanesa de Pollo Empanada', cantidad: 1, unidad: 'u' }],
-  'promo suprema clasica x2':    [{ producto: 'Milanesa de Pollo Empanada', cantidad: 2, unidad: 'u' }],
-
-  // ── BROLA = helados → no afectan stock de producción ─────────────────────
-  // brola kinder, brola de chocotorta, etc. → ignorar (no se agregan al mapa)
-
-  // ── IGNORAR (bebidas, papas, envío, helados) ──────────────────────────────
-  // coca cola, sprite, aguarius, papas, costo de envio, producto generico, brola
-};
-
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+type RecetaRow = { producto_fudo: string; ingrediente: string; cantidad: number; unidad: string; tabla_origen: string; };
+type StockDescuento = { producto: string; cantidad: number; unidad: string; tabla: string; };
+type RecetasMap = Record<string, StockDescuento[]>;
 
 function normalizar(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
 
-function buscarEnMapa(nombreFudo: string): StockDescuento[] | null {
+function buscarEnMapa(nombreFudo: string, mapa: RecetasMap): StockDescuento[] | null {
   const norm = normalizar(nombreFudo);
-  if (FUDO_STOCK_MAP[norm]) return FUDO_STOCK_MAP[norm];
-  for (const [key, val] of Object.entries(FUDO_STOCK_MAP)) {
+  if (mapa[norm]) return mapa[norm];
+  for (const [key, val] of Object.entries(mapa)) {
     if (norm.includes(key) || key.includes(norm)) return val;
   }
   return null;
@@ -108,20 +23,34 @@ function buscarEnMapa(nombreFudo: string): StockDescuento[] | null {
 
 type SaleItem = { name?: string; nombre?: string; productName?: string; quantity?: number; cantidad?: number; };
 type Sale     = { id: string | number; fecha?: string; date?: string; created_at?: string; total?: number; items?: SaleItem[]; subitems?: SaleItem[]; };
-type SyncResumen = { ventas: number; itemsReconocidos: number; itemsNoReconocidos: string[]; descuentos: { producto: string; total: number; unidad: string }[]; };
+type SyncResumen = { ventas: number; itemsReconocidos: number; itemsNoReconocidos: string[]; descuentos: { producto: string; total: number; unidad: string; tabla: string }[]; };
 
 export default function TabVentas() {
-  const [desde, setDesde]       = useState(() => new Date().toISOString().slice(0, 10));
-  const [hasta, setHasta]       = useState(() => new Date().toISOString().slice(0, 10));
-  const [loading, setLoading]   = useState(false);
-  const [syncing, setSyncing]   = useState(false);
-  const [resumen, setResumen]   = useState<SyncResumen | null>(null);
-  const [salesRaw, setSalesRaw] = useState<Sale[]>([]);
-  const [error, setError]       = useState('');
-  const [applied, setApplied]   = useState(false);
-  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [desde, setDesde]           = useState(() => new Date().toISOString().slice(0, 10));
+  const [hasta, setHasta]           = useState(() => new Date().toISOString().slice(0, 10));
+  const [loading, setLoading]       = useState(false);
+  const [syncing, setSyncing]       = useState(false);
+  const [resumen, setResumen]       = useState<SyncResumen | null>(null);
+  const [salesRaw, setSalesRaw]     = useState<Sale[]>([]);
+  const [error, setError]           = useState('');
+  const [applied, setApplied]       = useState(false);
+  const [lastSync, setLastSync]     = useState<string | null>(null);
+  const [recetasMap, setRecetasMap] = useState<RecetasMap>({});
+  const [mapLoaded, setMapLoaded]   = useState(false);
 
+  // Cargar recetas_fudo de Supabase al montar
   useEffect(() => {
+    supabase.from('recetas_fudo').select('producto_fudo,ingrediente,cantidad,unidad,tabla_origen')
+      .then(({ data }) => {
+        const mapa: RecetasMap = {};
+        for (const row of (data ?? []) as RecetaRow[]) {
+          const key = normalizar(row.producto_fudo);
+          if (!mapa[key]) mapa[key] = [];
+          mapa[key].push({ producto: row.ingrediente, cantidad: Number(row.cantidad), unidad: row.unidad, tabla: row.tabla_origen });
+        }
+        setRecetasMap(mapa);
+        setMapLoaded(true);
+      });
     supabase.from('fudo_sync_log').select('created_at').order('created_at', { ascending: false }).limit(1)
       .then(({ data }: { data: any[] | null }) => { if (data?.[0]) setLastSync(data[0].created_at); });
   }, []);
@@ -136,7 +65,7 @@ export default function TabVentas() {
       const sales: Sale[] = data.sales ?? [];
       setSalesRaw(sales);
 
-      const descuentoMap: Record<string, { total: number; unidad: string }> = {};
+      const descuentoMap: Record<string, { total: number; unidad: string; tabla: string }> = {};
       const noReconocidos = new Set<string>();
       let itemsReconocidos = 0;
 
@@ -145,12 +74,13 @@ export default function TabVentas() {
         for (const item of items) {
           const nombre = item.name ?? item.nombre ?? item.productName ?? '';
           const qty    = item.quantity ?? item.cantidad ?? 1;
-          const descuentos = buscarEnMapa(nombre);
+          const descuentos = buscarEnMapa(nombre, recetasMap);
           if (descuentos) {
             itemsReconocidos++;
             for (const d of descuentos) {
-              if (!descuentoMap[d.producto]) descuentoMap[d.producto] = { total: 0, unidad: d.unidad };
-              descuentoMap[d.producto].total += d.cantidad * qty;
+              const key = `${d.tabla}::${d.producto}`;
+              if (!descuentoMap[key]) descuentoMap[key] = { total: 0, unidad: d.unidad, tabla: d.tabla };
+              descuentoMap[key].total += d.cantidad * qty;
             }
           } else if (nombre.trim()) {
             noReconocidos.add(nombre);
@@ -162,8 +92,8 @@ export default function TabVentas() {
         ventas: sales.length,
         itemsReconocidos,
         itemsNoReconocidos: Array.from(noReconocidos),
-        descuentos: Object.entries(descuentoMap).map(([producto, v]) => ({
-          producto, total: parseFloat(v.total.toFixed(3)), unidad: v.unidad,
+        descuentos: Object.entries(descuentoMap).map(([key, v]) => ({
+          producto: key.split('::'')[1], total: parseFloat(v.total.toFixed(3)), unidad: v.unidad, tabla: v.tabla,
         })),
       });
     } catch (e: any) { setError(e.message); }
@@ -175,18 +105,33 @@ export default function TabVentas() {
     setSyncing(true);
     try {
       for (const d of resumen.descuentos) {
-        const { data: sp } = await supabase.from('stock_produccion')
-          .select('id, cantidad').ilike('producto', d.producto).maybeSingle();
-        if (sp) {
-          await supabase.from('stock_produccion').update({
-            cantidad: parseFloat((Number(sp.cantidad) - d.total).toFixed(3)),
-            ultima_prod: new Date().toISOString(),
-          }).eq('id', sp.id);
-          await supabase.from('stock_movements').insert({
-            nombre: d.producto, tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
-            motivo: `Ventas Fudo ${desde}${desde !== hasta ? ' → ' + hasta : ''}`,
-            operador: 'Fudo API', fecha: new Date().toISOString(),
-          });
+        if (d.tabla === 'stock_produccion') {
+          const { data: sp } = await supabase.from('stock_produccion')
+            .select('id, cantidad').ilike('producto', d.producto).maybeSingle();
+          if (sp) {
+            await supabase.from('stock_produccion').update({
+              cantidad: parseFloat((Number(sp.cantidad) - d.total).toFixed(3)),
+              ultima_prod: new Date().toISOString(),
+            }).eq('id', sp.id);
+            await supabase.from('stock_movements').insert({
+              nombre: d.producto, tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
+              motivo: `Ventas Fudo ${desde}${desde !== hasta ? ' → ' + hasta : ''}`,
+              operador: 'Fudo API', fecha: new Date().toISOString(),
+            });
+          }
+        } else if (d.tabla === 'stock') {
+          const { data: sm } = await supabase.from('stock')
+            .select('id, cantidad').ilike('nombre', d.producto).maybeSingle();
+          if (sm) {
+            await supabase.from('stock').update({
+              cantidad: parseFloat((Number(sm.cantidad) - d.total).toFixed(3)),
+            }).eq('id', sm.id);
+            await supabase.from('stock_movements').insert({
+              nombre: d.producto, tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
+              motivo: `Ventas Fudo ${desde}${desde !== hasta ? ' → ' + hasta : ''}`,
+              operador: 'Fudo API', fecha: new Date().toISOString(),
+            });
+          }
         }
       }
       await supabase.from('fudo_sync_log').insert({ desde, hasta, ventas: resumen.ventas, descuentos: resumen.descuentos });
@@ -201,6 +146,8 @@ export default function TabVentas() {
       <div>
         <h2 className="font-black text-xl text-white">Ventas Fudo</h2>
         {lastSync && <p className="text-xs text-slate-500 mt-0.5">Última sync: {new Date(lastSync).toLocaleDateString('es-AR')} {new Date(lastSync).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</p>}
+        {!mapLoaded && <p className="text-xs text-amber-400 mt-0.5">Cargando recetas...</p>}
+        {mapLoaded && <p className="text-xs text-green-500 mt-0.5">{Object.keys(recetasMap).length} productos mapeados desde Supabase</p>}
       </div>
 
       {/* Selector de fechas */}
@@ -211,13 +158,15 @@ export default function TabVentas() {
             <label className="text-xs text-slate-500 mb-1 block">Desde</label>
             <input type="date" value={desde} onChange={e => setDesde(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500" />
+            <p className="text-xs text-slate-500 mt-1">{desde.split('-').reverse().join('/')}</p>
           </div>
           <div className="flex-1">
             <label className="text-xs text-slate-500 mb-1 block">Hasta</label>
             <input type="date" value={hasta} onChange={e => setHasta(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500" />
+            <p className="text-xs text-slate-500 mt-1">{hasta.split('-').reverse().join('/')}</p>
           </div>
-          <button onClick={fetchSales} disabled={loading}
+          <button onClick={fetchSales} disabled={loading || !mapLoaded}
             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-all disabled:opacity-40 flex items-center gap-2">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             {loading ? 'Cargando...' : 'Traer ventas'}
@@ -235,7 +184,7 @@ export default function TabVentas() {
       {applied && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex gap-3">
           <CheckCircle2 size={18} className="text-green-400 shrink-0" />
-          <p className="text-green-400 font-black text-sm">Descuentos aplicados correctamente al stock de producción.</p>
+          <p className="text-green-400 font-black text-sm">Descuentos aplicados correctamente al stock.</p>
         </div>
       )}
 
@@ -264,6 +213,7 @@ export default function TabVentas() {
                   <div className="flex items-center gap-3">
                     <Package size={15} className="text-slate-500" />
                     <span className="font-bold text-white text-sm">{d.producto}</span>
+                    <span className="text-xs text-slate-600">{d.tabla}</span>
                   </div>
                   <span className="font-black text-red-400">−{d.total} {d.unidad}</span>
                 </div>
@@ -279,7 +229,6 @@ export default function TabVentas() {
                   <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg">{n}</span>
                 ))}
               </div>
-              <p className="text-xs text-slate-500 mt-2">Mandales estos nombres a Julian para agregarlos al mapeo.</p>
             </div>
           )}
 
