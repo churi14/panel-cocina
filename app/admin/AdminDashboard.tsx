@@ -16,7 +16,6 @@ import TabReportes    from './TabReportes';
 import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
 import TabEquipo      from './TabEquipo';
-import TabProyeccion  from './TabProyeccion';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
 import PushButton     from '../components/PushButton';
@@ -43,7 +42,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'proyeccion' | 'tareas' | 'auditoria'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -149,7 +148,6 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'analytics',  label: 'Analytics',   icon: <BarChart3 size={16} /> },
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
     { id: 'equipo',     label: 'Operadores',   icon: <Users size={16} /> },
-    { id: 'proyeccion', label: 'Proyección',   icon: <TrendingUp size={16} /> },
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
     { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
   ] as const;
@@ -220,7 +218,6 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'analytics'  && <TabAnalytics   movements={movements} produccionEventos={produccionEventos} prodHistorial={prodHistorial} />}
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'equipo'     && <TabEquipo />}
-        {activeTab === 'proyeccion' && <TabProyeccion />}
         {activeTab === 'tareas'     && <TabTareas />}
         {activeTab === 'auditoria'  && <TabAuditoria />}
       </main>
