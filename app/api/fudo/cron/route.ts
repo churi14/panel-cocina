@@ -200,7 +200,7 @@ export async function GET(req: NextRequest) {
             ultima_prod: new Date().toISOString(),
           }).eq('id', sp.id);
           await supabase.from('stock_movements').insert({
-            nombre: d.producto, tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
+            nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
             motivo, operador: 'Fudo Cron', fecha: new Date().toISOString(),
           });
         }
@@ -213,7 +213,7 @@ export async function GET(req: NextRequest) {
             cantidad: parseFloat((Number(sm.cantidad) - d.total).toFixed(3)),
           }).eq('id', sm.id);
           await supabase.from('stock_movements').insert({
-            nombre: d.producto, tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
+            nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
             motivo, operador: 'Fudo Cron', fecha: new Date().toISOString(),
           });
         }
