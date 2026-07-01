@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle2, ShoppingCart, Package } from 'lucide-react';
-import { supabase } from '../supabase';
+import { supabase } from '@/app/supabase';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type RecetaRow = { producto_fudo: string; ingrediente: string; cantidad: number; unidad: string; tabla_origen: string; };
