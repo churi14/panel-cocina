@@ -37,11 +37,11 @@ async function fudoFetch(path: string, params: Record<string, string> = {}) {
 }
 
 // Paginar y traer todo — maneja formato JSON:API {data: [...], included: [...]}
-async function fudoGetAll(path: string, params: Record<string, string> = {}) {
+async function fudoGetAll(path: string, params: Record<string, string> = {}, maxPages = 20) {
   let pageNumber = 1;
   const allData: any[]     = [];
   const allIncluded: any[] = [];
-  while (true) {
+  while (pageNumber <= maxPages) {
     const res  = await fudoFetch(path, { 'page[size]': '500', 'page[number]': String(pageNumber), ...params });
     const data     = Array.isArray(res) ? res : (res.data ?? []);
     const included = res.included ?? [];
@@ -127,15 +127,15 @@ export async function GET(req: NextRequest) {
       const desde = req.nextUrl.searchParams.get('desde') ?? '';
       const hasta = req.nextUrl.searchParams.get('hasta') ?? '';
 
-      // 1. Traer catálogo de productos para mapear id → nombre
-      const { data: productsData } = await fudoGetAll('/products');
+      // 1+2. Traer productos y ventas en paralelo (ventas: máx 2 páginas = 1000 registros)
+      const [{ data: productsData }, { data: salesData, included }] = await Promise.all([
+        fudoGetAll('/products'),
+        fudoGetAll('/sales', { include: 'items' }, 2),
+      ]);
       const productById: Record<string, string> = {};
       for (const p of productsData) {
         productById[p.id] = p.attributes?.name ?? p.attributes?.nombre ?? `Producto #${p.id}`;
       }
-
-      // 2. Traer ventas con items incluidos (Fudo no soporta filtro por fecha en /sales)
-      const { data: salesData, included } = await fudoGetAll('/sales', { include: 'items' });
 
       // 3. Crear mapa de items incluidos: itemId → { quantity, productId }
       const itemsById: Record<string, { quantity: number; productId: string }> = {};
