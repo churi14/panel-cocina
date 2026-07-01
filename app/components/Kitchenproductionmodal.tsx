@@ -194,7 +194,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   );
   const isSalsaRecipe    = !isFraccion && !isPanRecipe && !isMilanesaRecipe && !isVerduraRecipe && !isFiambreRecipe && !isEmpanadoRecipe &&
     (activeRecipeId.startsWith('salsa_') ||
-     recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Salsas');
+     ['Salsas', 'Prep'].includes(recipesDB.find((r: any) => r.name === activeRecipeName)?.category ?? ''));
   const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
 
 

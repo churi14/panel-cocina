@@ -400,7 +400,16 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Orégano',   qty: 0.5, unit: '%' },
       ]},
 
-    // ── PREP ─────────────────────────────────────────────────────────────────
+    // ── PREP / FRITURA ────────────────────────────────────────────────────────
+    { id: 'crispy_cebolla', name: 'Cebolla Crispy', category: 'Prep', baseYield: 0, unit: 'kg', recipeType: 'percent',
+      stockNombre: 'Cebolla Crispy',
+      ingredients: [
+        { name: 'CEBOLLA',   qty: 100,  unit: '%', isBase: true },
+        { name: 'Harina',    qty: 93,   unit: '%' },
+        { name: 'Leche',     qty: 39,   unit: '%' },
+        { name: 'Sal',       qty: 1.5,  unit: '%' },
+        { name: 'Pimienta',  qty: 0.8,  unit: '%' },
+      ]},
   ]);
 
   const [activeProductions, setActiveProductions] = useState<import('./types').ActiveProductionItem[]>([]);
