@@ -188,10 +188,12 @@ export async function GET(req: NextRequest) {
 
     // ── 6. Aplicar descuentos al stock ─────────────────────────────────────
     const motivo = `Auto-sync Fudo ${today}`;
+    const debug: { producto: string; tabla: string; encontrado: boolean; error?: string }[] = [];
     for (const d of descuentosArray) {
       if (d.tabla === 'stock_produccion') {
-        const { data: sp } = await supabase
+        const { data: sp, error: spErr } = await supabase
           .from('stock_produccion').select('id, cantidad').ilike('producto', d.producto).maybeSingle();
+        debug.push({ producto: d.producto, tabla: 'stock_produccion', encontrado: !!sp, error: spErr?.message });
         if (sp) {
           await supabase.from('stock_produccion').update({
             cantidad:    parseFloat((Number(sp.cantidad) - d.total).toFixed(3)),
@@ -203,8 +205,9 @@ export async function GET(req: NextRequest) {
           });
         }
       } else if (d.tabla === 'stock') {
-        const { data: sm } = await supabase
+        const { data: sm, error: smErr } = await supabase
           .from('stock').select('id, cantidad').ilike('nombre', d.producto).maybeSingle();
+        debug.push({ producto: d.producto, tabla: 'stock', encontrado: !!sm, error: smErr?.message });
         if (sm) {
           await supabase.from('stock').update({
             cantidad: parseFloat((Number(sm.cantidad) - d.total).toFixed(3)),
@@ -237,6 +240,7 @@ export async function GET(req: NextRequest) {
       nuevas_ventas:    nuevasVentas.length,
       items_reconocidos: itemsReconocidos,
       descuentos:       descuentosArray.length,
+      debug,
       ms:               Date.now() - startTime,
     });
 
