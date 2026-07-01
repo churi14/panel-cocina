@@ -175,7 +175,7 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
           Cancelar
         </button>
         <button onClick={handleGuardar}
-          disabled={!carneKg || carneNum <= 0 || guardando || (salioSospechoso && !sugSalio)}
+          disabled={!carneKg || carneNum <= 0 || guardando || (salioSospechoso && !sugSalio) || sugCarne !== null}
           className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl text-sm disabled:opacity-40">
           {guardando ? 'Guardando...' : '✓ Confirmar'}
         </button>
