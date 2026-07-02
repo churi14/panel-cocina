@@ -18,6 +18,7 @@ import TabVentas      from './TabVentas';
 import TabEquipo      from './TabEquipo';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
+import TabFichador    from './TabFichador';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
@@ -42,7 +43,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -150,6 +151,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'equipo',     label: 'Operadores',   icon: <Users size={16} /> },
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
     { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
+    { id: 'fichador',   label: 'Fichador',     icon: <Users size={16} /> },
   ] as const;
 
   return (
@@ -220,6 +222,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'equipo'     && <TabEquipo />}
         {activeTab === 'tareas'     && <TabTareas />}
         {activeTab === 'auditoria'  && <TabAuditoria />}
+        {activeTab === 'fichador'   && <TabFichador />}
       </main>
 
       <AdminTour />
