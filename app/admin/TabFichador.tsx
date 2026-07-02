@@ -15,24 +15,44 @@ type Reporte = {
 
 type FileState = { file: File; name: string } | null;
 
+// Detecta si el archivo corresponde al tipo esperado según su nombre
+function esArchivoValido(file: File, tipo: 'yg5' | 'kq'): boolean {
+  const nombre = file.name.toUpperCase();
+  if (tipo === 'yg5') return nombre.includes('YG5');
+  if (tipo === 'kq')  return nombre.includes('.KQ') || nombre.endsWith('KQ');
+  return true;
+}
+
 function Dropzone({
-  label, accept, ext, value, onChange,
+  label, accept, ext, value, onChange, tipo,
 }: {
   label: string; accept: string; ext: string;
   value: FileState; onChange: (f: FileState) => void;
+  tipo: 'yg5' | 'kq';
 }) {
-  const inputRef   = useRef<HTMLInputElement>(null);
+  const inputRef        = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
+  const [wrongFile, setWrongFile] = useState(false);
+
+  const handleFileOrDrop = useCallback((file: File) => {
+    if (!esArchivoValido(file, tipo)) {
+      setWrongFile(true);
+      setTimeout(() => setWrongFile(false), 2500);
+      return;
+    }
+    setWrongFile(false);
+    onChange({ file, name: file.name });
+  }, [onChange, tipo]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDrag(false);
     const file = e.dataTransfer.files[0];
-    if (file) onChange({ file, name: file.name });
-  }, [onChange]);
+    if (file) handleFileOrDrop(file);
+  }, [handleFileOrDrop]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) onChange({ file, name: file.name });
+    if (file) handleFileOrDrop(file);
     e.target.value = '';
   };
 
@@ -43,7 +63,9 @@ function Dropzone({
       onDrop={handleDrop}
       onClick={() => !value && inputRef.current?.click()}
       className={`relative border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-all
-        ${value
+        ${wrongFile
+          ? 'border-red-500/60 bg-red-500/10 cursor-not-allowed'
+          : value
           ? 'border-green-500/50 bg-green-500/5 cursor-default'
           : drag
           ? 'border-blue-400 bg-blue-500/10 cursor-copy'
@@ -51,6 +73,14 @@ function Dropzone({
         }`}
     >
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFile} />
+      {wrongFile && (
+        <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-slate-900/80 z-10">
+          <div className="text-center px-4">
+            <p className="text-red-400 font-black text-sm">⚠️ Archivo incorrecto</p>
+            <p className="text-red-300/70 text-xs mt-1">Acá va el <span className="font-mono font-bold">{ext}</span></p>
+          </div>
+        </div>
+      )}
 
       {value ? (
         <>
@@ -164,15 +194,17 @@ export default function TabFichador() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Dropzone
           label="Archivo de usuarios"
-          accept=".YG5,.yg5,*"
+          accept="*"
           ext="BAK.YG5"
+          tipo="yg5"
           value={yg5}
           onChange={setYg5}
         />
         <Dropzone
           label="Archivo de fichadas"
-          accept=".KQ,.kq,*"
+          accept="*"
           ext="BAK.KQ"
+          tipo="kq"
           value={kq}
           onChange={setKq}
         />
