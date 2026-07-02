@@ -45,11 +45,13 @@ type Fila = {
   entrada: string; salida: string; horas: string; obs: string;
 };
 
+// El reloj Anviz guarda hora LOCAL directamente en el timestamp.
+// No aplicar conversión de timezone — tratar como UTC para preservar la hora real.
 function fmtHora(d: Date): string {
-  return d.toLocaleTimeString('es-AR', {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    timeZone: 'America/Argentina/Buenos_Aires',
-  });
+  const h = String(d.getUTCHours()).padStart(2, '0');
+  const m = String(d.getUTCMinutes()).padStart(2, '0');
+  const s = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
 }
 
 function calcularTurnos(
