@@ -7,16 +7,15 @@ const EPOCH_MS    = new Date('2000-01-02T00:00:00Z').getTime();
 const RECORD_SIZE = 14;
 const DIAS        = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-// ── 1. Parsear BAK.YG5 → mapa id→nombre ───────────────────────────────────────
-function parseYG5(buf: Buffer): Record<number, string> {
-  const clean  = buf.toString('latin1').replace(/[\x00\xff]/g, '');
-  const nombres = clean.match(/[A-Za-zÁÉÍÓÚáéíóúñÑ]+/g) ?? [];
-  const usuarios: Record<number, string> = {};
-  nombres.forEach((n, i) => {
-    usuarios[i + 1] = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
-  });
-  return usuarios;
-}
+// ── Mapeo fijo de IDs del reloj Anviz ─────────────────────────────────────────
+const USUARIOS_DB: Record<number, string> = {
+  1: 'Teo',
+  2: 'Milagros',
+  3: 'Daiana',
+  4: 'Julian',
+  5: 'Juliana',
+  6: 'Marina',
+};
 
 // ── 2. Parsear BAK.KQ → registros crudos ──────────────────────────────────────
 // Estructura big-endian por registro (14 bytes): Q(8) I(4) B(1) B(1)
@@ -274,22 +273,16 @@ async function generarExcel(filas: Fila[]): Promise<Buffer> {
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const form    = await req.formData();
-    const yg5File = form.get('yg5') as File | null;
-    const kqFile  = form.get('kq')  as File | null;
+    const form   = await req.formData();
+    const kqFile = form.get('kq') as File | null;
 
-    if (!yg5File || !kqFile) {
-      return NextResponse.json({ error: 'Faltan archivos (yg5 y kq requeridos)' }, { status: 400 });
+    if (!kqFile) {
+      return NextResponse.json({ error: 'Falta el archivo BAK.KQ' }, { status: 400 });
     }
 
-    const [yg5Buf, kqBuf] = await Promise.all([
-      yg5File.arrayBuffer().then(ab => Buffer.from(ab)),
-      kqFile.arrayBuffer().then(ab => Buffer.from(ab)),
-    ]);
-
-    const usuarios = parseYG5(yg5Buf);
-    const records  = parseKQ(kqBuf);
-    const filas    = calcularTurnos(records, usuarios);
+    const kqBuf  = Buffer.from(await kqFile.arrayBuffer());
+    const records = parseKQ(kqBuf);
+    const filas   = calcularTurnos(records, USUARIOS_DB);
     const xlsxBuf  = await generarExcel(filas);
 
     // ── Guardar en Supabase Storage ──────────────────────────────────────────

@@ -115,7 +115,6 @@ function Dropzone({
 }
 
 export default function TabFichador() {
-  const [yg5, setYg5]           = useState<FileState>(null);
   const [kq,  setKq]            = useState<FileState>(null);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
@@ -123,7 +122,7 @@ export default function TabFichador() {
   const [reportes, setReportes] = useState<Reporte[]>([]);
   const [loadingHist, setLoadingHist] = useState(true);
 
-  const canGenerate = yg5 && kq && !loading;
+  const canGenerate = kq && !loading;
 
   const loadReportes = async () => {
     setLoadingHist(true);
@@ -144,8 +143,7 @@ export default function TabFichador() {
 
     try {
       const form = new FormData();
-      form.append('yg5', yg5.file);
-      form.append('kq',  kq.file);
+      form.append('kq', kq.file);
 
       const res = await fetch('/api/anviz', { method: 'POST', body: form });
 
@@ -182,33 +180,22 @@ export default function TabFichador() {
       </div>
 
       {/* Explicación */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 space-y-1 leading-relaxed">
-        <p><span className="text-slate-200 font-bold font-mono">BAK.YG5</span> — Mapeo de IDs y nombres del reloj</p>
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 leading-relaxed">
         <p><span className="text-slate-200 font-bold font-mono">BAK.KQ</span> — Registros de fichadas (entradas y salidas)</p>
         <p className="text-slate-600 pt-1">
           Los turnos nocturnos se agrupan restando 6 horas lógicas — las salidas de madrugada quedan en el turno correcto.
         </p>
       </div>
 
-      {/* Dropzones */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Dropzone
-          label="Archivo de usuarios"
-          accept="*"
-          ext="BAK.YG5"
-          tipo="yg5"
-          value={yg5}
-          onChange={setYg5}
-        />
-        <Dropzone
-          label="Archivo de fichadas"
-          accept="*"
-          ext="BAK.KQ"
-          tipo="kq"
-          value={kq}
-          onChange={setKq}
-        />
-      </div>
+      {/* Dropzone único */}
+      <Dropzone
+        label="Archivo de fichadas"
+        accept="*"
+        ext="BAK.KQ"
+        tipo="kq"
+        value={kq}
+        onChange={setKq}
+      />
 
       {/* Error / Success */}
       {error && (
