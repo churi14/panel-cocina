@@ -131,7 +131,7 @@ export default function TabFichador() {
       .from('fichador_reportes')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     setReportes((data ?? []) as Reporte[]);
     setLoadingHist(false);
   };
