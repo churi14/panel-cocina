@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const EPOCH_MS    = new Date('2000-01-02T00:00:00Z').getTime();
@@ -122,23 +122,152 @@ function calcularTurnos(
   return filas;
 }
 
-// ── 4. Generar Excel con xlsx ──────────────────────────────────────────────────
-function generarExcel(filas: Fila[]): Buffer {
-  const wb = XLSX.utils.book_new();
+// ── Paleta de colores por empleado (cicla si hay más de 5) ───────────────────
+const EMP_PALETTES = [
+  { header: 'FF1E3A5F', row1: 'FFDBEAFE', row2: 'FFEff6ff' }, // azul
+  { header: 'FF14532D', row1: 'FFDCFCE7', row2: 'FFF0FDF4' }, // verde
+  { header: 'FF7C2D12', row1: 'FFFFEDD5', row2: 'FFFFF7ED' }, // naranja
+  { header: 'FF581C87', row1: 'FFF3E8FF', row2: 'FFFAF5FF' }, // violeta
+  { header: 'FF713F12', row1: 'FFFEF3C7', row2: 'FFFFFBEB' }, // ámbar
+];
 
-  // Datos
-  const rows = [
-    ['Empleado', 'Día del Turno', 'Fecha', 'Hora Entrada', 'Hora Salida', 'Horas Trabajadas', 'Observaciones'],
-    ...filas.map(f => [f.empleado, f.dia, f.fecha, f.entrada, f.salida, f.horas, f.obs]),
+// ── 4. Generar Excel estilizado con ExcelJS ────────────────────────────────────
+async function generarExcel(filas: Fila[]): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'La Cocina Ushuaia';
+  const ws = wb.addWorksheet('Asistencia', {
+    views: [{ state: 'frozen', ySplit: 2 }],
+  });
+
+  ws.columns = [
+    { key: 'empleado', width: 18 },
+    { key: 'dia',      width: 13 },
+    { key: 'fecha',    width: 13 },
+    { key: 'entrada',  width: 12 },
+    { key: 'salida',   width: 17 },
+    { key: 'horas',    width: 16 },
+    { key: 'obs',      width: 28 },
   ];
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // ── Fila de título ──────────────────────────────────────────────────────────
+  ws.mergeCells('A1:G1');
+  const titleCell = ws.getCell('A1');
+  titleCell.value = '🍳  REPORTE DE ASISTENCIA — LA COCINA USHUAIA';
+  titleCell.font  = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 32;
 
-  // Ancho columnas
-  ws['!cols'] = [20, 15, 13, 13, 18, 18, 25].map(w => ({ wch: w }));
+  // ── Fila de cabecera ────────────────────────────────────────────────────────
+  const HEADERS = ['Empleado', 'Día', 'Fecha', 'Entrada', 'Salida', 'Hs. Trabajadas', 'Observaciones'];
+  const headerRow = ws.addRow(HEADERS);
+  headerRow.height = 22;
+  headerRow.eachCell(cell => {
+    cell.font      = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border    = { bottom: { style: 'medium', color: { argb: 'FF3B82F6' } } };
+  });
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  // ── Agrupar por empleado ────────────────────────────────────────────────────
+  const grupos = new Map<string, Fila[]>();
+  for (const f of filas) {
+    if (!grupos.has(f.empleado)) grupos.set(f.empleado, []);
+    grupos.get(f.empleado)!.push(f);
+  }
+
+  let paletteIdx = 0;
+  let rowIdx = 3;
+
+  for (const [empleado, empFilas] of grupos) {
+    const pal = EMP_PALETTES[paletteIdx % EMP_PALETTES.length];
+    paletteIdx++;
+
+    // ── Cabecera de empleado ──────────────────────────────────────────────────
+    ws.mergeCells(`A${rowIdx}:G${rowIdx}`);
+    const empHeaderCell = ws.getCell(`A${rowIdx}`);
+    empHeaderCell.value     = `  ${empleado.toUpperCase()}`;
+    empHeaderCell.font      = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
+    empHeaderCell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: pal.header } };
+    empHeaderCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    ws.getRow(rowIdx).height = 20;
+    rowIdx++;
+
+    let totalMinutes = 0;
+    let diasConHoras = 0;
+    let rowToggle    = true;
+
+    for (const f of empFilas) {
+      const row = ws.addRow([f.empleado, f.dia, f.fecha, f.entrada, f.salida, f.horas, f.obs ?? '']);
+      row.height = 18;
+
+      if (f.horas) {
+        const [h, m] = f.horas.split(':').map(Number);
+        totalMinutes += h * 60 + m;
+        diasConHoras++;
+      }
+
+      // Color de fondo según estado
+      let bgArgb = rowToggle ? pal.row1 : pal.row2;
+      let obsFontArgb = 'FF64748B';
+      if (f.obs === 'Falta marcar salida') { bgArgb = 'FFFEE2E2'; obsFontArgb = 'FF991B1B'; }
+      else if (f.obs?.includes('juntas'))   { bgArgb = 'FFFFEDD5'; obsFontArgb = 'FF9A3412'; }
+
+      row.eachCell({ includeEmpty: true }, (cell, col) => {
+        cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
+        cell.alignment = { horizontal: col <= 1 ? 'left' : 'center', vertical: 'middle' };
+        cell.font      = { size: 10 };
+        cell.border    = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } };
+
+        // Horas trabajadas: verde y negrita
+        if (col === 6 && f.horas) {
+          cell.font = { size: 10, bold: true, color: { argb: 'FF166534' } };
+        }
+        // Observaciones: color según tipo
+        if (col === 7 && f.obs) {
+          cell.font = { size: 9, italic: true, color: { argb: obsFontArgb } };
+        }
+      });
+
+      rowToggle = !rowToggle;
+      rowIdx++;
+    }
+
+    // ── Fila de totales por empleado ─────────────────────────────────────────
+    const totalH   = Math.floor(totalMinutes / 60);
+    const totalM   = totalMinutes % 60;
+    const totalStr = `${String(totalH).padStart(2, '0')}:${String(totalM).padStart(2, '0')}`;
+
+    ws.mergeCells(`A${rowIdx}:E${rowIdx}`);
+    const totRow = ws.getRow(rowIdx);
+    totRow.height = 20;
+
+    const totLabelCell = ws.getCell(`A${rowIdx}`);
+    totLabelCell.value     = `Total ${empleado} · ${diasConHoras} día${diasConHoras !== 1 ? 's' : ''}`;
+    totLabelCell.font      = { bold: true, size: 10, italic: true, color: { argb: 'FF475569' } };
+    totLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+
+    const totHorasCell = ws.getCell(`F${rowIdx}`);
+    totHorasCell.value     = totalStr;
+    totHorasCell.font      = { bold: true, size: 12, color: { argb: 'FF1D4ED8' } };
+    totHorasCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    totRow.eachCell({ includeEmpty: true }, cell => {
+      cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+      cell.border = {
+        top:    { style: 'thin',  color: { argb: 'FF94A3B8' } },
+        bottom: { style: 'thin',  color: { argb: 'FF94A3B8' } },
+      };
+    });
+    rowIdx++;
+
+    // Fila en blanco entre empleados
+    ws.addRow([]);
+    rowIdx++;
+  }
+
+  const arrayBuffer = await wb.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -160,7 +289,7 @@ export async function POST(req: NextRequest) {
     const usuarios = parseYG5(yg5Buf);
     const records  = parseKQ(kqBuf);
     const filas    = calcularTurnos(records, usuarios);
-    const xlsxBuf  = generarExcel(filas);
+    const xlsxBuf  = await generarExcel(filas);
 
     const fecha = new Date().toISOString().slice(0, 10);
     return new NextResponse(new Uint8Array(xlsxBuf), {
