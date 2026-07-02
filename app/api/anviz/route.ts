@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
     const xlsxBuf  = generarExcel(filas);
 
     const fecha = new Date().toISOString().slice(0, 10);
-    return new NextResponse(xlsxBuf, {
+    return new NextResponse(new Uint8Array(xlsxBuf), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="Asistencia_${fecha}.xlsx"`,
