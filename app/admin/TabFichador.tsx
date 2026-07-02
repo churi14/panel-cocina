@@ -1,6 +1,17 @@
 "use client";
-import React, { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Download, AlertTriangle, CheckCircle2, Loader2, X } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Upload, FileText, Download, AlertTriangle, CheckCircle2, Loader2, X, History, ExternalLink } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+type Reporte = {
+  id: number;
+  filename: string;
+  url: string;
+  rows_count: number;
+  empleados_count: number;
+  created_at: string;
+};
 
 type FileState = { file: File; name: string } | null;
 
@@ -74,13 +85,28 @@ function Dropzone({
 }
 
 export default function TabFichador() {
-  const [yg5, setYg5]       = useState<FileState>(null);
-  const [kq,  setKq]        = useState<FileState>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
-  const [success, setSuccess] = useState('');
+  const [yg5, setYg5]           = useState<FileState>(null);
+  const [kq,  setKq]            = useState<FileState>(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
+  const [success, setSuccess]   = useState('');
+  const [reportes, setReportes] = useState<Reporte[]>([]);
+  const [loadingHist, setLoadingHist] = useState(true);
 
   const canGenerate = yg5 && kq && !loading;
+
+  const loadReportes = async () => {
+    setLoadingHist(true);
+    const { data } = await supabase
+      .from('fichador_reportes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setReportes((data ?? []) as Reporte[]);
+    setLoadingHist(false);
+  };
+
+  useEffect(() => { loadReportes(); }, []);
 
   const handleGenerar = async () => {
     if (!canGenerate) return;
@@ -109,6 +135,7 @@ export default function TabFichador() {
       URL.revokeObjectURL(url);
 
       setSuccess(`Excel generado y descargado correctamente.`);
+      loadReportes(); // refrescar historial
     } catch (e: any) {
       setError(e.message);
     }
@@ -179,7 +206,68 @@ export default function TabFichador() {
 
       {/* Info */}
       <div className="text-xs text-slate-600 text-center">
-        El archivo se descarga directamente en tu dispositivo. No se guardan datos en el servidor.
+        El archivo se descarga directamente. También queda guardado en el historial de abajo.
+      </div>
+
+      {/* Historial */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History size={15} className="text-slate-400" />
+            <p className="font-black text-xs text-slate-400 uppercase">Reportes anteriores</p>
+          </div>
+          {reportes.length > 0 && (
+            <span className="text-xs text-slate-600">{reportes.length} archivos</span>
+          )}
+        </div>
+
+        {loadingHist && (
+          <div className="px-5 py-6 text-center">
+            <Loader2 size={16} className="text-slate-600 animate-spin mx-auto" />
+          </div>
+        )}
+
+        {!loadingHist && reportes.length === 0 && (
+          <div className="px-5 py-6 text-center">
+            <p className="text-slate-600 text-sm">Sin reportes aún. Generá el primero arriba.</p>
+          </div>
+        )}
+
+        {!loadingHist && reportes.length > 0 && (
+          <div className="divide-y divide-slate-800/60">
+            {reportes.map(r => {
+              const fecha = new Date(r.created_at);
+              const fechaStr = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              const horaStr  = fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+              return (
+                <div key={r.id} className="px-5 py-3 flex items-center justify-between gap-3 hover:bg-slate-800/20 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
+                      <FileText size={15} className="text-green-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{fechaStr} · {horaStr}</p>
+                      <p className="text-xs text-slate-500">
+                        {r.empleados_count} empleado{r.empleados_count !== 1 ? 's' : ''}
+                        {' · '}{r.rows_count} turno{r.rows_count !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={r.url}
+                    download={r.filename}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-colors shrink-0"
+                  >
+                    <Download size={13} />
+                    Descargar
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

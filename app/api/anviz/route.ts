@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import { createClient } from '@supabase/supabase-js';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const EPOCH_MS    = new Date('2000-01-02T00:00:00Z').getTime();
@@ -273,7 +274,7 @@ async function generarExcel(filas: Fila[]): Promise<Buffer> {
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const form   = await req.formData();
+    const form    = await req.formData();
     const yg5File = form.get('yg5') as File | null;
     const kqFile  = form.get('kq')  as File | null;
 
@@ -291,11 +292,44 @@ export async function POST(req: NextRequest) {
     const filas    = calcularTurnos(records, usuarios);
     const xlsxBuf  = await generarExcel(filas);
 
-    const fecha = new Date().toISOString().slice(0, 10);
+    // ── Guardar en Supabase Storage ──────────────────────────────────────────
+    const fecha       = new Date().toISOString().slice(0, 10);
+    const timestamp   = Date.now();
+    const filename    = `Asistencia_${fecha}_${timestamp}.xlsx`;
+    const storagePath = `reportes/${filename}`;
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
+    const { error: uploadError } = await supabase.storage
+      .from('fichador')
+      .upload(storagePath, xlsxBuf, {
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        upsert: false,
+      });
+
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage.from('fichador').getPublicUrl(storagePath);
+      const empleados = new Set(filas.map(f => f.empleado)).size;
+
+      await supabase.from('fichador_reportes').insert({
+        filename,
+        storage_path: storagePath,
+        url: urlData.publicUrl,
+        rows_count: filas.length,
+        empleados_count: empleados,
+      });
+    } else {
+      console.warn('[anviz] storage upload failed:', uploadError.message);
+    }
+
+    // ── Devolver el xlsx para descarga inmediata ──────────────────────────────
     return new NextResponse(new Uint8Array(xlsxBuf), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Asistencia_${fecha}.xlsx"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
   } catch (e: any) {
