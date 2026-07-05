@@ -2,23 +2,114 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
   X, Upload, Loader2, CheckCircle2, AlertTriangle,
-  Trash2, RefreshCw, Camera, FileImage,
+  Trash2, RefreshCw, Camera, FileImage, Search, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import type { FacturaData, FacturaItem } from '../api/factura/route';
 
+// ── Tipos ────────────────────────────────────────────────────────────────────
+interface StockProduct { id: number; nombre: string; unidad: string; cantidad: number; }
+
 interface ItemEditable extends FacturaItem {
   _id: number;
   seleccionado: boolean;
-  stock_id?: number | null;
+  stockMatch: StockProduct | null;   // producto del stock vinculado
+  matchScore: number;                // 0-100
 }
 
 interface Props {
   onClose: () => void;
-  onConfirm: () => void; // para refrescar movimientos
+  onConfirm: () => void;
   operador?: string;
 }
 
+// ── Fuzzy match ───────────────────────────────────────────────────────────────
+function normalize(s: string) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .trim();
+}
+function matchScore(facturaName: string, stockName: string): number {
+  const a = normalize(facturaName).split(/\s+/).filter(Boolean);
+  const b = normalize(stockName).split(/\s+/).filter(Boolean);
+  if (!a.length || !b.length) return 0;
+  let hits = 0;
+  for (const wa of a) {
+    if (b.some(wb => wb.includes(wa) || wa.includes(wb))) hits++;
+  }
+  return Math.round((hits / Math.max(a.length, b.length)) * 100);
+}
+function bestMatch(item: FacturaItem, stock: StockProduct[]): { product: StockProduct | null; score: number } {
+  let best: StockProduct | null = null;
+  let bestScr = 0;
+  for (const s of stock) {
+    const sc = matchScore(item.nombre, s.nombre);
+    if (sc > bestScr) { bestScr = sc; best = s; }
+  }
+  return { product: bestScr >= 40 ? best : null, score: bestScr };
+}
+
+// ── Stock Picker Popup ────────────────────────────────────────────────────────
+function StockPickerPopup({ stock, current, onSelect, onClose }: {
+  stock: StockProduct[];
+  current: StockProduct | null;
+  onSelect: (p: StockProduct | null) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const filtered = q.trim()
+    ? stock.filter(s => normalize(s.nombre).includes(normalize(q)))
+    : stock;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col max-h-[70vh]"
+        onClick={e => e.stopPropagation()}>
+        <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+          <p className="font-black text-white text-sm">Vincular a stock</p>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16} /></button>
+        </div>
+        {/* Search */}
+        <div className="px-3 py-2 border-b border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
+            <Search size={14} className="text-slate-500 shrink-0" />
+            <input
+              autoFocus
+              value={q} onChange={e => setQ(e.target.value)}
+              placeholder="Buscar producto..."
+              className="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-600" />
+          </div>
+        </div>
+        {/* Lista */}
+        <div className="flex-1 overflow-y-auto py-1">
+          {/* Opción: no vincular */}
+          <button
+            onClick={() => { onSelect(null); onClose(); }}
+            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-slate-800 flex items-center gap-2
+              ${!current ? 'text-slate-400 bg-slate-800/50' : 'text-slate-500'}`}>
+            <span className="text-lg">🚫</span>
+            <span className="font-bold">No vincular (solo registro)</span>
+          </button>
+          {filtered.map(s => (
+            <button key={s.id}
+              onClick={() => { onSelect(s); onClose(); }}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-slate-800 flex items-center justify-between gap-2
+                ${current?.id === s.id ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}>
+              <span className="font-bold truncate">{s.nombre}</span>
+              <span className="text-slate-500 text-xs shrink-0">{Number(s.cantidad).toFixed(2)} {s.unidad}</span>
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <p className="text-center text-slate-600 text-xs py-6">Sin resultados</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
   const [step, setStep]       = useState<'upload' | 'preview' | 'done'>('upload');
   const [imagen, setImagen]   = useState<File | null>(null);
@@ -27,44 +118,56 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
   const [error, setError]     = useState('');
   const [factura, setFactura] = useState<FacturaData | null>(null);
   const [items, setItems]     = useState<ItemEditable[]>([]);
+  const [stockAll, setStockAll] = useState<StockProduct[]>([]);
   const [drag, setDrag]       = useState(false);
   const [saving, setSaving]   = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [pickerFor, setPickerFor] = useState<number | null>(null); // _id del item con picker abierto
   const inputRef = useRef<HTMLInputElement>(null);
   const camRef   = useRef<HTMLInputElement>(null);
 
-  // ── Manejo de imagen ────────────────────────────────────────────────────────
+  // ── Manejo de archivo ────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') { setError('Debe ser una imagen (JPG, PNG, WEBP) o PDF'); return; }
-    setImagen(file);
-    setError('');
-    const url = URL.createObjectURL(file);
-    setPreview(url);
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      setError('Debe ser una imagen (JPG, PNG, WEBP) o PDF'); return;
+    }
+    setImagen(file); setError('');
+    setPreview(file.type === 'application/pdf' ? null : URL.createObjectURL(file));
   }, []);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDrag(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
+    const f = e.dataTransfer.files[0]; if (f) handleFile(f);
   };
 
-  // ── Llamar a la API ──────────────────────────────────────────────────────────
+  // ── Analizar factura ─────────────────────────────────────────────────────────
   const analizar = async () => {
     if (!imagen) return;
     setLoading(true); setError('');
     try {
+      // 1. Llamar a la API de análisis
       const form = new FormData();
       form.append('imagen', imagen);
-      const res = await fetch('/api/factura', { method: 'POST', body: form });
+      const res  = await fetch('/api/factura', { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
 
+      // 2. Traer todo el stock
+      const { data: stockData } = await supabase
+        .from('stock')
+        .select('id, nombre, unidad, cantidad')
+        .order('nombre');
+      const stock: StockProduct[] = (stockData ?? []).map((r: any) => ({
+        id: r.id, nombre: r.nombre, unidad: r.unidad, cantidad: Number(r.cantidad),
+      }));
+      setStockAll(stock);
+
+      // 3. Auto-matchear items
       setFactura(data as FacturaData);
-      setItems((data.items ?? []).map((item: FacturaItem, i: number) => ({
-        ...item,
-        _id: i,
-        seleccionado: true,
-      })));
+      setItems((data.items ?? []).map((item: FacturaItem, i: number) => {
+        const { product, score } = bestMatch(item, stock);
+        return { ...item, _id: i, seleccionado: true, stockMatch: product, matchScore: score };
+      }));
       setStep('preview');
     } catch (e: any) {
       setError(e.message);
@@ -73,12 +176,17 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
   };
 
   // ── Editar item ──────────────────────────────────────────────────────────────
-  const updateItem = (id: number, field: keyof ItemEditable, value: any) => {
+  const updateItem = (id: number, field: keyof ItemEditable, value: any) =>
     setItems(prev => prev.map(it => it._id === id ? { ...it, [field]: value } : it));
-  };
+
   const removeItem = (id: number) => setItems(prev => prev.filter(it => it._id !== id));
 
-  // ── Confirmar y cargar al stock ──────────────────────────────────────────────
+  const setMatch = (itemId: number, product: StockProduct | null) =>
+    setItems(prev => prev.map(it => it._id === itemId
+      ? { ...it, stockMatch: product, matchScore: product ? 100 : 0 }
+      : it));
+
+  // ── Confirmar ────────────────────────────────────────────────────────────────
   const confirmar = async () => {
     const seleccionados = items.filter(it => it.seleccionado);
     if (!seleccionados.length) return;
@@ -90,9 +198,8 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
 
     for (const item of seleccionados) {
       try {
-        // 1. Insertar movimiento
         await supabase.from('stock_movements').insert({
-          nombre:    item.nombre,
+          nombre:    item.stockMatch?.nombre ?? item.nombre,
           categoria: 'ingreso-proveedor',
           tipo:      'ingreso',
           cantidad:  item.cantidad,
@@ -102,18 +209,12 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
           fecha:     new Date().toISOString(),
         });
 
-        // 2. Actualizar stock (busca por nombre, ilike)
-        const { data: stockRow } = await supabase
-          .from('stock')
-          .select('id, cantidad')
-          .ilike('nombre', item.nombre)
-          .maybeSingle();
-
-        if (stockRow) {
+        if (item.stockMatch) {
+          const s = item.stockMatch;
           await supabase.from('stock').update({
-            cantidad:          parseFloat((Number(stockRow.cantidad) + item.cantidad).toFixed(3)),
+            cantidad: parseFloat((Number(s.cantidad) + item.cantidad).toFixed(3)),
             fecha_actualizacion: new Date().toISOString().slice(0, 10),
-          }).eq('id', stockRow.id);
+          }).eq('id', s.id);
         }
         ok++;
       } catch (e: any) {
@@ -128,21 +229,31 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
   };
 
   // ── UI ───────────────────────────────────────────────────────────────────────
+  const itemForPicker = pickerFor !== null ? items.find(i => i._id === pickerFor) ?? null : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
-      onClick={onClose}>
-      <div
-        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl"
         onClick={e => e.stopPropagation()}>
+
+        {/* Stock picker popup */}
+        {pickerFor !== null && itemForPicker && (
+          <StockPickerPopup
+            stock={stockAll}
+            current={itemForPicker.stockMatch}
+            onSelect={p => setMatch(pickerFor, p)}
+            onClose={() => setPickerFor(null)}
+          />
+        )}
 
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-black text-white text-lg">📄 Cargar factura de proveedor</h3>
             <p className="text-slate-500 text-xs mt-0.5">
-              {step === 'upload'  ? 'Subí la foto y la IA extrae los productos automáticamente'  : ''}
-              {step === 'preview' ? `${factura?.proveedor ?? 'Proveedor'} · revisá los items antes de confirmar` : ''}
-              {step === 'done'    ? `${savedCount} producto${savedCount !== 1 ? 's' : ''} cargado${savedCount !== 1 ? 's' : ''} al stock` : ''}
+              {step === 'upload'  && 'Subí la foto y la IA extrae los productos automáticamente'}
+              {step === 'preview' && `${factura?.proveedor ?? 'Proveedor'} · revisá los items antes de confirmar`}
+              {step === 'done'    && `${savedCount} producto${savedCount !== 1 ? 's' : ''} cargado${savedCount !== 1 ? 's' : ''} al stock`}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400">
@@ -155,34 +266,29 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
           {/* ── STEP: upload ── */}
           {step === 'upload' && (
             <div className="p-6 space-y-4">
-              {/* Dropzone */}
               <div
                 onDragOver={e => { e.preventDefault(); setDrag(true); }}
                 onDragLeave={() => setDrag(false)}
                 onDrop={handleDrop}
                 onClick={() => !imagen && inputRef.current?.click()}
                 className={`relative border-2 border-dashed rounded-2xl transition-all
-                  ${imagen
-                    ? 'border-green-500/50 bg-green-500/5 cursor-default'
-                    : drag
-                    ? 'border-blue-400 bg-blue-500/10 cursor-copy'
-                    : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/30 cursor-pointer'
-                  }`}>
-
+                  ${imagen ? 'border-green-500/50 bg-green-500/5 cursor-default'
+                  : drag   ? 'border-blue-400 bg-blue-500/10 cursor-copy'
+                           : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/30 cursor-pointer'}`}>
                 <input ref={inputRef} type="file" accept="image/*,application/pdf" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
                 <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
-
-                {imagen && preview ? (
+                {imagen ? (
                   <div className="p-4 flex gap-4 items-center">
-                    <img src={preview} alt="factura" className="w-24 h-24 object-cover rounded-xl border border-slate-700" />
+                    {preview
+                      ? <img src={preview} alt="factura" className="w-24 h-24 object-cover rounded-xl border border-slate-700" />
+                      : <div className="w-24 h-24 rounded-xl border border-slate-700 bg-slate-800 flex items-center justify-center text-3xl">📄</div>}
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-green-400 text-sm truncate">{imagen.name}</p>
                       <p className="text-slate-500 text-xs mt-0.5">{(imagen.size / 1024).toFixed(0)} KB</p>
                     </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); setImagen(null); setPreview(null); }}
+                    <button onClick={e => { e.stopPropagation(); setImagen(null); setPreview(null); }}
                       className="p-1.5 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-slate-300">
                       <X size={15} />
                     </button>
@@ -200,9 +306,7 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                 )}
               </div>
 
-              {/* Botón cámara para móvil */}
-              <button
-                onClick={() => camRef.current?.click()}
+              <button onClick={() => camRef.current?.click()}
                 className="w-full py-2.5 border border-slate-700 hover:border-slate-500 rounded-xl text-slate-400 hover:text-white text-sm font-bold flex items-center justify-center gap-2 transition-colors">
                 <Camera size={16} /> Sacar foto con la cámara
               </button>
@@ -214,21 +318,17 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                 </div>
               )}
 
-              <button
-                onClick={analizar}
-                disabled={!imagen || loading}
+              <button onClick={analizar} disabled={!imagen || loading}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white font-black text-sm rounded-xl transition-all flex items-center justify-center gap-2">
-                {loading
-                  ? <><Loader2 size={18} className="animate-spin" /> Analizando con IA...</>
-                  : '🔍 Analizar factura'}
+                {loading ? <><Loader2 size={18} className="animate-spin" /> Analizando con IA...</> : '🔍 Analizar factura'}
               </button>
             </div>
           )}
 
           {/* ── STEP: preview ── */}
           {step === 'preview' && (
-            <div className="p-6 space-y-4">
-              {/* Info de la factura */}
+            <div className="p-5 space-y-4">
+              {/* Info factura */}
               <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-slate-500 text-xs uppercase font-bold mb-0.5">Proveedor</p>
@@ -246,78 +346,102 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                 )}
               </div>
 
+              {/* Leyenda de estado */}
+              <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Vinculado</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Parcial</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Sin match — tocá para vincular</span>
+              </div>
+
               <div className="flex items-center justify-between">
                 <p className="text-xs font-black text-slate-400 uppercase">
                   {items.filter(i => i.seleccionado).length} de {items.length} items seleccionados
                 </p>
-                <button
-                  onClick={() => { setImagen(null); setPreview(null); setStep('upload'); }}
+                <button onClick={() => { setImagen(null); setPreview(null); setStep('upload'); }}
                   className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
                   <RefreshCw size={12} /> Volver a escanear
                 </button>
               </div>
 
-              {/* Tabla editable */}
-              <div className="border border-slate-800 rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-800 text-slate-400 text-xs uppercase">
-                    <tr>
-                      <th className="px-3 py-2 text-center w-8">✓</th>
-                      <th className="px-3 py-2 text-left">Producto</th>
-                      <th className="px-3 py-2 text-center w-20">Cantidad</th>
-                      <th className="px-3 py-2 text-center w-16">Unidad</th>
-                      <th className="px-3 py-2 w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {items.map(item => (
-                      <tr key={item._id} className={`transition-colors ${item.seleccionado ? '' : 'opacity-40'}`}>
-                        <td className="px-3 py-2 text-center">
-                          <input type="checkbox" checked={item.seleccionado}
-                            onChange={e => updateItem(item._id, 'seleccionado', e.target.checked)}
-                            className="accent-blue-500 w-4 h-4 cursor-pointer" />
-                        </td>
-                        <td className="px-3 py-2">
+              {/* Items */}
+              <div className="space-y-2">
+                {items.map(item => {
+                  const matched  = !!item.stockMatch;
+                  const partial  = !matched && item.matchScore >= 20;
+                  const dotColor = matched ? 'bg-green-500' : partial ? 'bg-amber-400' : 'bg-red-500';
+                  return (
+                    <div key={item._id}
+                      className={`rounded-xl border transition-all ${item.seleccionado ? 'border-slate-700 bg-slate-800/40' : 'border-slate-800 bg-slate-900 opacity-50'}`}>
+                      {/* Fila superior: checkbox + nombre factura */}
+                      <div className="flex items-center gap-3 px-3 pt-3 pb-1">
+                        <input type="checkbox" checked={item.seleccionado}
+                          onChange={e => updateItem(item._id, 'seleccionado', e.target.checked)}
+                          className="accent-blue-500 w-4 h-4 cursor-pointer shrink-0" />
+                        <div className="flex-1 min-w-0">
                           <input
                             value={item.nombre}
                             onChange={e => updateItem(item._id, 'nombre', e.target.value)}
-                            className="w-full bg-slate-800/60 border border-transparent hover:border-slate-600 focus:border-blue-500 rounded-lg px-2 py-1 text-white text-xs outline-none transition-colors" />
-                        </td>
-                        <td className="px-3 py-2">
-                          <input
-                            type="number" step="0.001" min="0"
-                            value={item.cantidad}
-                            onChange={e => updateItem(item._id, 'cantidad', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-slate-800/60 border border-transparent hover:border-slate-600 focus:border-blue-500 rounded-lg px-2 py-1 text-white text-xs outline-none text-center transition-colors" />
-                        </td>
-                        <td className="px-3 py-2">
-                          <select
-                            value={item.unidad}
-                            onChange={e => updateItem(item._id, 'unidad', e.target.value)}
-                            className="w-full bg-slate-800/60 border border-transparent hover:border-slate-600 focus:border-blue-500 rounded-lg px-2 py-1 text-white text-xs outline-none transition-colors">
-                            <option value="kg">kg</option>
-                            <option value="u">u</option>
-                            <option value="lt">lt</option>
-                          </select>
-                        </td>
-                        <td className="px-3 py-2">
-                          <button onClick={() => removeItem(item._id)}
-                            className="p-1 hover:bg-red-500/15 rounded-lg text-slate-600 hover:text-red-400 transition-colors">
-                            <Trash2 size={13} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {items.length === 0 && (
-                      <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-600 text-xs">Sin items detectados</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                            className="w-full bg-transparent text-white text-sm font-bold outline-none border-b border-transparent hover:border-slate-600 focus:border-blue-500 transition-colors pb-0.5 truncate" />
+                          <p className="text-slate-600 text-[10px] mt-0.5">Nombre en factura</p>
+                        </div>
+                        <button onClick={() => removeItem(item._id)}
+                          className="p-1 hover:bg-red-500/15 rounded-lg text-slate-700 hover:text-red-400 transition-colors shrink-0">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+
+                      {/* Fila inferior: cantidad + unidad + vínculo stock */}
+                      <div className="flex items-center gap-2 px-3 pb-3 mt-1">
+                        {/* Cantidad */}
+                        <input type="number" step="0.001" min="0"
+                          value={item.cantidad}
+                          onChange={e => updateItem(item._id, 'cantidad', parseFloat(e.target.value) || 0)}
+                          className="w-20 bg-slate-900 border border-slate-700 hover:border-slate-500 focus:border-blue-500 rounded-lg px-2 py-1.5 text-white text-xs outline-none text-center transition-colors" />
+                        {/* Unidad */}
+                        <select value={item.unidad}
+                          onChange={e => updateItem(item._id, 'unidad', e.target.value)}
+                          className="bg-slate-900 border border-slate-700 hover:border-slate-500 rounded-lg px-2 py-1.5 text-white text-xs outline-none transition-colors">
+                          <option value="kg">kg</option>
+                          <option value="u">u</option>
+                          <option value="lt">lt</option>
+                        </select>
+
+                        {/* Vínculo stock */}
+                        <button
+                          onClick={() => setPickerFor(item._id)}
+                          className={`flex-1 flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all
+                            ${matched
+                              ? 'border-green-600/40 bg-green-600/10 text-green-400 hover:bg-green-600/20'
+                              : partial
+                              ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                              : 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 animate-pulse-slow'}`}>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
+                            <span className="truncate">
+                              {item.stockMatch ? item.stockMatch.nombre : '— Sin vincular · tocá para elegir'}
+                            </span>
+                          </div>
+                          <ChevronDown size={12} className="shrink-0 opacity-60" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {items.length === 0 && (
+                  <p className="text-center text-slate-600 text-xs py-8">Sin items detectados</p>
+                )}
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs text-blue-300">
-                💡 Revisá los nombres — tienen que coincidir con los productos en stock para que se actualice la cantidad automáticamente.
-              </div>
+              {/* Resumen de match */}
+              {items.length > 0 && (
+                <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-xs flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-slate-400">
+                    <span className="text-green-400 font-black">{items.filter(i => i.stockMatch).length}</span> vinculados ·{' '}
+                    <span className="text-red-400 font-black">{items.filter(i => !i.stockMatch).length}</span> sin vincular
+                  </span>
+                  <span className="text-slate-600">Los sin vincular se registran pero no actualizan stock</span>
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex gap-2">
