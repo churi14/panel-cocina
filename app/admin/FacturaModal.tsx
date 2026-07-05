@@ -35,7 +35,7 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
 
   // ── Manejo de imagen ────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) { setError('Debe ser una imagen (JPG, PNG, WEBP)'); return; }
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') { setError('Debe ser una imagen (JPG, PNG, WEBP) o PDF'); return; }
     setImagen(file);
     setError('');
     const url = URL.createObjectURL(file);
@@ -169,7 +169,7 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                     : 'border-slate-700 hover:border-slate-500 hover:bg-slate-800/30 cursor-pointer'
                   }`}>
 
-                <input ref={inputRef} type="file" accept="image/*" className="hidden"
+                <input ref={inputRef} type="file" accept="image/*,application/pdf" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
                 <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
@@ -194,7 +194,7 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                     </div>
                     <div className="text-center">
                       <p className="font-bold text-white text-sm">Arrastrá la foto acá</p>
-                      <p className="text-slate-500 text-xs mt-0.5">o hacé click · JPG, PNG, WEBP</p>
+                      <p className="text-slate-500 text-xs mt-0.5">o hacé click · JPG, PNG, WEBP, PDF</p>
                     </div>
                   </div>
                 )}

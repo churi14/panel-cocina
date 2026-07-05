@@ -51,9 +51,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Falta la imagen' }, { status: 400 });
     }
 
-    const buf       = await imageFile.arrayBuffer();
-    const base64    = Buffer.from(buf).toString('base64');
-    const mediaType = (imageFile.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+    const buf    = await imageFile.arrayBuffer();
+    const base64 = Buffer.from(buf).toString('base64');
+    const isPdf  = imageFile.type === 'application/pdf';
+
+    const fileBlock = isPdf
+      ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: base64 } }
+      : { type: 'image' as const,    source: { type: 'base64' as const, media_type: (imageFile.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp', data: base64 } };
 
     const msg = await anthropic.messages.create({
       model:      'claude-opus-4-8',
@@ -61,8 +65,8 @@ export async function POST(req: NextRequest) {
       messages: [{
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text',  text: PROMPT },
+          fileBlock,
+          { type: 'text', text: PROMPT },
         ],
       }],
     });
