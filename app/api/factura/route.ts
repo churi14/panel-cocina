@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       : { type: 'image' as const,    source: { type: 'base64' as const, media_type: (imageFile.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp', data: base64 } };
 
     const msg = await anthropic.messages.create({
-      model:      'claude-opus-4-8',
+      model:      'claude-haiku-4-5-20251001',
       max_tokens: 2048,
       messages: [{
         role: 'user',
