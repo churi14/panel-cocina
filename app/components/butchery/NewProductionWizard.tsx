@@ -284,8 +284,33 @@ export function NewProductionWizard({ onStart, onCancel }: {
             </div>
           )}
 
+          {/* Toggle blend — solo limpieza con 2+ cortes, arriba bien visible */}
+          {selectedKind === 'limpieza' && selected.length >= 2 && (
+            <button
+              onClick={() => setLimpiezaIsBlend(v => !v)}
+              className={`mt-5 max-w-4xl mx-auto w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all font-bold shadow-sm
+                ${limpiezaIsBlend
+                  ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-blue-100'
+                  : 'border-slate-300 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50/40'}`}>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🍔</span>
+                <div className="text-left">
+                  <p className="font-black text-base">¿Es un blend para burger?</p>
+                  <p className="text-xs font-normal mt-0.5 text-slate-500">
+                    {limpiezaIsBlend
+                      ? `✅ Se creará: Blend ${selected.map(getCutLabel).join(' + ')}`
+                      : 'Activá si querés mezclar estos cortes en un blend'}
+                  </p>
+                </div>
+              </div>
+              <div className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${limpiezaIsBlend ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${limpiezaIsBlend ? 'left-7' : 'left-1'}`} />
+              </div>
+            </button>
+          )}
+
           {(selected.length > 0 || selectedCarneLinpia || selectedCarnesMulti.length > 0) && (
-            <div className="mt-4 max-w-4xl mx-auto w-full space-y-3">
+            <div className="mt-3 max-w-4xl mx-auto w-full">
               <div className={`border rounded-2xl px-6 py-4 flex items-center justify-between flex-wrap gap-3 bg-slate-50`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-black text-slate-500 uppercase">Seleccionados:</span>
@@ -305,31 +330,6 @@ export function NewProductionWizard({ onStart, onCancel }: {
                   {selectedKind === 'limpieza' ? selected.length : selectedKind === 'burger' ? selectedCarnesMulti.length : selectedCarneLinpia ? 1 : 0}
                 </span>
               </div>
-
-              {/* Toggle blend — solo limpieza con 2+ cortes */}
-              {selectedKind === 'limpieza' && selected.length >= 2 && (
-                <button
-                  onClick={() => setLimpiezaIsBlend(v => !v)}
-                  className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all font-bold
-                    ${limpiezaIsBlend
-                      ? 'border-blue-400 bg-blue-50 text-blue-800'
-                      : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🍔</span>
-                    <div className="text-left">
-                      <p className="font-black text-base">¿Es un blend para burger?</p>
-                      <p className="text-xs font-normal mt-0.5">
-                        {limpiezaIsBlend
-                          ? `Se creará: Blend ${selected.map(getCutLabel).join(' + ')}`
-                          : 'Se crearán stocks separados por corte'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`w-12 h-6 rounded-full transition-all relative ${limpiezaIsBlend ? 'bg-blue-500' : 'bg-slate-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${limpiezaIsBlend ? 'left-7' : 'left-1'}`} />
-                  </div>
-                </button>
-              )}
             </div>
           )}
         </div>
