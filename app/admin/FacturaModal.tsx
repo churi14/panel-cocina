@@ -8,7 +8,7 @@ import { supabase } from '../supabase';
 import type { FacturaData, FacturaItem } from '../api/factura/route';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
-interface StockProduct { id: number; nombre: string; unidad: string; cantidad: number; }
+interface StockProduct { id: number; nombre: string; unidad: string; cantidad: number; categoria: string; }
 
 interface ItemEditable extends FacturaItem {
   _id: number;
@@ -50,6 +50,29 @@ function bestMatch(item: FacturaItem, stock: StockProduct[]): { product: StockPr
   return { product: bestScr >= 40 ? best : null, score: bestScr };
 }
 
+// ── Config de categorías ──────────────────────────────────────────────────────
+const CAT_CFG: Record<string, { emoji: string; label: string; color: string; bg: string }> = {
+  carne:     { emoji: '🥩', label: 'Carnes',       color: 'text-red-400',    bg: 'bg-red-500/20'    },
+  verdura:   { emoji: '🥦', label: 'Verduras',      color: 'text-green-400',  bg: 'bg-green-500/20'  },
+  verduras:  { emoji: '🥦', label: 'Verduras',      color: 'text-green-400',  bg: 'bg-green-500/20'  },
+  lacteo:    { emoji: '🧀', label: 'Lácteos',       color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+  lacteos:   { emoji: '🧀', label: 'Lácteos',       color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+  fiambre:   { emoji: '🍖', label: 'Fiambres',      color: 'text-orange-400', bg: 'bg-orange-500/20' },
+  fiambres:  { emoji: '🍖', label: 'Fiambres',      color: 'text-orange-400', bg: 'bg-orange-500/20' },
+  pan:       { emoji: '🍞', label: 'Panadería',     color: 'text-amber-400',  bg: 'bg-amber-500/20'  },
+  bebida:    { emoji: '🥤', label: 'Bebidas',       color: 'text-blue-400',   bg: 'bg-blue-500/20'   },
+  bebidas:   { emoji: '🥤', label: 'Bebidas',       color: 'text-blue-400',   bg: 'bg-blue-500/20'   },
+  salsa:     { emoji: '🫙', label: 'Salsas',        color: 'text-purple-400', bg: 'bg-purple-500/20' },
+  salsas:    { emoji: '🫙', label: 'Salsas',        color: 'text-purple-400', bg: 'bg-purple-500/20' },
+  limpieza:  { emoji: '🧹', label: 'Limpieza',      color: 'text-cyan-400',   bg: 'bg-cyan-500/20'   },
+  descartable:{ emoji:'📦', label: 'Descartables',  color: 'text-slate-400',  bg: 'bg-slate-500/20'  },
+  descartables:{ emoji:'📦',label: 'Descartables',  color: 'text-slate-400',  bg: 'bg-slate-500/20'  },
+  condimento: { emoji: '🧂', label: 'Condimentos',  color: 'text-pink-400',   bg: 'bg-pink-500/20'   },
+  condimentos:{ emoji: '🧂', label: 'Condimentos',  color: 'text-pink-400',   bg: 'bg-pink-500/20'   },
+  aceite:    { emoji: '🫒', label: 'Aceites',       color: 'text-lime-400',   bg: 'bg-lime-500/20'   },
+};
+const DEFAULT_CAT = { emoji: '📋', label: 'Otros', color: 'text-slate-400', bg: 'bg-slate-500/20' };
+
 // ── Stock Picker Popup ────────────────────────────────────────────────────────
 function StockPickerPopup({ stock, current, onSelect, onClose }: {
   stock: StockProduct[];
@@ -58,50 +81,110 @@ function StockPickerPopup({ stock, current, onSelect, onClose }: {
   onClose: () => void;
 }) {
   const [q, setQ] = useState('');
-  const filtered = q.trim()
-    ? stock.filter(s => normalize(s.nombre).includes(normalize(q)))
+  const isSearching = q.trim().length > 0;
+
+  const filtered = isSearching
+    ? stock.filter(s => normalize(s.nombre).includes(normalize(q)) || normalize(s.categoria).includes(normalize(q)))
     : stock;
 
+  // Agrupar por categoría
+  const grouped: Record<string, StockProduct[]> = {};
+  for (const s of filtered) {
+    const cat = s.categoria ?? 'otros';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(s);
+  }
+  const cats = Object.keys(grouped).sort();
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col max-h-[70vh]"
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-3" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh]"
         onClick={e => e.stopPropagation()}>
-        <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-          <p className="font-black text-white text-sm">Vincular a stock</p>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16} /></button>
+
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+          <div>
+            <p className="font-black text-white text-base">Vincular a stock</p>
+            <p className="text-slate-500 text-xs mt-0.5">Buscá o elegí por categoría</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-500 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
         </div>
+
         {/* Search */}
-        <div className="px-3 py-2 border-b border-slate-800">
-          <div className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-2">
-            <Search size={14} className="text-slate-500 shrink-0" />
+        <div className="px-4 py-3 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5">
+            <Search size={15} className="text-slate-500 shrink-0" />
             <input
               autoFocus
               value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Buscar producto..."
+              placeholder="Buscar por nombre o categoría..."
               className="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-600" />
+            {q && (
+              <button onClick={() => setQ('')} className="text-slate-600 hover:text-slate-400">
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
+
         {/* Lista */}
-        <div className="flex-1 overflow-y-auto py-1">
-          {/* Opción: no vincular */}
-          <button
-            onClick={() => { onSelect(null); onClose(); }}
-            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-slate-800 flex items-center gap-2
-              ${!current ? 'text-slate-400 bg-slate-800/50' : 'text-slate-500'}`}>
-            <span className="text-lg">🚫</span>
-            <span className="font-bold">No vincular (solo registro)</span>
-          </button>
-          {filtered.map(s => (
-            <button key={s.id}
-              onClick={() => { onSelect(s); onClose(); }}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-slate-800 flex items-center justify-between gap-2
-                ${current?.id === s.id ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}>
-              <span className="font-bold truncate">{s.nombre}</span>
-              <span className="text-slate-500 text-xs shrink-0">{Number(s.cantidad).toFixed(2)} {s.unidad}</span>
+        <div className="flex-1 overflow-y-auto">
+          {/* No vincular */}
+          <div className="px-3 pt-3 pb-1">
+            <button
+              onClick={() => { onSelect(null); onClose(); }}
+              className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors flex items-center gap-3 border
+                ${!current
+                  ? 'border-slate-600 bg-slate-800 text-white'
+                  : 'border-slate-800 hover:bg-slate-800/60 text-slate-400 hover:text-white'}`}>
+              <span className="text-xl">🚫</span>
+              <div>
+                <p className="font-black text-sm">No vincular</p>
+                <p className="text-xs text-slate-500 font-normal">Se guarda el movimiento pero no actualiza stock</p>
+              </div>
             </button>
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-center text-slate-600 text-xs py-6">Sin resultados</p>
+          </div>
+
+          {/* Por categorías o búsqueda plana */}
+          {cats.length === 0 ? (
+            <p className="text-center text-slate-600 text-sm py-10">Sin resultados para "{q}"</p>
+          ) : (
+            <div className="px-3 pb-3 space-y-3 mt-2">
+              {cats.map(cat => {
+                const cfg = CAT_CFG[cat.toLowerCase()] ?? DEFAULT_CAT;
+                return (
+                  <div key={cat}>
+                    {/* Header categoría */}
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl mb-1 ${cfg.bg}`}>
+                      <span className="text-base">{cfg.emoji}</span>
+                      <span className={`text-xs font-black uppercase tracking-wide ${cfg.color}`}>{cfg.label}</span>
+                      <span className="ml-auto text-xs text-slate-600">{grouped[cat].length}</span>
+                    </div>
+                    {/* Productos de la categoría */}
+                    <div className="space-y-0.5">
+                      {grouped[cat].map(s => (
+                        <button key={s.id}
+                          onClick={() => { onSelect(s); onClose(); }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-colors flex items-center justify-between gap-3
+                            ${current?.id === s.id
+                              ? 'bg-blue-600/25 text-blue-300 font-black'
+                              : 'hover:bg-slate-800 text-white font-bold'}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {current?.id === s.id && <span className="text-blue-400 shrink-0">✓</span>}
+                            <span className="truncate">{s.nombre}</span>
+                          </div>
+                          <span className={`text-xs shrink-0 font-normal ${Number(s.cantidad) > 0 ? 'text-slate-400' : 'text-red-400'}`}>
+                            {Number(s.cantidad).toFixed(2)} {s.unidad}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
@@ -155,10 +238,10 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
       // 2. Traer todo el stock
       const { data: stockData } = await supabase
         .from('stock')
-        .select('id, nombre, unidad, cantidad')
-        .order('nombre');
+        .select('id, nombre, unidad, cantidad, categoria')
+        .order('categoria').order('nombre');
       const stock: StockProduct[] = (stockData ?? []).map((r: any) => ({
-        id: r.id, nombre: r.nombre, unidad: r.unidad, cantidad: Number(r.cantidad),
+        id: r.id, nombre: r.nombre, unidad: r.unidad, cantidad: Number(r.cantidad), categoria: r.categoria ?? 'otros',
       }));
       setStockAll(stock);
 
