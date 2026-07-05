@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle, ScanLine } from 'lucide-react';
-import FacturaModal from './FacturaModal';
+import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Movement, formatFecha } from './types';
 
@@ -23,7 +22,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   const [deleteConfirm, setDeleteConfirm] = useState<Movement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [filterFudo, setFilterFudo]         = useState(false);
-  const [showFactura, setShowFactura]       = useState(false);
+
 
   const filtered = movements.filter(m => {
     if (filterType !== 'all' && m.tipo !== filterType) return false;
@@ -124,11 +123,6 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
           {operadores.map(op => <option key={op} value={op}>{op}</option>)}
         </select>
         <span className="text-slate-600 text-xs ml-auto">{filtered.length} registros</span>
-        <button
-          onClick={() => setShowFactura(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all">
-          <ScanLine size={14} /> Cargar factura
-        </button>
       </div>
 
       {/* Tabla */}
@@ -280,14 +274,6 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── MODAL: cargar factura ── */}
-      {showFactura && (
-        <FacturaModal
-          onClose={() => setShowFactura(false)}
-          onConfirm={() => { setShowFactura(false); fetchMovements(); }}
-        />
       )}
 
       {/* ── MODAL: todos los movimientos de un producto ── */}

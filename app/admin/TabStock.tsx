@@ -5,6 +5,7 @@ import { AlertTriangle, Search, RefreshCw, Package, X, TrendingUp, TrendingDown,
 import { Movement, formatFecha } from './types';
 import { supabase } from '../supabase';
 import StockEntryModal from '../components/StockEntryModal';
+import FacturaModal from './FacturaModal';
 
 // ── Formatos doypack/paquete por producto ─────────────────────────────────────
 const FORMATOS_DOYPACK: Record<string, { label: string; kg: number }[]> = {
@@ -129,6 +130,7 @@ function calcularDescuentos(producto: string, cantidad: number): Descuento[] {
 
 export default function TabStock({ stock, stockProd, movements, fetchMovements }: Props) {
   const [showEntryModal, setShowEntryModal] = useState(false);
+  const [showFactura, setShowFactura]       = useState(false);
   const { user } = useAuth();
   const [stockCat, setStockCat]           = useState('all');
   const [stockSearch, setStockSearch]     = useState('');
@@ -237,9 +239,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 {/* Filtros */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
                   <button
+                    onClick={() => setShowFactura(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap">
+                    📄 Cargar factura IA
+                  </button>
+                  <button
                     onClick={() => setShowEntryModal(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap">
-                    <Package size={16} /> Cargar Factura
+                    <Package size={16} /> Ingreso manual
                   </button>
                   <div className="relative flex-1 min-w-48">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -1763,6 +1770,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
       {showEntryModal && (
         <StockEntryModal onClose={() => { setShowEntryModal(false); setSelectedStockItem(null); fetchMovements(); }} />
+      )}
+      {showFactura && (
+        <FacturaModal onClose={() => setShowFactura(false)} onConfirm={() => { setShowFactura(false); fetchMovements(); }} />
       )}
     </div>
   );
