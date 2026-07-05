@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
-import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
+import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle, ScanLine } from 'lucide-react';
+import FacturaModal from './FacturaModal';
 import { supabase } from '../supabase';
 import { Movement, formatFecha } from './types';
 
@@ -21,10 +22,13 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Movement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [filterFudo, setFilterFudo]         = useState(false);
+  const [showFactura, setShowFactura]       = useState(false);
 
   const filtered = movements.filter(m => {
     if (filterType !== 'all' && m.tipo !== filterType) return false;
     if (filterOp !== 'all' && m.operador !== filterOp) return false;
+    if (filterFudo && m.categoria !== 'FUDO') return false;
     return true;
   });
   const operadores = [...new Set(movements.map(m => m.operador).filter(Boolean))];
@@ -105,12 +109,26 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
             </button>
           ))}
         </div>
+        <button
+          onClick={() => setFilterFudo(f => !f)}
+          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border
+            ${filterFudo
+              ? 'bg-orange-500/20 text-orange-400 border-orange-500/40'
+              : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-orange-400 hover:border-orange-500/30'
+            }`}>
+          🔶 FUDO
+        </button>
         <select value={filterOp} onChange={e => setFilterOp(e.target.value)}
           className="bg-slate-800 border border-slate-700 text-sm text-slate-300 rounded-xl px-3 py-2 outline-none">
           <option value="all">Todos los operadores</option>
           {operadores.map(op => <option key={op} value={op}>{op}</option>)}
         </select>
         <span className="text-slate-600 text-xs ml-auto">{filtered.length} registros</span>
+        <button
+          onClick={() => setShowFactura(true)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all">
+          <ScanLine size={14} /> Cargar factura
+        </button>
       </div>
 
       {/* Tabla */}
@@ -262,6 +280,14 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── MODAL: cargar factura ── */}
+      {showFactura && (
+        <FacturaModal
+          onClose={() => setShowFactura(false)}
+          onConfirm={() => { setShowFactura(false); fetchMovements(); }}
+        />
       )}
 
       {/* ── MODAL: todos los movimientos de un producto ── */}

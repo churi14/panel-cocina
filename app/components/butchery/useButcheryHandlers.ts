@@ -77,7 +77,7 @@ type Setters = {
 export function createButcheryHandlers(s: Setters) {
   const { operador, step2Queue, step2Index } = s;
 
-  const handleStartProductions = async (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => {
+  const handleStartProductions = async (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind, isBlend?: boolean) => {
     // Solo notificar si hay stock negativo — no bloquear producción
     for (const e of entries) {
       const corteNombre = getCutLabel(e.type);
@@ -99,7 +99,7 @@ export function createButcheryHandlers(s: Setters) {
     }
     const now = Date.now();
     const newProds = entries.map((e, i) => ({
-      id: now + i, batchId: now, type: e.type,
+      id: now + i, batchId: now, isBlend: isBlend ?? false, type: e.type,
       typeName: e.carneLinpiaName
         ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
         : getCutLabel(e.type),

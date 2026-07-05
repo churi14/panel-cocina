@@ -12,6 +12,7 @@ import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView } from './butchery/Step2BurgerView';
 import LimpiezaView from './butchery/LimpiezaView';
 import { groupByBatch, createButcheryHandlers } from './butchery/useButcheryHandlers';
+import { addToStockProduccion } from './butchery/stockProduccion';
 
 export default function ButcheryModal({ onClose, butcheryProductions, setButcheryProductions, butcheryRecords, setButcheryRecords }: {
   onClose: () => void;
@@ -27,7 +28,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const [step2Queue, setStep2Queue] = useState<ButcheryProduction[]>([]);
   const [step2Index, setStep2Index] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const submittingRef = useRef(false);
+  const submittingRef  = useRef(false);
+  const blendAccumKg   = useRef(0);   // acumula kg limpios en batch blend
 
   const activeProductions = butcheryProductions.filter(p => p.status !== 'step2_done');
   const activeBatches = groupByBatch(activeProductions);
@@ -164,7 +166,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                           </button>
                         )}
                         {allReady && (
-                          <button onClick={() => handleGoToBatchStep2(batch)}
+                          <button onClick={() => { blendAccumKg.current = 0; handleGoToBatchStep2(batch); }}
                             className="w-full py-3 bg-green-600 text-white font-black text-base rounded-xl hover:bg-green-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                             {batch[0]?.kind === 'limpieza' ? 'FINALIZAR LIMPIEZA' : 'AVANZAR A PASO 2'}{batch.length > 1 && ` — ${batch.length} CORTES`} <ChevronRight size={20} />
                           </button>
@@ -225,7 +227,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           )}
 
           {!!operador && view === 'new' && (
-            <NewProductionWizard onStart={handleStartProductions as any} onCancel={() => setView('list')} />
+            <NewProductionWizard onStart={(entries, kind, isBlend) => handleStartProductions(entries as any, kind, isBlend)} onCancel={() => setView('list')} />
           )}
 
           {!!operador && view === 'step2' && step2Queue.length > 0 && (
@@ -237,10 +239,37 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                   if (submittingRef.current) return;
                   submittingRef.current = true;
                   setSubmitting(true);
-                  await handleFinishLimpieza(currentStep2Prod, params);
+
+                  const isBlendBatch = step2Queue[0]?.isBlend === true;
+
+                  if (isBlendBatch) {
+                    // Acumular kg limpio; no crear stock individual por corte
+                    blendAccumKg.current += params.carneLinpiaKg;
+                    await handleFinishLimpieza(currentStep2Prod, { ...params, carneLinpiaKg: 0 });
+                  } else {
+                    await handleFinishLimpieza(currentStep2Prod, params);
+                  }
+
                   const next = step2Index + 1;
-                  if (next < step2Queue.length) { setStep2Index(next); }
-                  else { setStep2Queue([]); setStep2Index(0); setView('list'); }
+                  if (next < step2Queue.length) {
+                    setStep2Index(next);
+                  } else {
+                    // Último corte del batch
+                    if (isBlendBatch && blendAccumKg.current > 0) {
+                      const cortesNames = step2Queue.map(p => (p.typeName ?? '').replace(/_L$/, '').trim()).join(' + ');
+                      const blendNombre = `Blend ${cortesNames}`;
+                      await addToStockProduccion({
+                        producto:  blendNombre,
+                        categoria: 'carnes_limpias',
+                        cantidad:  parseFloat(blendAccumKg.current.toFixed(3)),
+                        unidad:    'kg',
+                        motivo:    `Limpieza blend — ${blendNombre} — ${operador}`,
+                        operador,
+                      });
+                      blendAccumKg.current = 0;
+                    }
+                    setStep2Queue([]); setStep2Index(0); setView('list');
+                  }
                   submittingRef.current = false;
                   setSubmitting(false);
                 }}

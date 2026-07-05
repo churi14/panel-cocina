@@ -6,11 +6,18 @@ import { ButcheryProduction } from '../../types';
 import { getCut, formatWeight, formatTimer, formatGrams, ALL_STOCKS } from './cuts';
 
 // --- OVERLAY: CONFIRMAR INICIO ---
-export function StartConfirmOverlay({ entries, onConfirm, onCancel }: {
+export function StartConfirmOverlay({ entries, onConfirm, onCancel, isBlend }: {
   entries: { label: string; weightKg: number }[];
   onConfirm: () => void;
   onCancel: () => void;
+  isBlend?: boolean;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const handleConfirm = () => {
+    if (confirming) return;
+    setConfirming(true);
+    onConfirm();
+  };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
       <div className="bg-white rounded-3xl w-full max-w-lg p-8 text-center shadow-2xl">
@@ -20,6 +27,11 @@ export function StartConfirmOverlay({ entries, onConfirm, onCancel }: {
         <h2 className="text-2xl font-black text-slate-800 mb-2">
           ¿Arrancar {entries.length} producción{entries.length > 1 ? 'es' : ''}?
         </h2>
+        {isBlend && (
+          <div className="mb-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 rounded-full">
+            <span className="text-blue-700 font-black text-sm">🍔 Blend para burger</span>
+          </div>
+        )}
         <p className="text-slate-500 mb-6">Confirmá los pesos antes de empezar</p>
         <div className="space-y-2 mb-8 text-left">
           {entries.map((e, i) => (
@@ -31,8 +43,9 @@ export function StartConfirmOverlay({ entries, onConfirm, onCancel }: {
         </div>
         <div className="flex gap-4">
           <button onClick={onCancel} className="flex-1 py-5 rounded-2xl border-2 border-slate-300 text-slate-600 font-bold text-xl hover:bg-slate-50 active:scale-95 transition-all">CANCELAR</button>
-          <button onClick={onConfirm} className="flex-1 py-5 rounded-2xl bg-rose-600 text-white font-bold text-xl hover:bg-rose-500 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2">
-            <Play size={20} fill="currentColor" /> ARRANCAR
+          <button onClick={handleConfirm} disabled={confirming}
+            className="flex-1 py-5 rounded-2xl bg-rose-600 text-white font-bold text-xl hover:bg-rose-500 active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+            <Play size={20} fill="currentColor" /> {confirming ? 'ARRANCANDO...' : 'ARRANCAR'}
           </button>
         </div>
       </div>

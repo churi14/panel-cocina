@@ -10,7 +10,7 @@ import { supabase } from '../../supabase';
 type WeightEntry = { type: string; weight: string; carneLinpiaName?: string };
 
 export function NewProductionWizard({ onStart, onCancel }: {
-  onStart: (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind) => void | Promise<void>;
+  onStart: (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind, isBlend?: boolean) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [step, setStep] = useState<'kind' | 'select' | 'weights'>('kind');
@@ -22,6 +22,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
   const [carnesLimpias, setCarnesLimpias] = useState<{producto: string; cantidad: number}[]>([]);
   const [selectedCarneLinpia, setSelectedCarneLinpia] = useState('');
   const [selectedCarnesMulti, setSelectedCarnesMulti] = useState<string[]>([]); // burger multi-select
+  const [limpiezaIsBlend, setLimpiezaIsBlend] = useState(false); // si la limpieza genera blend para burger
 
   const toggleCarneMulti = (producto: string) =>
     setSelectedCarnesMulti(prev => prev.includes(producto) ? prev.filter(x => x !== producto) : [...prev, producto]);
@@ -41,12 +42,13 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setCarnesLimpias([]);
     setSelectedCarneLinpia('');
     setSelectedCarnesMulti([]);
+    setLimpiezaIsBlend(false);
     setTipVisible(!localStorage.getItem('wizard_tip_seen'));
     // Para lomito/milanesa: fetch carnes limpias del stock_produccion
     // Lista fija de todos los cortes posibles
     const TODOS_CORTES = [
       'Lomo', 'Cuadril', 'Cuadrada', 'Nalga', 'Tapa de Asado',
-      'Bife de Chorizo', 'Vacío', 'Picaña', 'Ojo de Bife', 'Roast Beef', 'Pollo',
+      'Bife de Chorizo', 'Vacío', 'Picaña', 'Ojo de Bife', 'Roast Beef', 'Pollo', 'Aguja',
     ];
 
     if (kind === 'lomito' || kind === 'milanesa') {
@@ -66,17 +68,16 @@ export function NewProductionWizard({ onStart, onCancel }: {
       }));
       setCarnesLimpias(todos);
     } else if (kind === 'burger') {
-      const { data } = await supabase
-        .from('stock_produccion')
-        .select('producto, cantidad')
-        .ilike('producto', 'Carne Limpia Burger%');
-      const stockMap: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { stockMap[r.producto] = Number(r.cantidad); });
-      const todos = TODOS_CORTES.map(c => ({
-        producto: `Carne Limpia Burger - ${c}`,
-        cantidad: stockMap[`Carne Limpia Burger - ${c}`] ?? 0,
-      }));
-      setCarnesLimpias(todos);
+      // Traer blends creados en limpieza + legacy "Carne Limpia Burger" individuales
+      const [{ data: blendData }, { data: legacyData }] = await Promise.all([
+        supabase.from('stock_produccion').select('producto, cantidad').eq('categoria', 'carnes_limpias').ilike('producto', 'Blend%').gt('cantidad', 0),
+        supabase.from('stock_produccion').select('producto, cantidad').ilike('producto', 'Carne Limpia Burger%').gt('cantidad', 0),
+      ]);
+      const combined = [
+        ...(blendData ?? []).map((r: any) => ({ producto: r.producto, cantidad: Number(r.cantidad) })),
+        ...(legacyData ?? []).map((r: any) => ({ producto: r.producto, cantidad: Number(r.cantidad) })),
+      ];
+      setCarnesLimpias(combined.length > 0 ? combined : []);
     }
     setStep('select');
   };
@@ -115,7 +116,8 @@ export function NewProductionWizard({ onStart, onCancel }: {
         weight: parseFloat(w.weight.replace(',', '.')),
         carneLinpiaName: (w as any).carneLinpiaName ?? (selectedCarneLinpia || undefined),
       })),
-      selectedKind
+      selectedKind,
+      selectedKind === 'limpieza' ? limpiezaIsBlend : undefined,
     );
   };
 
@@ -283,7 +285,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
           )}
 
           {(selected.length > 0 || selectedCarneLinpia || selectedCarnesMulti.length > 0) && (
-            <div className="mt-4 max-w-4xl mx-auto w-full">
+            <div className="mt-4 max-w-4xl mx-auto w-full space-y-3">
               <div className={`border rounded-2xl px-6 py-4 flex items-center justify-between flex-wrap gap-3 bg-slate-50`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-black text-slate-500 uppercase">Seleccionados:</span>
@@ -291,7 +293,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                     <span key={id} className={`text-white text-xs font-bold px-3 py-1 rounded-full ${kindConfig.color}`}>{getCutLabel(id)}</span>
                   )) : selectedKind === 'burger' ? selectedCarnesMulti.map(p => (
                     <span key={p} className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">
-                      {p.replace('Carne Limpia Burger - ', '')}_L
+                      {p.replace('Carne Limpia Burger - ', '').replace('Blend ', '🍔 ')}
                     </span>
                   )) : selectedCarneLinpia ? (
                     <span className="text-white text-xs font-bold px-3 py-1 rounded-full bg-green-600">
@@ -303,6 +305,31 @@ export function NewProductionWizard({ onStart, onCancel }: {
                   {selectedKind === 'limpieza' ? selected.length : selectedKind === 'burger' ? selectedCarnesMulti.length : selectedCarneLinpia ? 1 : 0}
                 </span>
               </div>
+
+              {/* Toggle blend — solo limpieza con 2+ cortes */}
+              {selectedKind === 'limpieza' && selected.length >= 2 && (
+                <button
+                  onClick={() => setLimpiezaIsBlend(v => !v)}
+                  className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all font-bold
+                    ${limpiezaIsBlend
+                      ? 'border-blue-400 bg-blue-50 text-blue-800'
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🍔</span>
+                    <div className="text-left">
+                      <p className="font-black text-base">¿Es un blend para burger?</p>
+                      <p className="text-xs font-normal mt-0.5">
+                        {limpiezaIsBlend
+                          ? `Se creará: Blend ${selected.map(getCutLabel).join(' + ')}`
+                          : 'Se crearán stocks separados por corte'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full transition-all relative ${limpiezaIsBlend ? 'bg-blue-500' : 'bg-slate-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${limpiezaIsBlend ? 'left-7' : 'left-1'}`} />
+                  </div>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -333,6 +360,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
           entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','').replace('_L','') : getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
           onConfirm={handleConfirm}
           onCancel={() => setShowConfirm(false)}
+          isBlend={selectedKind === 'limpieza' && limpiezaIsBlend}
         />
       )}
 
