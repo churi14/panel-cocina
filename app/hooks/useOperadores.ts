@@ -15,7 +15,10 @@ async function fetchOperadores(): Promise<string[]> {
         .eq('activo', true)
         .order('nombre')
     ).then(({ data }) => {
-      cached = (data ?? []).map((p: any) => p.nombre as string);
+      const lista = (data ?? []).map((p: any) => p.nombre as string);
+      // Operador de pruebas — siempre presente
+      if (!lista.includes('JULIAN P PRUEBAS')) lista.push('JULIAN P PRUEBAS');
+      cached = lista;
       return cached!;
     });
   }
