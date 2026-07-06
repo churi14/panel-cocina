@@ -22,6 +22,7 @@ import TabFichador    from './TabFichador';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
+import FacturaModal   from './FacturaModal';
 
 export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => void; onIrACocina?: () => void }) {
   const { perfil } = useAuth();
@@ -43,6 +44,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
+  const [showFacturaNav, setShowFacturaNav] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
@@ -200,7 +202,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       </header>
 
       {/* NAV */}
-      <nav className="bg-slate-900 border-b border-slate-800 flex gap-1 overflow-x-auto scrollbar-hide px-2 md:px-8">
+      <nav className="bg-slate-900 border-b border-slate-800 flex items-center gap-1 overflow-x-auto scrollbar-hide px-2 md:px-8">
         {TABS.map(tab => (
           <button key={tab.id} id={`admin-tour-tab-${tab.id}`} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-3 md:px-5 py-3 text-xs md:text-sm font-bold border-b-2 transition-all whitespace-nowrap shrink-0
@@ -208,7 +210,19 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
             {tab.icon} {tab.label}
           </button>
         ))}
+        <button
+          onClick={() => setShowFacturaNav(true)}
+          className="ml-2 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95">
+          📄 Factura
+        </button>
       </nav>
+
+      {showFacturaNav && (
+        <FacturaModal
+          onClose={() => setShowFacturaNav(false)}
+          onConfirm={() => { setShowFacturaNav(false); fetchMovements(); }}
+        />
+      )}
 
       {/* CONTENT */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
