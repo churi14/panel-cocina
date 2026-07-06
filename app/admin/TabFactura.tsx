@@ -17,6 +17,7 @@ interface ItemEditable extends FacturaItem {
   seleccionado: boolean;
   stockMatch: StockProduct | null;
   matchScore: number;
+  pesoRealKg: string; // kg reales pesados (override de cantidad+unidad para stock)
 }
 
 interface FacturaHist {
@@ -244,7 +245,7 @@ export default function TabFactura() {
       setFactura(data as FacturaData);
       setItems((data.items??[]).map((item:FacturaItem,i:number)=>{
         const {product,score}=bestMatch(item,stock);
-        return {...item,_id:i,seleccionado:true,stockMatch:product,matchScore:score};
+        return {...item,_id:i,seleccionado:true,stockMatch:product,matchScore:score,pesoRealKg:''};
       }));
       setStep('preview');
     } catch(e:any) { setError(e.message); }
@@ -266,16 +267,23 @@ export default function TabFactura() {
     let ok=0;
     for(const item of sel){
       try{
-        await supabase.from('stock_movements').insert({nombre:item.stockMatch?.nombre??item.nombre,categoria:'ingreso-proveedor',tipo:'ingreso',cantidad:item.cantidad,unidad:item.unidad,motivo,operador:op,fecha:new Date().toISOString()});
+        // Si el operador ingresó peso real en kg, usarlo; si no, usar cantidad+unidad de la factura
+        const kgReal = item.pesoRealKg ? parseFloat(item.pesoRealKg) : null;
+        const cantStock = kgReal ?? item.cantidad;
+        const unidStock = kgReal ? 'kg' : item.unidad;
+        const motivoItem = kgReal
+          ? `${motivo} (${item.cantidad} ${item.unidad} → ${kgReal} kg pesados)`
+          : motivo;
+        await supabase.from('stock_movements').insert({nombre:item.stockMatch?.nombre??item.nombre,categoria:'ingreso-proveedor',tipo:'ingreso',cantidad:cantStock,unidad:unidStock,motivo:motivoItem,operador:op,fecha:new Date().toISOString()});
         if(item.stockMatch){
           const s=item.stockMatch;
-          await supabase.from('stock').update({cantidad:parseFloat((Number(s.cantidad)+item.cantidad).toFixed(3)),fecha_actualizacion:new Date().toISOString().slice(0,10)}).eq('id',s.id);
+          await supabase.from('stock').update({cantidad:parseFloat((Number(s.cantidad)+cantStock).toFixed(3)),fecha_actualizacion:new Date().toISOString().slice(0,10)}).eq('id',s.id);
         }
         ok++;
       }catch(e:any){console.error('[factura confirm]',item.nombre,e.message);}
     }
     try{
-      await supabase.from('facturas_historial').insert({proveedor:factura?.proveedor??null,numero_factura:factura?.numero_factura??null,fecha_factura:factura?.fecha??null,operador:op,items:sel.map(i=>({nombre:i.nombre,cantidad:i.cantidad,unidad:i.unidad,stockMatch:i.stockMatch?.nombre??null})),total_items:sel.length,imagen_nombre:imagen?.name??null});
+      await supabase.from('facturas_historial').insert({proveedor:factura?.proveedor??null,numero_factura:factura?.numero_factura??null,fecha_factura:factura?.fecha??null,operador:op,items:sel.map(i=>{const kg=i.pesoRealKg?parseFloat(i.pesoRealKg):null;return{nombre:i.nombre,cantidad:kg??i.cantidad,unidad:kg?'kg':i.unidad,cantidadFactura:i.cantidad,unidadFactura:i.unidad,stockMatch:i.stockMatch?.nombre??null};}),total_items:sel.length,imagen_nombre:imagen?.name??null});
     }catch(e){console.error('[factura historial]',e);}
     setSavedCount(ok);
     setSaving(false);
@@ -447,6 +455,36 @@ export default function TabFactura() {
                       <ChevronDown size={12} className="shrink-0 opacity-60"/>
                     </button>
                   </div>
+
+                  {/* Campo peso real — aparece cuando la unidad es cajones/unidades */}
+                  {item.unidad === 'u' && (
+                    <div className={`mx-4 mb-3 rounded-xl border px-3 py-2.5 transition-all
+                      ${item.pesoRealKg ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-700/50 bg-slate-800/30'}`}>
+                      <p className="text-[10px] font-black text-slate-500 uppercase mb-1.5">
+                        ⚖️ Peso real al recepcionar <span className="text-slate-600 font-normal normal-case">(opcional — si pesaste los cajones)</span>
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number" step="0.001" min="0"
+                          value={item.pesoRealKg}
+                          onChange={e=>updateItem(item._id,'pesoRealKg',e.target.value)}
+                          placeholder={`ej: ${(item.cantidad * 10).toFixed(3)}`}
+                          className="flex-1 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-white text-sm font-black outline-none text-center placeholder-slate-700"/>
+                        <span className="text-amber-400 font-black text-sm">kg</span>
+                        {item.pesoRealKg && (
+                          <button onClick={()=>updateItem(item._id,'pesoRealKg','')}
+                            className="text-slate-600 hover:text-slate-400 transition-colors">
+                            <X size={13}/>
+                          </button>
+                        )}
+                      </div>
+                      {item.pesoRealKg && parseFloat(item.pesoRealKg) > 0 && (
+                        <p className="text-[10px] text-amber-400 font-black mt-1.5">
+                          ✓ Se cargará {parseFloat(item.pesoRealKg)} kg al stock (en lugar de {item.cantidad} {item.unidad})
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
