@@ -199,6 +199,8 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [nuevoCantidad, setNuevaCantidad]         = useState('');
   const [nuevoUnidad, setNuevoUnidad]             = useState('kg');
   const [savingNuevo, setSavingNuevo]             = useState(false);
+  const [overrideWarn, setOverrideWarn]           = useState(false);
+  const [overrideProdWarn, setOverrideProdWarn]   = useState(false);
 
   // Movimientos directos del producto seleccionado (no depende del límite 200 del dashboard)
   const [itemMovsFetched, setItemMovsFetched]     = useState<Movement[]>([]);
@@ -626,43 +628,44 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         const val = parseFloat(String(prodStockValor).replace(',','.')) || 0;
                         const actual = parseFloat(selectedProdItem.cantidad) || 0;
                         const isKg = selectedProdItem.unidad === 'kg';
-                        const warnGramos = isKg && val > 500;
-                        const sugerirKg = warnGramos ? parseFloat((val / 1000).toFixed(3)) : null;
-                        const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0;
+                        const warnGramos = isKg && val > 500 && !overrideProdWarn;
+                        const sugerirKg = (isKg && val > 500) ? parseFloat((val / 1000).toFixed(3)) : null;
+                        const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0 && !overrideProdWarn;
+                        const guardarProdFn = async () => {
+                          const nuevoValor = parseFloat(String(prodStockValor).replace(',', '.'));
+                          if (isNaN(nuevoValor) || savingProdStockRef.current) return;
+                          savingProdStockRef.current = true;
+                          setSavingProdStock(true);
+                          const diff = nuevoValor - selectedProdItem.cantidad;
+                          await supabase.from('stock_produccion').update({ cantidad: nuevoValor, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
+                          if (Math.abs(diff) > 0) {
+                            await supabase.from('stock_movements').insert({
+                              nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
+                              tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
+                              unidad: selectedProdItem.unidad,
+                              motivo: `Corrección directa (${selectedProdItem.cantidad} → ${nuevoValor})`,
+                              operador: 'Admin', fecha: new Date().toISOString(),
+                            });
+                          }
+                          setSavingProdStock(false); savingProdStockRef.current = false;
+                          setEditandoProdStock(false); setOverrideProdWarn(false);
+                          setSelectedProdItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
+                          await fetchMovements();
+                        };
                         return (<>
                           <div className="flex gap-2 items-center">
                             <input type="number" inputMode="decimal" step="0.001"
-                              value={prodStockValor} onChange={e => setProdStockValor(e.target.value)}
+                              value={prodStockValor} onChange={e => { setProdStockValor(e.target.value); setOverrideProdWarn(false); }}
                               className={`flex-1 bg-slate-800 border-2 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none
                                 ${warnGramos || warnMucho ? 'border-red-500' : 'border-amber-500'}`} />
                             <span className="text-slate-400 font-bold">{selectedProdItem.unidad}</span>
                             <button
-                              onClick={async () => {
-                                const nuevoValor = parseFloat(String(prodStockValor).replace(',', '.'));
-                                if (isNaN(nuevoValor) || savingProdStockRef.current) return;
-                                savingProdStockRef.current = true;
-                                setSavingProdStock(true);
-                                const diff = nuevoValor - selectedProdItem.cantidad;
-                                await supabase.from('stock_produccion').update({ cantidad: nuevoValor, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
-                                if (Math.abs(diff) > 0) {
-                                  await supabase.from('stock_movements').insert({
-                                    nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
-                                    tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
-                                    unidad: selectedProdItem.unidad,
-                                    motivo: `Corrección directa (${selectedProdItem.cantidad} → ${nuevoValor})`,
-                                    operador: 'Admin', fecha: new Date().toISOString(),
-                                  });
-                                }
-                                setSavingProdStock(false); savingProdStockRef.current = false;
-                                setEditandoProdStock(false);
-                                setSelectedProdItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
-                                await fetchMovements();
-                              }}
+                              onClick={guardarProdFn}
                               disabled={savingProdStock || prodStockValor === '' || warnGramos || warnMucho}
                               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
                               {savingProdStock ? '...' : '✓'} Guardar
                             </button>
-                            <button onClick={() => setEditandoProdStock(false)}
+                            <button onClick={() => { setEditandoProdStock(false); setOverrideProdWarn(false); }}
                               className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
                           </div>
                           {warnGramos && (
@@ -671,17 +674,27 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                 <p className="text-xs font-black text-red-300">⛔ ¿Pusiste gramos en vez de kg?</p>
                                 <p className="text-xs text-red-400">{val} gr = {sugerirKg} kg</p>
                               </div>
-                              {sugerirKg && (
-                                <button onClick={() => setProdStockValor(String(sugerirKg))}
-                                  className="px-3 py-1.5 bg-amber-500 text-slate-900 font-black text-xs rounded-lg">
-                                  Usar {sugerirKg} kg
+                              <div className="flex gap-2 shrink-0">
+                                {sugerirKg && (
+                                  <button onClick={() => { setProdStockValor(String(sugerirKg)); setOverrideProdWarn(false); }}
+                                    className="px-3 py-1.5 bg-amber-500 text-slate-900 font-black text-xs rounded-lg">
+                                    Usar {sugerirKg} kg
+                                  </button>
+                                )}
+                                <button onClick={() => setOverrideProdWarn(true)}
+                                  className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-black text-xs rounded-lg">
+                                  Sí, es correcto
                                 </button>
-                              )}
+                              </div>
                             </div>
                           )}
                           {warnMucho && !warnGramos && (
-                            <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2">
-                              <p className="text-xs font-black text-red-300">⛔ {val} kg es {Math.round(val/actual)}x más que el actual ({actual} kg). ¿Está bien?</p>
+                            <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                              <p className="text-xs font-black text-red-300">⚠️ {val} kg es {Math.round(val/actual)}x más que el actual ({actual} kg). ¿Está bien?</p>
+                              <button onClick={() => setOverrideProdWarn(true)}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-lg shrink-0">
+                                Sí, guardar igual
+                              </button>
                             </div>
                           )}
                           {prodStockValor !== '' && val !== actual && !warnGramos && !warnMucho && (
@@ -1245,43 +1258,44 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           const val = parseFloat(String(matStockValor).replace(',','.')) || 0;
                           const actual = parseFloat(selectedStockItem.cantidad) || 0;
                           const isKg = selectedStockItem.unidad === 'kg';
-                          const warnGramos = isKg && val > 1000;
-                          const sugerirKg = warnGramos ? parseFloat((val / 1000).toFixed(3)) : null;
-                          const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0;
+                          const warnGramos = isKg && val > 1000 && !overrideWarn;
+                          const sugerirKg = (isKg && val > 1000) ? parseFloat((val / 1000).toFixed(3)) : null;
+                          const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0 && !overrideWarn;
+                          const guardarFn = async () => {
+                            const nuevoValor = parseFloat(String(matStockValor).replace(',', '.'));
+                            if (isNaN(nuevoValor) || savingMatStockRef.current) return;
+                            savingMatStockRef.current = true;
+                            setSavingMatStock(true);
+                            const diff = nuevoValor - selectedStockItem.cantidad;
+                            await supabase.from('stock').update({ cantidad: nuevoValor, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
+                            if (Math.abs(diff) > 0) {
+                              await supabase.from('stock_movements').insert({
+                                stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria,
+                                tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
+                                unidad: selectedStockItem.unidad,
+                                motivo: `Corrección directa (${selectedStockItem.cantidad} → ${nuevoValor})`,
+                                operador: 'Admin', fecha: new Date().toISOString(),
+                              });
+                            }
+                            setSavingMatStock(false); savingMatStockRef.current = false;
+                            setEditandoMatStock(false); setOverrideWarn(false);
+                            setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
+                            await fetchMovements();
+                          };
                           return (<>
                             <div className="flex gap-2 items-center">
                               <input type="number" inputMode="decimal" step="0.001"
-                                value={matStockValor} onChange={e => setMatStockValor(e.target.value)}
+                                value={matStockValor} onChange={e => { setMatStockValor(e.target.value); setOverrideWarn(false); }}
                                 className={`flex-1 bg-slate-800 border-2 text-white rounded-xl px-4 py-2.5 text-xl font-black text-center outline-none
                                   ${warnGramos || warnMucho ? 'border-red-500' : 'border-amber-500'}`} />
                               <span className="text-slate-400 font-bold">{selectedStockItem.unidad}</span>
                               <button
-                                onClick={async () => {
-                                  const nuevoValor = parseFloat(String(matStockValor).replace(',', '.'));
-                                  if (isNaN(nuevoValor) || savingMatStockRef.current) return;
-                                  savingMatStockRef.current = true;
-                                  setSavingMatStock(true);
-                                  const diff = nuevoValor - selectedStockItem.cantidad;
-                                  await supabase.from('stock').update({ cantidad: nuevoValor, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', selectedStockItem.id);
-                                  if (Math.abs(diff) > 0) {
-                                    await supabase.from('stock_movements').insert({
-                                      stock_id: selectedStockItem.id, nombre: selectedStockItem.nombre, categoria: selectedStockItem.categoria,
-                                      tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
-                                      unidad: selectedStockItem.unidad,
-                                      motivo: `Corrección directa (${selectedStockItem.cantidad} → ${nuevoValor})`,
-                                      operador: 'Admin', fecha: new Date().toISOString(),
-                                    });
-                                  }
-                                  setSavingMatStock(false); savingMatStockRef.current = false;
-                                  setEditandoMatStock(false);
-                                  setSelectedStockItem((prev: any) => prev ? { ...prev, cantidad: nuevoValor } : null);
-                                  await fetchMovements();
-                                }}
+                                onClick={guardarFn}
                                 disabled={savingMatStock || matStockValor === '' || warnGramos || warnMucho}
                                 className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-50">
                                 {savingMatStock ? '...' : '✓'} Guardar
                               </button>
-                              <button onClick={() => setEditandoMatStock(false)}
+                              <button onClick={() => { setEditandoMatStock(false); setOverrideWarn(false); }}
                                 className="px-3 py-2.5 bg-slate-700 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
                             </div>
                             {warnGramos && (
@@ -1290,17 +1304,27 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                                   <p className="text-xs font-black text-red-300">⛔ ¿Pusiste gramos en vez de kg?</p>
                                   <p className="text-xs text-red-400">{val} gr = {sugerirKg} kg</p>
                                 </div>
-                                {sugerirKg && (
-                                  <button onClick={() => setMatStockValor(String(sugerirKg))}
-                                    className="px-3 py-1.5 bg-amber-500 text-slate-900 font-black text-xs rounded-lg">
-                                    Usar {sugerirKg} kg
+                                <div className="flex gap-2 shrink-0">
+                                  {sugerirKg && (
+                                    <button onClick={() => { setMatStockValor(String(sugerirKg)); setOverrideWarn(false); }}
+                                      className="px-3 py-1.5 bg-amber-500 text-slate-900 font-black text-xs rounded-lg">
+                                      Usar {sugerirKg} kg
+                                    </button>
+                                  )}
+                                  <button onClick={() => setOverrideWarn(true)}
+                                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-black text-xs rounded-lg">
+                                    Sí, es correcto
                                   </button>
-                                )}
+                                </div>
                               </div>
                             )}
                             {warnMucho && !warnGramos && (
-                              <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2">
-                                <p className="text-xs font-black text-red-300">⛔ {val} kg es {Math.round(val/actual)}x más que el actual ({actual} kg). ¿Está bien?</p>
+                              <div className="mt-2 bg-red-900/40 border border-red-500 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                                <p className="text-xs font-black text-red-300">⚠️ {val} kg es {Math.round(val/actual)}x más que el actual ({actual} kg). ¿Está bien?</p>
+                                <button onClick={() => setOverrideWarn(true)}
+                                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-lg shrink-0">
+                                  Sí, guardar igual
+                                </button>
                               </div>
                             )}
                             {matStockValor !== '' && val !== actual && !warnGramos && !warnMucho && (
