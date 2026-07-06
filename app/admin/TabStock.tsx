@@ -349,37 +349,60 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     </div>
                   </div>
 
-                  {/* Grid de cortes */}
-                  <div className={`bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden`}>
-                    <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
-                      <h2 className={`font-black text-sm uppercase ${cfg.color}`}>🔪 Carne Limpia — por corte</h2>
-                      <span className="text-xs text-slate-500">{items.length} cortes</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
-                      {items.length === 0 ? (
-                        <div className="col-span-4 text-center py-8 text-slate-600">
-                          <p className="text-3xl mb-2">🔪</p>
-                          <p className="font-bold">Sin carne limpia en stock</p>
-                        </div>
-                      ) : items.map((item: any) => (
-                        <div key={item.id}
-                          onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('historial'); }}
-                          className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
-                          <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
-                          <p className={`text-3xl font-black ${parseFloat(item.cantidad) === 0 ? 'text-slate-600' : cfg.color}`}>
-                            {parseFloat(item.cantidad).toFixed(3).replace(/\.?0+$/, '').replace('.', ',')}
+                  {/* Grid de cortes — separado en individuales y blends */}
+                  {(() => {
+                    const individuales = items.filter((i: any) => !i.producto.startsWith('Blend'));
+                    const blends = items.filter((i: any) => i.producto.startsWith('Blend'));
+                    const renderCard = (item: any) => (
+                      <div key={item.id}
+                        onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('historial'); }}
+                        className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${item.producto.startsWith('Blend') ? 'border-blue-500/40' : cfg.border}`}>
+                        <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
+                        <p className={`text-3xl font-black ${parseFloat(item.cantidad) === 0 ? 'text-slate-600' : item.producto.startsWith('Blend') ? 'text-blue-400' : cfg.color}`}>
+                          {parseFloat(item.cantidad).toFixed(3).replace(/\.?0+$/, '').replace('.', ',')}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">kg</p>
+                        {parseFloat(item.cantidad) === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
+                        {item.ultima_prod && (
+                          <p className="text-xs text-slate-600 mt-2">
+                            {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
-                          <p className="text-xs text-slate-500 mt-1">kg</p>
-                          {parseFloat(item.cantidad) === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
-                          {item.ultima_prod && (
-                            <p className="text-xs text-slate-600 mt-2">
-                              {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          )}
+                        )}
+                      </div>
+                    );
+                    return (
+                      <>
+                        {/* Cortes individuales */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                          <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
+                            <h2 className={`font-black text-sm uppercase ${cfg.color}`}>🔪 Carne Limpia — por corte</h2>
+                            <span className="text-xs text-slate-500">{individuales.length} cortes</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                            {individuales.length === 0 ? (
+                              <div className="col-span-4 text-center py-8 text-slate-600">
+                                <p className="text-3xl mb-2">🔪</p>
+                                <p className="font-bold">Sin carne limpia en stock</p>
+                              </div>
+                            ) : individuales.map(renderCard)}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+
+                        {/* Blends */}
+                        {blends.length > 0 && (
+                          <div className="bg-slate-900 border border-blue-500/30 rounded-2xl overflow-hidden">
+                            <div className="px-6 py-3 border-b border-blue-500/20 flex items-center justify-between bg-blue-500/10">
+                              <h2 className="font-black text-sm uppercase text-blue-400">🍔 Blends</h2>
+                              <span className="text-xs text-slate-500">{blends.length} blend{blends.length > 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
+                              {blends.map(renderCard)}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               );
             })()}
