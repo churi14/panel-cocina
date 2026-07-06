@@ -199,6 +199,28 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const [nuevoCantidad, setNuevaCantidad]         = useState('');
   const [nuevoUnidad, setNuevoUnidad]             = useState('kg');
   const [savingNuevo, setSavingNuevo]             = useState(false);
+
+  // Movimientos directos del producto seleccionado (no depende del límite 200 del dashboard)
+  const [itemMovsFetched, setItemMovsFetched]     = useState<Movement[]>([]);
+  const [loadingItemMovs, setLoadingItemMovs]     = useState(false);
+
+  const fetchItemMovs = React.useCallback(async (nombre: string) => {
+    setLoadingItemMovs(true);
+    const { data } = await supabase
+      .from('stock_movements')
+      .select('*')
+      .eq('nombre', nombre)
+      .order('fecha', { ascending: false })
+      .limit(150);
+    setItemMovsFetched((data ?? []) as Movement[]);
+    setLoadingItemMovs(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedStockItem) fetchItemMovs(selectedStockItem.nombre);
+    else setItemMovsFetched([]);
+  }, [selectedStockItem?.id, fetchItemMovs]);
+
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
     carnes_limpias: { emoji: '🔪', color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    headerBg: 'bg-red-500/20'    },
     lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   headerBg: 'bg-rose-500/20'   },
@@ -976,9 +998,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
           {/* ── MODAL HISTORIAL + UMBRALES DE STOCK ── */}
           {selectedStockItem && (() => {
-            const itemMovements = movements
-              .filter(m => m.nombre === selectedStockItem.nombre)
-              .slice(0, 30);
+            const itemMovements = itemMovsFetched;
 
             const handleEditMovement = async () => {
               if (!editingMovement) return;
@@ -1001,7 +1021,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               }
               setSavingMovement(false);
               setEditingMovement(null);
-              await fetchMovements();
+              await Promise.all([fetchMovements(), fetchItemMovs(selectedStockItem.nombre)]);
             };
 
             const handleDeleteMovement = async (m: any) => {
@@ -1016,7 +1036,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               await supabase.from('stock_movements').delete().eq('id', m.id);
               setSavingMovement(false);
               setDeleteMovConfirm(null);
-              await fetchMovements();
+              await Promise.all([fetchMovements(), fetchItemMovs(selectedStockItem.nombre)]);
             };
 
             const handleSaveUmbrales = async () => {
@@ -1678,9 +1698,18 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
                     {/* Historial de movimientos */}
                     <div>
-                      <p className="text-xs font-black text-slate-400 uppercase mb-3">
-                        Historial de movimientos — {itemMovements.length} registros
-                      </p>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-black text-slate-400 uppercase">
+                          Historial de movimientos
+                          {loadingItemMovs
+                            ? <span className="text-slate-600 font-normal ml-2">cargando...</span>
+                            : <span className="ml-2 text-indigo-400">{itemMovements.length} registros</span>}
+                        </p>
+                        <button onClick={() => fetchItemMovs(selectedStockItem.nombre)}
+                          className="text-slate-600 hover:text-slate-400 transition-colors" title="Actualizar">
+                          <RefreshCw size={13} className={loadingItemMovs ? 'animate-spin' : ''}/>
+                        </button>
+                      </div>
                       {itemMovements.length === 0 ? (
                         <div className="text-center py-8 text-slate-600">
                           <p className="font-bold">Sin movimientos registrados</p>
