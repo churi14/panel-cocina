@@ -348,28 +348,4 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
       )}
     </div>
   );
-}        }}
-                onBack={handleBackFromStep2}
-              />
-            ) : null
-          )}
-        </div>
-      </div>
-
-      {finishingBatchId !== null && finishingBatch.length > 0 && (
-        <FinishStep1Overlay
-          productions={finishingBatch}
-          onConfirm={async () => {
-            if (submittingRef.current) return;
-            submittingRef.current = true;
-            setSubmitting(true);
-            await handleFinishBatchStep1(finishingBatchId);
-            submittingRef.current = false;
-            setSubmitting(false);
-          }}
-          onCancel={() => setFinishingBatchId(null)}
-        />
-      )}
-    </div>
-  );
 }
