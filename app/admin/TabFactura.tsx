@@ -456,35 +456,56 @@ export default function TabFactura() {
                     </button>
                   </div>
 
-                  {/* Campo peso real — aparece cuando la unidad es cajones/unidades */}
-                  {item.unidad === 'u' && (
-                    <div className={`mx-4 mb-3 rounded-xl border px-3 py-2.5 transition-all
-                      ${item.pesoRealKg ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-700/50 bg-slate-800/30'}`}>
-                      <p className="text-[10px] font-black text-slate-500 uppercase mb-1.5">
-                        ⚖️ Peso real al recepcionar <span className="text-slate-600 font-normal normal-case">(opcional — si pesaste los cajones)</span>
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number" step="0.001" min="0"
-                          value={item.pesoRealKg}
-                          onChange={e=>updateItem(item._id,'pesoRealKg',e.target.value)}
-                          placeholder={`ej: ${(item.cantidad * 10).toFixed(3)}`}
-                          className="flex-1 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-lg px-3 py-1.5 text-white text-sm font-black outline-none text-center placeholder-slate-700"/>
-                        <span className="text-amber-400 font-black text-sm">kg</span>
-                        {item.pesoRealKg && (
-                          <button onClick={()=>updateItem(item._id,'pesoRealKg','')}
-                            className="text-slate-600 hover:text-slate-400 transition-colors">
-                            <X size={13}/>
-                          </button>
+                  {/* Campo peso real — obligatorio si la unidad de factura ≠ unidad del stock vinculado */}
+                  {(() => {
+                    const stockUnidad = item.stockMatch?.unidad;
+                    const necesitaPeso = item.seleccionado && item.stockMatch && item.unidad !== stockUnidad;
+                    const esPesable = item.unidad === 'u' && (!stockUnidad || stockUnidad === 'kg' || stockUnidad === 'lt');
+                    if (!necesitaPeso && !esPesable) return null;
+                    const obligatorio = !!necesitaPeso;
+                    const falta = obligatorio && (!item.pesoRealKg || parseFloat(item.pesoRealKg) <= 0);
+                    return (
+                      <div className={`mx-4 mb-3 rounded-xl border px-3 py-2.5 transition-all
+                        ${falta ? 'border-red-500/60 bg-red-500/5'
+                        : item.pesoRealKg ? 'border-amber-500/40 bg-amber-500/5'
+                        : 'border-slate-700/50 bg-slate-800/30'}`}>
+                        <p className={`text-[10px] font-black uppercase mb-1.5 ${falta ? 'text-red-400' : 'text-slate-500'}`}>
+                          ⚖️ Peso real al recepcionar
+                          {obligatorio
+                            ? <span className="text-red-400 ml-1">— REQUERIDO (factura en {item.unidad}, stock en {stockUnidad})</span>
+                            : <span className="text-slate-600 font-normal normal-case ml-1">(opcional — si pesaste los cajones)</span>}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number" step="0.001" min="0"
+                            value={item.pesoRealKg}
+                            onChange={e=>updateItem(item._id,'pesoRealKg',e.target.value)}
+                            placeholder="0.000"
+                            className={`flex-1 bg-slate-900 border rounded-lg px-3 py-1.5 text-white text-sm font-black outline-none text-center placeholder-slate-700
+                              ${falta ? 'border-red-500 focus:border-red-400' : 'border-slate-700 focus:border-amber-500'}`}/>
+                          <span className={`font-black text-sm ${falta ? 'text-red-400' : 'text-amber-400'}`}>
+                            {stockUnidad ?? 'kg'}
+                          </span>
+                          {item.pesoRealKg && (
+                            <button onClick={()=>updateItem(item._id,'pesoRealKg','')}
+                              className="text-slate-600 hover:text-slate-400 transition-colors">
+                              <X size={13}/>
+                            </button>
+                          )}
+                        </div>
+                        {item.pesoRealKg && parseFloat(item.pesoRealKg) > 0 && (
+                          <p className="text-[10px] text-amber-400 font-black mt-1.5">
+                            ✓ Se cargará {parseFloat(item.pesoRealKg)} {stockUnidad ?? 'kg'} al stock (en lugar de {item.cantidad} {item.unidad})
+                          </p>
+                        )}
+                        {falta && (
+                          <p className="text-[10px] text-red-400 font-black mt-1.5">
+                            ⛔ No se puede confirmar sin el peso real — las unidades no son compatibles con el stock
+                          </p>
                         )}
                       </div>
-                      {item.pesoRealKg && parseFloat(item.pesoRealKg) > 0 && (
-                        <p className="text-[10px] text-amber-400 font-black mt-1.5">
-                          ✓ Se cargará {parseFloat(item.pesoRealKg)} kg al stock (en lugar de {item.cantidad} {item.unidad})
-                        </p>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -507,11 +528,32 @@ export default function TabFactura() {
             </div>
           )}
 
-          <button onClick={confirmar} disabled={saving||items.filter(i=>i.seleccionado).length===0}
-            className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:opacity-30 text-white font-black rounded-xl transition-all flex items-center justify-center gap-2 text-base">
-            {saving?<><Loader2 size={20} className="animate-spin"/> Cargando al stock...</>
-              :`✅ Confirmar y cargar ${items.filter(i=>i.seleccionado).length} productos al stock`}
-          </button>
+          {(() => {
+            const sel = items.filter(i=>i.seleccionado);
+            const incompatibles = sel.filter(i=>
+              i.stockMatch && i.unidad !== i.stockMatch.unidad &&
+              (!i.pesoRealKg || parseFloat(i.pesoRealKg) <= 0)
+            );
+            const bloqueado = saving || sel.length === 0 || incompatibles.length > 0;
+            return (
+              <>
+                {incompatibles.length > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex gap-2">
+                    <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5"/>
+                    <p className="text-red-400 text-sm font-bold">
+                      {incompatibles.length} ítem{incompatibles.length>1?'s':''} con unidades incompatibles —
+                      completá el peso real en {incompatibles.map(i=>i.stockMatch?.unidad??'kg').filter((v,i,a)=>a.indexOf(v)===i).join('/')} para continuar.
+                    </p>
+                  </div>
+                )}
+                <button onClick={confirmar} disabled={bloqueado}
+                  className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:opacity-30 text-white font-black rounded-xl transition-all flex items-center justify-center gap-2 text-base">
+                  {saving?<><Loader2 size={20} className="animate-spin"/> Cargando al stock...</>
+                    :`✅ Confirmar y cargar ${sel.length} productos al stock`}
+                </button>
+              </>
+            );
+          })()}
         </div>
       )}
 
