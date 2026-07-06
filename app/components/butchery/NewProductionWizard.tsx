@@ -7,7 +7,7 @@ import { CUTS, PRODUCTION_KINDS, ProductionKind, ProductionKindConfig, getCutsBy
 import { StartConfirmOverlay } from './Overlays';
 import { supabase } from '../../supabase';
 
-type WeightEntry = { type: string; weight: string; carneLinpiaName?: string };
+type WeightEntry = { type: string; weight: string; carneLinpiaName?: string; mode: 'kg' | 'g' };
 
 export function NewProductionWizard({ onStart, onCancel }: {
   onStart: (entries: { type: string; weight: number; carneLinpiaName?: string }[], kind: ProductionKind, isBlend?: boolean) => void | Promise<void>;
@@ -84,16 +84,16 @@ export function NewProductionWizard({ onStart, onCancel }: {
 
   const handleGoToWeights = () => {
     if (selectedKind === 'burger' && selectedCarnesMulti.length > 0) {
-      // Burger: un peso por cada corte seleccionado
       const fakeType = 'lomo' as string;
-      setWeights(selectedCarnesMulti.map(p => ({ type: fakeType, weight: '', carneLinpiaName: p })));
+      setWeights(selectedCarnesMulti.map(p => ({ type: fakeType, weight: '', carneLinpiaName: p, mode: 'kg' as const })));
     } else if (selectedKind !== 'limpieza' && selectedCarneLinpia) {
       const fakeType = 'lomo' as string;
-      setWeights([{ type: fakeType, weight: '', carneLinpiaName: selectedCarneLinpia }]);
+      setWeights([{ type: fakeType, weight: '', carneLinpiaName: selectedCarneLinpia, mode: 'kg' as const }]);
     } else {
       setWeights(selected.map(type => ({
         type,
         weight: weights.find(w => w.type === type)?.weight ?? '',
+        mode: 'kg' as const,
       })));
     }
     setTipVisible(!localStorage.getItem('wizard_tip_seen'));
@@ -104,6 +104,19 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setWeights(prev => prev.map(w => w.type === type ? { ...w, weight: val } : w));
   const setWeightByIdx = (idx: number, val: string) =>
     setWeights(prev => prev.map((w, i) => i === idx ? { ...w, weight: val } : w));
+  const toggleModeByIdx = (idx: number) =>
+    setWeights(prev => prev.map((w, i) => {
+      if (i !== idx) return w;
+      const newMode = w.mode === 'kg' ? 'g' : 'kg';
+      const parsed = parseFloat(w.weight.replace(',', '.'));
+      let newWeight = w.weight;
+      if (parsed > 0) {
+        newWeight = newMode === 'g'
+          ? String(Math.round(parsed * 1000))
+          : (parsed / 1000).toFixed(3);
+      }
+      return { ...w, mode: newMode, weight: newWeight };
+    }));
 
   const allValid = weights.length > 0 &&
     weights.every(w => w.weight && parseFloat(w.weight.replace(',', '.')) > 0);
@@ -113,7 +126,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     onStart(
       weights.map(w => ({
         type: w.type,
-        weight: parseFloat(w.weight.replace(',', '.')),
+        weight: parseFloat(w.weight.replace(',', '.')) * (w.mode === 'g' ? 0.001 : 1),
         carneLinpiaName: (w as any).carneLinpiaName ?? (selectedCarneLinpia || undefined),
       })),
       selectedKind,
@@ -243,7 +256,11 @@ export function NewProductionWizard({ onStart, onCancel }: {
               <p className="text-center text-xs font-bold text-slate-400 mb-3 uppercase tracking-wide">
                 {selectedKind === 'burger' ? 'Seleccioná los cortes a usar (puede ser más de uno)' : 'Elegí el corte a procesar'}
               </p>
-              {carnesLimpias.map(c => {
+              {selectedKind === 'burger' && carnesLimpias.some(c => c.producto.startsWith('Blend')) && (
+                <p className="text-xs font-black text-blue-600 uppercase tracking-wide mb-1 px-1">🍔 Blends</p>
+              )}
+              {carnesLimpias.map((c, cidx) => {
+                const isBlend = c.producto.startsWith('Blend');
                 // Nombre corto: strip _L and old "Limpia" formats
                 const corteLabel = c.producto
                   .replace('Carne Limpia Burger - ', '')
@@ -255,23 +272,38 @@ export function NewProductionWizard({ onStart, onCancel }: {
                 const onClick = () => selectedKind === 'burger'
                   ? toggleCarneMulti(c.producto)
                   : setSelectedCarneLinpia(c.producto);
+                // Separador entre blends e individuales para burger
+                const prevIsBlend = cidx > 0 && carnesLimpias[cidx - 1].producto.startsWith('Blend');
+                const showIndividualHeader = selectedKind === 'burger' && !isBlend && prevIsBlend;
                 return (
-                  <button key={c.producto} onClick={onClick}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold
-                      ${isSelected
-                        ? 'border-green-500 bg-green-50 text-green-800 shadow-md'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
-                        ${isSelected ? 'bg-green-500 border-green-500' : 'border-slate-300'}`}>
-                        {isSelected && <span className="text-white text-xs font-black">✓</span>}
+                  <React.Fragment key={c.producto}>
+                    {showIndividualHeader && (
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-wide mt-3 mb-1 px-1">🥩 Cortes individuales</p>
+                    )}
+                    <button onClick={onClick}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold
+                        ${isSelected
+                          ? isBlend ? 'border-blue-500 bg-blue-50 text-blue-800 shadow-md' : 'border-green-500 bg-green-50 text-green-800 shadow-md'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
+                          ${isSelected ? (isBlend ? 'bg-blue-500 border-blue-500' : 'bg-green-500 border-green-500') : 'border-slate-300'}`}>
+                          {isSelected && <span className="text-white text-xs font-black">✓</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isBlend && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase">
+                              🍔 BLEND
+                            </span>
+                          )}
+                          <span className="text-base font-black">{corteLabel}{!isBlend && <span className="text-green-600 font-black">_L</span>}</span>
+                        </div>
                       </div>
-                      <span className="text-base font-black">{corteLabel}<span className="text-green-600 font-black">_L</span></span>
-                    </div>
-                    <span className={`text-sm font-bold ${Number(c.cantidad) > 0 ? 'text-slate-500' : 'text-slate-300'}`}>
-                      {Number(c.cantidad) > 0 ? `${Number(c.cantidad).toFixed(2)} kg` : 'Sin stock'}
-                    </span>
-                  </button>
+                      <span className={`text-sm font-bold ${Number(c.cantidad) > 0 ? 'text-slate-500' : 'text-slate-300'}`}>
+                        {Number(c.cantidad) > 0 ? `${Number(c.cantidad).toFixed(2)} kg` : 'Sin stock'}
+                      </span>
+                    </button>
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -398,33 +430,53 @@ export function NewProductionWizard({ onStart, onCancel }: {
                 <div className="shrink-0 w-28">
                   <p className="font-black text-slate-800 text-sm leading-tight">
                     {entry.carneLinpiaName
-                      ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '').replace('_L', '')}<span className="text-green-600">_L</span></>
+                      ? <>{entry.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '').replace('_L', '')}{!entry.carneLinpiaName.startsWith('Blend') && <span className="text-green-600">_L</span>}</>
                       : cut.label}
                   </p>
                   <p className="text-xs text-slate-400 truncate">{cut.emoji}</p>
                 </div>
-                {/* Input */}
-                <div className="flex-1 relative">
-                  <input
-                    type="number" inputMode="decimal" step="0.01" placeholder="0,00"
-                    value={entry.weight}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const num = parseFloat(val.replace(',', '.'));
-                      if (num > 500 && !val.includes('.') && !val.includes(',')) {
-                        setWeightByIdx(idx, (num / 1000).toFixed(3));
-                      } else {
-                        setWeightByIdx(idx, val);
-                      }
-                    }}
-                    className={`w-full px-3 py-3 text-2xl font-black text-center rounded-xl outline-none transition-all
-                      ${isValid
-                        ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'}`
-                        : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
-                  />
-                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black ${isValid ? 'text-slate-400' : 'text-slate-300'}`}>KG</span>
+                {/* Input + toggle KG/G */}
+                <div className="flex-1 flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="number" inputMode="decimal"
+                      step={entry.mode === 'g' ? '1' : '0.01'} placeholder="0"
+                      value={entry.weight}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (entry.mode === 'kg') {
+                          const num = parseFloat(val.replace(',', '.'));
+                          if (num > 500 && !val.includes('.') && !val.includes(',')) {
+                            setWeightByIdx(idx, (num / 1000).toFixed(3));
+                          } else {
+                            setWeightByIdx(idx, val);
+                          }
+                        } else {
+                          setWeightByIdx(idx, val);
+                        }
+                      }}
+                      className={`w-full px-3 py-3 text-2xl font-black text-center rounded-xl outline-none transition-all
+                        ${isValid
+                          ? `bg-slate-50 border-2 ${kindConfig?.borderColor ?? 'border-rose-300'} ${kindConfig?.textColor ?? 'text-rose-700'}`
+                          : 'bg-slate-50 border-2 border-slate-200 text-slate-900 focus:border-rose-400'}`}
+                    />
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black ${isValid ? 'text-slate-400' : 'text-slate-300'}`}>
+                      {entry.mode === 'g' ? 'GR' : 'KG'}
+                    </span>
+                  </div>
+                  {/* Toggle KG / GR */}
+                  <button
+                    onClick={() => toggleModeByIdx(idx)}
+                    className={`shrink-0 flex flex-col items-center rounded-xl border-2 px-2 py-1 text-[10px] font-black transition-all
+                      ${entry.mode === 'g'
+                        ? 'border-amber-400 bg-amber-50 text-amber-700'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300'}`}
+                    title="Cambiar entre KG y gramos">
+                    <span className={entry.mode === 'g' ? 'text-amber-700' : 'text-slate-300'}>GR</span>
+                    <span className="text-slate-300 text-[8px] leading-none my-0.5">─</span>
+                    <span className={entry.mode === 'kg' ? 'text-slate-600' : 'text-slate-300'}>KG</span>
+                  </button>
                 </div>
-
               </div>
             );
           })}
