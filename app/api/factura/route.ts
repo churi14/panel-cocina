@@ -26,7 +26,7 @@ Extraé la información en JSON con exactamente esta estructura:
   "numero_factura": "número de factura o null",
   "items": [
     {
-      "nombre": "nombre del producto, en español, sin código ni referencia",
+      "nombre": "nombre del producto, en español, sin código de artículo",
       "cantidad": número decimal,
       "unidad": "kg|u|lt",
       "precio_unitario": número o null
@@ -34,12 +34,14 @@ Extraé la información en JSON con exactamente esta estructura:
   ]
 }
 
-Reglas:
-- Convertí gramos a kg (500g → 0.5, unidad "kg")
-- Si dice "unidades", "piezas", "cajas", "docena" → unidad "u" (1 docena = 12u)
+Reglas IMPORTANTES — leé con atención:
+- Si la factura tiene una columna "Kilos" o "Kg" con el peso total, usá ESE valor como cantidad con unidad "kg". La columna "Unid." indica cajas/piezas, no es lo que importa para el stock.
+- Si el producto es carne (cuadril, lomo, nalga, bife, vacío, picaña, aguja, etc.), priorizá siempre los kilos totales.
+- Si no hay columna de kilos y la unidad es "unidades", "piezas", "cajas" → unidad "u"
+- Convertí gramos a kg (500g → 0.5 kg)
 - Si dice "litros" → "lt"
 - Ignorá subtotales, descuentos, IVA y filas de totales — solo los productos
-- Si hay ambigüedad en el nombre, elegí el más descriptivo
+- El nombre del producto: escribilo en español claro, sin el código de artículo del principio, sin "ENF", "CC", "SC", "CT" ni abreviaturas técnicas del proveedor — solo el nombre del corte o producto
 - Respondé SOLO con el JSON sin ningún texto adicional`;
 
 export async function POST(req: NextRequest) {

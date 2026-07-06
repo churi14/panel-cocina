@@ -24,22 +24,31 @@ interface Props {
 }
 
 // ── Fuzzy match ───────────────────────────────────────────────────────────────
+const STOP_WORDS = new Set(['de','del','la','el','los','las','un','una','a','y','o','en','por','con','sin','al','lo','su','se']);
+
 function normalize(s: string) {
   return s.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .trim();
 }
+
 function matchScore(facturaName: string, stockName: string): number {
-  const a = normalize(facturaName).split(/\s+/).filter(Boolean);
-  const b = normalize(stockName).split(/\s+/).filter(Boolean);
-  if (!a.length || !b.length) return 0;
+  const aWords = normalize(facturaName).split(/\s+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+  const bWords = normalize(stockName).split(/\s+/).filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+  if (!aWords.length || !bWords.length) return 0;
   let hits = 0;
-  for (const wa of a) {
-    if (b.some(wb => wb.includes(wa) || wa.includes(wb))) hits++;
+  for (const wa of aWords) {
+    if (bWords.some(wb => {
+      if (wa === wb) return true;                          // exact match
+      if (wa.length >= 4 && wb.length >= 4)               // substring solo si ambos ≥ 4 chars
+        return wb.includes(wa) || wa.includes(wb);
+      return false;
+    })) hits++;
   }
-  return Math.round((hits / Math.max(a.length, b.length)) * 100);
+  return Math.round((hits / Math.max(aWords.length, bWords.length)) * 100);
 }
+
 function bestMatch(item: FacturaItem, stock: StockProduct[]): { product: StockProduct | null; score: number } {
   let best: StockProduct | null = null;
   let bestScr = 0;
@@ -192,8 +201,22 @@ function StockPickerPopup({ stock, current, onSelect, onClose }: {
   );
 }
 
+// ── Tipos historial ───────────────────────────────────────────────────────────
+interface FacturaHistorial {
+  id: number;
+  proveedor: string | null;
+  numero_factura: string | null;
+  fecha_factura: string | null;
+  fecha_carga: string;
+  operador: string | null;
+  items: FacturaItem[];
+  total_items: number;
+  imagen_nombre: string | null;
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
+  const [tab, setTab]         = useState<'cargar' | 'historial'>('cargar');
   const [step, setStep]       = useState<'upload' | 'preview' | 'done'>('upload');
   const [imagen, setImagen]   = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -205,9 +228,23 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
   const [drag, setDrag]       = useState(false);
   const [saving, setSaving]   = useState(false);
   const [savedCount, setSavedCount] = useState(0);
-  const [pickerFor, setPickerFor] = useState<number | null>(null); // _id del item con picker abierto
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
+  const [historial, setHistorial] = useState<FacturaHistorial[]>([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const camRef   = useRef<HTMLInputElement>(null);
+
+  const fetchHistorial = useCallback(async () => {
+    setLoadingHistorial(true);
+    const { data } = await supabase
+      .from('facturas_historial')
+      .select('*')
+      .order('fecha_carga', { ascending: false })
+      .limit(50);
+    setHistorial((data ?? []) as FacturaHistorial[]);
+    setLoadingHistorial(false);
+  }, []);
 
   // ── Manejo de archivo ────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File) => {
@@ -305,6 +342,19 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
       }
     }
 
+    // Guardar en historial
+    try {
+      await supabase.from('facturas_historial').insert({
+        proveedor:      factura?.proveedor ?? null,
+        numero_factura: factura?.numero_factura ?? null,
+        fecha_factura:  factura?.fecha ?? null,
+        operador:       op,
+        items:          seleccionados.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, unidad: i.unidad, stockMatch: i.stockMatch?.nombre ?? null })),
+        total_items:    seleccionados.length,
+        imagen_nombre:  imagen?.name ?? null,
+      });
+    } catch (e) { console.error('[factura historial]', e); }
+
     setSavedCount(ok);
     setSaving(false);
     setStep('done');
@@ -330,21 +380,99 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
         )}
 
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-          <div>
-            <h3 className="font-black text-white text-lg">📄 Cargar factura de proveedor</h3>
-            <p className="text-slate-500 text-xs mt-0.5">
-              {step === 'upload'  && 'Subí la foto y la IA extrae los productos automáticamente'}
-              {step === 'preview' && `${factura?.proveedor ?? 'Proveedor'} · revisá los items antes de confirmar`}
-              {step === 'done'    && `${savedCount} producto${savedCount !== 1 ? 's' : ''} cargado${savedCount !== 1 ? 's' : ''} al stock`}
-            </p>
+        <div className="px-6 pt-4 pb-0 border-b border-slate-800 shrink-0">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="font-black text-white text-lg">📄 Facturas de proveedor</h3>
+              <p className="text-slate-500 text-xs mt-0.5">
+                {tab === 'historial' && 'Facturas cargadas anteriormente'}
+                {tab === 'cargar' && step === 'upload'  && 'Subí la foto y la IA extrae los productos'}
+                {tab === 'cargar' && step === 'preview' && `${factura?.proveedor ?? 'Proveedor'} · revisá antes de confirmar`}
+                {tab === 'cargar' && step === 'done'    && `${savedCount} producto${savedCount !== 1 ? 's' : ''} cargados al stock`}
+              </p>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400">
-            <X size={18} />
-          </button>
+          {/* Tabs */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => setTab('cargar')}
+              className={`px-4 py-2 text-sm font-black rounded-t-xl border-b-2 transition-colors
+                ${tab === 'cargar' ? 'text-blue-400 border-blue-500 bg-blue-500/5' : 'text-slate-500 border-transparent hover:text-slate-300'}`}>
+              📄 Cargar
+            </button>
+            <button
+              onClick={() => { setTab('historial'); fetchHistorial(); }}
+              className={`px-4 py-2 text-sm font-black rounded-t-xl border-b-2 transition-colors
+                ${tab === 'historial' ? 'text-blue-400 border-blue-500 bg-blue-500/5' : 'text-slate-500 border-transparent hover:text-slate-300'}`}>
+              📋 Historial
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
+
+          {/* ── TAB: historial ── */}
+          {tab === 'historial' && (
+            <div className="p-5">
+              {loadingHistorial ? (
+                <div className="flex items-center justify-center py-16 gap-2 text-slate-500">
+                  <Loader2 size={18} className="animate-spin" /> Cargando historial...
+                </div>
+              ) : historial.length === 0 ? (
+                <div className="text-center py-16 text-slate-600">
+                  <p className="text-4xl mb-3">📋</p>
+                  <p className="font-bold">Sin facturas cargadas aún</p>
+                  <p className="text-xs mt-1">Las facturas confirmadas aparecen acá</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historial.map(f => (
+                    <div key={f.id} className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                        className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-slate-800 transition-colors">
+                        <div className="text-left min-w-0">
+                          <p className="font-black text-white text-sm truncate">{f.proveedor ?? 'Sin proveedor'}</p>
+                          <p className="text-slate-500 text-xs mt-0.5">
+                            {f.numero_factura && <span className="font-mono mr-2">{f.numero_factura}</span>}
+                            {f.fecha_factura && <span>{f.fecha_factura} · </span>}
+                            <span>{f.total_items} producto{f.total_items !== 1 ? 's' : ''}</span>
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-slate-500">
+                            {new Date(f.fecha_carga).toLocaleDateString('es-AR')}
+                          </p>
+                          <p className="text-[10px] text-slate-600 mt-0.5">{f.operador}</p>
+                        </div>
+                      </button>
+                      {expandedId === f.id && (
+                        <div className="border-t border-slate-700 px-4 py-3 space-y-1.5">
+                          {(f.items ?? []).map((item: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between text-xs gap-2">
+                              <span className="text-slate-300 truncate">{item.nombre}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-slate-400 font-mono">{item.cantidad} {item.unidad}</span>
+                                {item.stockMatch
+                                  ? <span className="text-green-400 font-black">→ {item.stockMatch}</span>
+                                  : <span className="text-red-400">sin vincular</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB: cargar ── */}
+          {tab === 'cargar' && <>
 
           {/* ── STEP: upload ── */}
           {step === 'upload' && (
@@ -556,12 +684,20 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                   Se cargaron <span className="font-black text-green-400">{savedCount} productos</span> al stock como ingreso de {factura?.proveedor ?? 'proveedor'}.
                 </p>
               </div>
-              <button onClick={onClose}
-                className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">
-                Cerrar
-              </button>
+              <div className="flex gap-3">
+                <button onClick={() => { setStep('upload'); setImagen(null); setPreview(null); setFactura(null); setItems([]); }}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors text-sm">
+                  📄 Cargar otra
+                </button>
+                <button onClick={() => { setTab('historial'); fetchHistorial(); }}
+                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors text-sm">
+                  📋 Ver historial
+                </button>
+              </div>
             </div>
           )}
+
+          </> /* fin tab cargar */}
         </div>
       </div>
     </div>
