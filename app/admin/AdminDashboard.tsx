@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle
+  RefreshCw, BarChart3, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -19,10 +19,10 @@ import TabEquipo      from './TabEquipo';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
 import TabFichador    from './TabFichador';
+import TabFactura     from './TabFactura';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
-import FacturaModal   from './FacturaModal';
 
 export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => void; onIrACocina?: () => void }) {
   const { perfil } = useAuth();
@@ -44,8 +44,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [showFacturaNav, setShowFacturaNav] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'factura' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -148,6 +147,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'reports',    label: 'Reportes',    icon: <BarChart3 size={16} /> },
     { id: 'stock',      label: 'Stock',       icon: <Package   size={16} /> },
     { id: 'produccion', label: 'Producción',  icon: <TrendingUp size={16} /> },
+    { id: 'factura',    label: 'Facturas',    icon: <FileText  size={16} /> },
     { id: 'analytics',  label: 'Analytics',   icon: <BarChart3 size={16} /> },
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
     { id: 'equipo',     label: 'Operadores',   icon: <Users size={16} /> },
@@ -210,19 +210,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
             {tab.icon} {tab.label}
           </button>
         ))}
-        <button
-          onClick={() => setShowFacturaNav(true)}
-          className="ml-2 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl transition-all whitespace-nowrap shrink-0 active:scale-95">
-          📄 Factura
-        </button>
       </nav>
-
-      {showFacturaNav && (
-        <FacturaModal
-          onClose={() => setShowFacturaNav(false)}
-          onConfirm={() => { setShowFacturaNav(false); fetchMovements(); }}
-        />
-      )}
 
       {/* CONTENT */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -237,6 +225,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'tareas'     && <TabTareas />}
         {activeTab === 'auditoria'  && <TabAuditoria />}
         {activeTab === 'fichador'   && <TabFichador />}
+        {activeTab === 'factura'    && <TabFactura />}
       </main>
 
       <AdminTour />
