@@ -11,6 +11,7 @@ import { NewProductionWizard } from './butchery/NewProductionWizard';
 import { Step2View } from './butchery/Step2View';
 import { Step2BurgerView } from './butchery/Step2BurgerView';
 import LimpiezaView from './butchery/LimpiezaView';
+import BlendLimpiezaView from './butchery/BlendLimpiezaView';
 import { groupByBatch, createButcheryHandlers } from './butchery/useButcheryHandlers';
 import { addToStockProduccion } from './butchery/stockProduccion';
 
@@ -231,50 +232,68 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
           )}
 
           {!!operador && view === 'step2' && step2Queue.length > 0 && (
-            step2Queue[0]?.kind === 'limpieza' && currentStep2Prod ? (
-              <LimpiezaView
-                key={currentStep2Prod.id}
-                production={currentStep2Prod}
-                onFinish={async (params) => {
-                  if (submittingRef.current) return;
-                  submittingRef.current = true;
-                  setSubmitting(true);
+            step2Queue[0]?.kind === 'limpieza' ? (
+              step2Queue[0]?.isBlend ? (
+                // BLEND: mostrar todos los cortes juntos en una sola vista
+                <BlendLimpiezaView
+                  key="blend"
+                  productions={step2Queue}
+                  onFinish={async (cortes) => {
+                    if (submittingRef.current) return;
+                    submittingRef.current = true;
+                    setSubmitting(true);
 
-                  const isBlendBatch = step2Queue[0]?.isBlend === true;
+                    let totalCarne = 0;
+                    for (const c of cortes) {
+                      totalCarne += c.carneLinpiaKg;
+                      await handleFinishLimpieza(c.production, {
+                        carneLinpiaKg: 0, // no crea stock individual
+                        grasaKg: c.grasaKg,
+                        desperdicioKg: c.desperdicioKg,
+                        destino: 'carne_limpia',
+                      });
+                    }
 
-                  if (isBlendBatch) {
-                    // Acumular kg limpio; no crear stock individual por corte
-                    blendAccumKg.current += params.carneLinpiaKg;
-                    await handleFinishLimpieza(currentStep2Prod, { ...params, carneLinpiaKg: 0 });
-                  } else {
-                    await handleFinishLimpieza(currentStep2Prod, params);
-                  }
-
-                  const next = step2Index + 1;
-                  if (next < step2Queue.length) {
-                    setStep2Index(next);
-                  } else {
-                    // Último corte del batch
-                    if (isBlendBatch && blendAccumKg.current > 0) {
+                    if (totalCarne > 0) {
                       const cortesNames = step2Queue.map(p => (p.typeName ?? '').replace(/_L$/, '').trim()).join(' + ');
-                      const blendNombre = `Blend ${cortesNames}`;
                       await addToStockProduccion({
-                        producto:  blendNombre,
+                        producto:  `Blend ${cortesNames}`,
                         categoria: 'carnes_limpias',
-                        cantidad:  parseFloat(blendAccumKg.current.toFixed(3)),
+                        cantidad:  parseFloat(totalCarne.toFixed(3)),
                         unidad:    'kg',
-                        motivo:    `Limpieza blend — ${blendNombre} — ${operador}`,
+                        motivo:    `Limpieza blend — Blend ${cortesNames} — ${operador}`,
                         operador,
                       });
-                      blendAccumKg.current = 0;
                     }
+
                     setStep2Queue([]); setStep2Index(0); setView('list');
-                  }
-                  submittingRef.current = false;
-                  setSubmitting(false);
-                }}
-                onBack={handleBackFromStep2}
-              />
+                    submittingRef.current = false;
+                    setSubmitting(false);
+                  }}
+                  onBack={handleBackFromStep2}
+                />
+              ) : currentStep2Prod ? (
+                // LIMPIEZA NORMAL: un corte por vez
+                <LimpiezaView
+                  key={currentStep2Prod.id}
+                  production={currentStep2Prod}
+                  onFinish={async (params) => {
+                    if (submittingRef.current) return;
+                    submittingRef.current = true;
+                    setSubmitting(true);
+                    await handleFinishLimpieza(currentStep2Prod, params);
+                    const next = step2Index + 1;
+                    if (next < step2Queue.length) {
+                      setStep2Index(next);
+                    } else {
+                      setStep2Queue([]); setStep2Index(0); setView('list');
+                    }
+                    submittingRef.current = false;
+                    setSubmitting(false);
+                  }}
+                  onBack={handleBackFromStep2}
+                />
+              ) : null
             ) : step2Queue[0]?.kind === 'burger' ? (
               <Step2BurgerView
                 key={step2Queue.map(p => p.id).join('-')}
@@ -302,9 +321,34 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                   submittingRef.current = true;
                   setSubmitting(true);
                   await handleFinishStep2(...args);
+        
                   submittingRef.current = false;
                   setSubmitting(false);
                 }}
+                onBack={handleBackFromStep2}
+              />
+            ) : null
+          )}
+        </div>
+      </div>
+
+      {finishingBatchId !== null && finishingBatch.length > 0 && (
+        <FinishStep1Overlay
+          productions={finishingBatch}
+          onConfirm={async () => {
+            if (submittingRef.current) return;
+            submittingRef.current = true;
+            setSubmitting(true);
+            await handleFinishBatchStep1(finishingBatchId);
+            submittingRef.current = false;
+            setSubmitting(false);
+          }}
+          onCancel={() => setFinishingBatchId(null)}
+        />
+      )}
+    </div>
+  );
+}        }}
                 onBack={handleBackFromStep2}
               />
             ) : null
