@@ -282,10 +282,11 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
       }));
       setStockAll(stock);
 
-      // 3. Auto-matchear items
+      // 3. Auto-matchear items — usa nombre_limpio para matching si existe
       setFactura(data as FacturaData);
       setItems((data.items ?? []).map((item: FacturaItem, i: number) => {
-        const { product, score } = bestMatch(item, stock);
+        const itemParaMatch = { ...item, nombre: item.nombre_limpio || item.nombre };
+        const { product, score } = bestMatch(itemParaMatch, stock);
         return { ...item, _id: i, seleccionado: true, stockMatch: product, matchScore: score };
       }));
       setStep('preview');
@@ -583,26 +584,31 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                   return (
                     <div key={item._id}
                       className={`rounded-xl border transition-all ${item.seleccionado ? 'border-slate-700 bg-slate-800/40' : 'border-slate-800 bg-slate-900 opacity-50'}`}>
-                      {/* Fila superior: checkbox + nombre factura */}
-                      <div className="flex items-center gap-3 px-3 pt-3 pb-1">
+
+                      {/* Nombre original de la factura (referencia, no editable) */}
+                      <div className="flex items-start gap-3 px-3 pt-3 pb-2 border-b border-slate-700/50">
                         <input type="checkbox" checked={item.seleccionado}
                           onChange={e => updateItem(item._id, 'seleccionado', e.target.checked)}
-                          className="accent-blue-500 w-4 h-4 cursor-pointer shrink-0" />
+                          className="accent-blue-500 w-4 h-4 cursor-pointer shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <input
-                            value={item.nombre}
-                            onChange={e => updateItem(item._id, 'nombre', e.target.value)}
-                            className="w-full bg-transparent text-white text-sm font-bold outline-none border-b border-transparent hover:border-slate-600 focus:border-blue-500 transition-colors pb-0.5 truncate" />
-                          <p className="text-slate-600 text-[10px] mt-0.5">Nombre en factura</p>
+                          <p className="text-slate-300 text-sm font-mono leading-tight truncate" title={item.nombre}>
+                            {item.nombre}
+                          </p>
+                          <p className="text-slate-600 text-[10px] mt-0.5">📄 Nombre en factura</p>
                         </div>
+                        {item.precio_unitario && (
+                          <span className="text-slate-500 text-xs font-mono shrink-0">
+                            ${item.precio_unitario.toLocaleString('es-AR')}
+                          </span>
+                        )}
                         <button onClick={() => removeItem(item._id)}
                           className="p-1 hover:bg-red-500/15 rounded-lg text-slate-700 hover:text-red-400 transition-colors shrink-0">
                           <Trash2 size={13} />
                         </button>
                       </div>
 
-                      {/* Fila inferior: cantidad + unidad + vínculo stock */}
-                      <div className="flex items-center gap-2 px-3 pb-3 mt-1">
+                      {/* Cantidad + unidad + match al stock */}
+                      <div className="flex items-center gap-2 px-3 py-2.5">
                         {/* Cantidad */}
                         <input type="number" step="0.001" min="0"
                           value={item.cantidad}
@@ -625,7 +631,7 @@ export default function FacturaModal({ onClose, onConfirm, operador }: Props) {
                               ? 'border-green-600/40 bg-green-600/10 text-green-400 hover:bg-green-600/20'
                               : partial
                               ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                              : 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 animate-pulse-slow'}`}>
+                              : 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20'}`}>
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
                             <span className="truncate">

@@ -4,7 +4,8 @@ import Anthropic from '@anthropic-ai/sdk';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 export interface FacturaItem {
-  nombre: string;
+  nombre: string;           // nombre tal cual está en la factura
+  nombre_limpio: string;    // nombre limpio en español para matching
   cantidad: number;
   unidad: 'kg' | 'u' | 'lt' | 'g';
   precio_unitario: number | null;
@@ -26,7 +27,8 @@ Extraé la información en JSON con exactamente esta estructura:
   "numero_factura": "número de factura o null",
   "items": [
     {
-      "nombre": "nombre del producto, en español, sin código de artículo",
+      "nombre": "texto EXACTO del producto tal como figura en la factura (sin código de artículo del inicio)",
+      "nombre_limpio": "nombre en español claro, sin abreviaturas del proveedor (ej: 'Cuadril', 'Lomo', 'Nalga')",
       "cantidad": número decimal,
       "unidad": "kg|u|lt",
       "precio_unitario": número o null

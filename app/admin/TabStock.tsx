@@ -218,19 +218,26 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   return (
     <div className="max-w-6xl mx-auto space-y-6">
 
-            {/* Sub-tabs Materiales / Carne Limpia / Producción */}
-            <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 w-fit">
-              {([
-                { id: 'materiales',   label: '🥩 Carnes y Materiales' },
-                { id: 'carne_limpia', label: '🔪 Carne Limpia' },
-                { id: 'produccion',   label: '🍔 Producción' },
-              ] as const).map(t => (
-                <button key={t.id} onClick={() => setStockSubTab(t.id as any)}
-                  className={`px-5 py-2 rounded-xl text-sm font-bold transition-all
-                    ${stockSubTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
-                  {t.label}
-                </button>
-              ))}
+            {/* Sub-tabs + botón factura en la misma fila */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1.5">
+                {([
+                  { id: 'materiales',   label: '🥩 Carnes y Materiales' },
+                  { id: 'carne_limpia', label: '🔪 Carne Limpia' },
+                  { id: 'produccion',   label: '🍔 Producción' },
+                ] as const).map(t => (
+                  <button key={t.id} onClick={() => setStockSubTab(t.id as any)}
+                    className={`px-5 py-2 rounded-xl text-sm font-bold transition-all
+                      ${stockSubTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowFactura(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap shadow-lg">
+                📄 Cargar factura IA
+              </button>
             </div>
 
             {/* ── SUB-TAB MATERIALES ── */}
@@ -238,11 +245,6 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
               <>
                 {/* Filtros */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
-                  <button
-                    onClick={() => setShowFactura(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap">
-                    📄 Cargar factura IA
-                  </button>
                   <button
                     onClick={() => setShowEntryModal(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap">
