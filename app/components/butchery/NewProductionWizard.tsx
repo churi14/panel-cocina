@@ -68,16 +68,19 @@ export function NewProductionWizard({ onStart, onCancel }: {
       }));
       setCarnesLimpias(todos);
     } else if (kind === 'burger') {
-      // Traer blends creados en limpieza + legacy "Carne Limpia Burger" individuales
-      const [{ data: blendData }, { data: legacyData }] = await Promise.all([
-        supabase.from('stock_produccion').select('producto, cantidad').eq('categoria', 'carnes_limpias').ilike('producto', 'Blend%').gt('cantidad', 0),
-        supabase.from('stock_produccion').select('producto, cantidad').ilike('producto', 'Carne Limpia Burger%').gt('cantidad', 0),
-      ]);
-      const combined = [
-        ...(blendData ?? []).map((r: any) => ({ producto: r.producto, cantidad: Number(r.cantidad) })),
-        ...(legacyData ?? []).map((r: any) => ({ producto: r.producto, cantidad: Number(r.cantidad) })),
-      ];
-      setCarnesLimpias(combined.length > 0 ? combined : []);
+      // Traer TODAS las carnes limpias: individuales (_L) + blends
+      const { data } = await supabase
+        .from('stock_produccion')
+        .select('producto, cantidad')
+        .eq('categoria', 'carnes_limpias')
+        .not('producto', 'ilike', 'Grasa%')
+        .gt('cantidad', 0)
+        .order('producto');
+      // Individuales primero, blends al final
+      const items = (data ?? []).map((r: any) => ({ producto: r.producto, cantidad: Number(r.cantidad) }));
+      const individuales = items.filter(i => !i.producto.startsWith('Blend'));
+      const blends = items.filter(i => i.producto.startsWith('Blend'));
+      setCarnesLimpias([...individuales, ...blends]);
     }
     setStep('select');
   };
@@ -256,8 +259,8 @@ export function NewProductionWizard({ onStart, onCancel }: {
               <p className="text-center text-xs font-bold text-slate-400 mb-3 uppercase tracking-wide">
                 {selectedKind === 'burger' ? 'Seleccioná los cortes a usar (puede ser más de uno)' : 'Elegí el corte a procesar'}
               </p>
-              {selectedKind === 'burger' && carnesLimpias.some(c => c.producto.startsWith('Blend')) && (
-                <p className="text-xs font-black text-blue-600 uppercase tracking-wide mb-1 px-1">🍔 Blends</p>
+              {selectedKind === 'burger' && carnesLimpias.some(c => !c.producto.startsWith('Blend')) && (
+                <p className="text-xs font-black text-slate-500 uppercase tracking-wide mb-1 px-1">🥩 Cortes individuales</p>
               )}
               {carnesLimpias.map((c, cidx) => {
                 const isBlend = c.producto.startsWith('Blend');
@@ -272,13 +275,13 @@ export function NewProductionWizard({ onStart, onCancel }: {
                 const onClick = () => selectedKind === 'burger'
                   ? toggleCarneMulti(c.producto)
                   : setSelectedCarneLinpia(c.producto);
-                // Separador entre blends e individuales para burger
+                // Header "Blends" cuando aparece el primer blend
                 const prevIsBlend = cidx > 0 && carnesLimpias[cidx - 1].producto.startsWith('Blend');
                 const showIndividualHeader = selectedKind === 'burger' && !isBlend && prevIsBlend;
                 return (
                   <React.Fragment key={c.producto}>
-                    {showIndividualHeader && (
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-wide mt-3 mb-1 px-1">🥩 Cortes individuales</p>
+                    {isBlend && !prevIsBlend && (
+                      <p className="text-xs font-black text-blue-600 uppercase tracking-wide mt-4 mb-1 px-1">🍔 Blends</p>
                     )}
                     <button onClick={onClick}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all font-bold
