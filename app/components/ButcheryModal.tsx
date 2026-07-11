@@ -191,9 +191,8 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                           ) : (
                             <button
                               onClick={() => setDeletingBatchId(batchId)}
-                              className="p-1.5 hover:bg-red-100 rounded-lg transition-colors group"
-                              title="Eliminar proceso">
-                              <Trash2 size={15} className="text-slate-300 group-hover:text-red-500 transition-colors" />
+                              className="flex items-center gap-1.5 px-4 py-2 text-xs font-black text-white bg-red-500 rounded-lg hover:bg-red-600 active:scale-95 transition-all shadow-sm">
+                              <Trash2 size={13} /> Eliminar proceso
                             </button>
                           )}
                         </div>
