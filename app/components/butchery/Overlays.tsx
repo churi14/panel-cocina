@@ -59,6 +59,7 @@ export function FinishStep1Overlay({ productions, onConfirm, onCancel }: {
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const isBlendBatch = productions.some(p => p.isBlend);
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
       <div className="bg-white rounded-3xl w-full max-w-lg p-8 text-center shadow-2xl">
@@ -66,6 +67,11 @@ export function FinishStep1Overlay({ productions, onConfirm, onCancel }: {
           <CheckCircle2 size={40} className="text-green-600" />
         </div>
         <h2 className="text-2xl font-black text-slate-800 mb-2">¿Finalizaste el procesamiento?</h2>
+        {isBlendBatch && (
+          <div className="mb-3 inline-flex items-center gap-2 px-4 py-1.5 bg-blue-100 border border-blue-300 rounded-full">
+            <span className="text-blue-700 font-black text-sm">🔀 Lote BLEND para burger</span>
+          </div>
+        )}
         <p className="text-slate-500 mb-6">
           Se van a cerrar <span className="font-black text-slate-700">{productions.length} producción{productions.length > 1 ? 'es' : ''}</span> simultáneamente
         </p>

@@ -537,43 +537,64 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
           <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm">
             <h4 className="font-black text-slate-800 text-base mb-4">📋 Resumen final</h4>
             <div className="space-y-2">
-              <SRow label={isFromBlend ? "Blend (carne)" : "Carne neta"} value={`${formatWeight(carneNetaKg)} kg`} />
-              {!isFromBlend && (
-                <SRow
-                  label="Grasa separada"
-                  value={`${formatWeight(grasaSepKg)} kg`}
-                  color="text-orange-500" bg="bg-orange-50"
-                />
-              )}
-              {grasaExtraKg > 0.001 && (
-                <SRow
-                  label={isFromBlend ? '+ Grasa de Pella (stock)' : '+ Grasa del stock'}
-                  value={`+ ${formatWeight(grasaExtraKg)} kg`}
-                  color="text-amber-700 font-black"
-                  bg="bg-amber-50 border border-amber-200"
-                />
-              )}
-              <SRow
-                label={`Grasa total (${grasaPct.toFixed(1)}%)`}
-                value={`${formatWeight(grasaIdealKg)} kg`}
-                color="text-orange-600"
-                bg="bg-orange-50"
-              />
-              <SRow
-                label="Total blend"
-                value={`${formatWeight(totalBlendKg)} kg`}
-                color="text-blue-700 text-lg"
-                bg="bg-blue-50 border border-blue-200"
-              />
-              <SRow
-                label="Desperdicio (auto)"
-                value={`- ${formatWeight(wasteAutoKg)} kg`}
-                color="text-red-500"
-                bg="bg-red-50"
-              />
-              <SRow label="Medallones" value={qty > 0 ? `${qty} u` : '—'} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
-              {qty > 0 && (
-                <SRow label="Peso prom/u" value={`${formatGrams(avgGrams)} gr`} color="text-amber-700 text-lg" bg="bg-amber-50 border border-amber-200" />
+              {isFromBlend ? (
+                <>
+                  <SRow
+                    label="Blend para picar (c/ grasa)"
+                    value={`${formatWeight(carneNetaKg)} kg`}
+                    color="text-blue-700 text-lg"
+                    bg="bg-blue-50 border border-blue-200"
+                  />
+                  <SRow
+                    label="Desperdicio (picado)"
+                    value={`- ${formatWeight(Math.max(0, carneNetaKg - qty * 0.12))} kg`}
+                    color="text-red-500"
+                    bg="bg-red-50"
+                  />
+                  <SRow label="Medallones" value={qty > 0 ? `${qty} u` : '—'} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
+                  {qty > 0 && (
+                    <SRow label="Peso prom/u" value={`${formatGrams(avgGrams)} gr`} color="text-amber-700 text-lg" bg="bg-amber-50 border border-amber-200" />
+                  )}
+                </>
+              ) : (
+                <>
+                  <SRow label="Carne neta" value={`${formatWeight(carneNetaKg)} kg`} />
+                  <SRow
+                    label="Grasa separada"
+                    value={`${formatWeight(grasaSepKg)} kg`}
+                    color="text-orange-500" bg="bg-orange-50"
+                  />
+                  {grasaExtraKg > 0.001 && (
+                    <SRow
+                      label="+ Grasa del stock"
+                      value={`+ ${formatWeight(grasaExtraKg)} kg`}
+                      color="text-amber-700 font-black"
+                      bg="bg-amber-50 border border-amber-200"
+                    />
+                  )}
+                  <SRow
+                    label={`Grasa total (${grasaPct.toFixed(1)}%)`}
+                    value={`${formatWeight(grasaIdealKg)} kg`}
+                    color="text-orange-600"
+                    bg="bg-orange-50"
+                  />
+                  <SRow
+                    label="Total blend"
+                    value={`${formatWeight(totalBlendKg)} kg`}
+                    color="text-blue-700 text-lg"
+                    bg="bg-blue-50 border border-blue-200"
+                  />
+                  <SRow
+                    label="Desperdicio (auto)"
+                    value={`- ${formatWeight(wasteAutoKg)} kg`}
+                    color="text-red-500"
+                    bg="bg-red-50"
+                  />
+                  <SRow label="Medallones" value={qty > 0 ? `${qty} u` : '—'} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
+                  {qty > 0 && (
+                    <SRow label="Peso prom/u" value={`${formatGrams(avgGrams)} gr`} color="text-amber-700 text-lg" bg="bg-amber-50 border border-amber-200" />
+                  )}
+                </>
               )}
               <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-400 text-center">
                 <div className="bg-slate-50 rounded-xl p-2">

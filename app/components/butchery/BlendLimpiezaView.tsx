@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { CheckCircle2, ArrowLeft, Zap, ClipboardList } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, Zap, ClipboardList, Minus, Plus } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
 
 type CorteDatos = {
@@ -9,18 +9,11 @@ type CorteDatos = {
   carneLinpiaKg: string;
 };
 
-type CorteRapido = {
-  production: ButcheryProduction;
-  pesoTotal: string; // peso limpio total (carne + grasa sin separar)
-};
-
 type Props = {
   productions: ButcheryProduction[];
   onFinish: (cortes: { production: ButcheryProduction; grasaKg: number; carneLinpiaKg: number; desperdicioKg: number }[]) => void;
   onBack: () => void;
 };
-
-const GRASA_RAPIDA_PCT = 0.15; // 15% auto en modo rápido
 
 export default function BlendLimpiezaView({ productions, onFinish, onBack }: Props) {
   const [modo, setModo] = useState<'rapida' | 'normal'>('rapida');
@@ -30,20 +23,26 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
     productions.map(p => ({ production: p, grasaKg: '', carneLinpiaKg: '' }))
   );
 
-  // ── Modo rápido ──────────────────────────────────────────────────────────────
-  const [cortesRapido, setCortesRapido] = useState<CorteRapido[]>(
-    productions.map(p => ({ production: p, pesoTotal: '' }))
-  );
+  // ── Modo rápido — UN SOLO peso total + selector de % grasa ────────────────────
+  const [totalRapido, setTotalRapido] = useState('');
+  const [grasaPctRapido, setGrasaPctRapido] = useState(15);
 
   const [submitting, setSubmitting] = useState(false);
 
-  const setField = (idx: number, field: 'grasaKg' | 'carneLinpiaKg', val: string) => {
-    setCortes(prev => prev.map((c, i) => i === idx ? { ...c, [field]: val } : c));
-  };
+  const totalBruto = productions.reduce((s, p) => s + p.weightKg, 0);
+  const blendNombre = `Blend ${productions.map(p => (p.typeName ?? '').replace(/_L$/, '').trim()).join(' + ')}`;
 
-  const setPesoTotal = (idx: number, val: string) => {
-    setCortesRapido(prev => prev.map((c, i) => i === idx ? { ...c, pesoTotal: val } : c));
-  };
+  // ── Cálculos modo rápido ──────────────────────────────────────────────────
+  const totalCarneRapido = parseFloat(totalRapido.replace(',', '.')) || 0;
+  const grasaPctFrac = grasaPctRapido / 100;
+  // grasa = X% del blend total → grasa = carne * pct/(1-pct)
+  const grasaAgregar = totalCarneRapido > 0
+    ? parseFloat((totalCarneRapido * grasaPctFrac / (1 - grasaPctFrac)).toFixed(3))
+    : 0;
+  const totalBlendPicar = parseFloat((totalCarneRapido + grasaAgregar).toFixed(3));
+  const desperdicioRapido = Math.max(0, parseFloat((totalBruto - totalCarneRapido).toFixed(3)));
+  const excedeRapido = totalCarneRapido > totalBruto * 1.02;
+  const canFinishRapido = totalCarneRapido > 0 && !excedeRapido;
 
   // ── Cálculos modo normal ──────────────────────────────────────────────────
   const parsedNormal = cortes.map(c => ({
@@ -54,42 +53,29 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
       (c.production.weightKg - (parseFloat(c.grasaKg.replace(',', '.')) || 0) - (parseFloat(c.carneLinpiaKg.replace(',', '.')) || 0)).toFixed(3)
     )),
   }));
+  const totalCarneNormal = parsedNormal.reduce((s, c) => s + c.carne, 0);
+  const totalGrasaNormal = parsedNormal.reduce((s, c) => s + c.grasa, 0);
+  const totalDespNormal = parsedNormal.reduce((s, c) => s + c.desperdicio, 0);
+  const canFinishNormal = parsedNormal.every(c => c.carne > 0);
 
-  // ── Cálculos modo rápido ──────────────────────────────────────────────────
-  const parsedRapido = cortesRapido.map(c => {
-    const total = parseFloat(c.pesoTotal.replace(',', '.')) || 0;
-    const grasa = parseFloat((total * GRASA_RAPIDA_PCT).toFixed(3));
-    const carne = parseFloat((total * (1 - GRASA_RAPIDA_PCT)).toFixed(3));
-    const desperdicio = Math.max(0, parseFloat((c.production.weightKg - total).toFixed(3)));
-    return { production: c.production, total, grasa, carne, desperdicio };
-  });
+  const canFinish = modo === 'rapida' ? canFinishRapido : canFinishNormal;
 
-  const parsed = modo === 'rapida' ? parsedRapido : parsedNormal;
-
-  const totalBruto  = productions.reduce((s, p) => s + p.weightKg, 0);
-  const totalCarne  = parsed.reduce((s, c) => s + c.carne, 0);
-  const totalGrasa  = parsed.reduce((s, c) => s + c.grasa, 0);
-  const totalDesp   = parsed.reduce((s, c) => s + c.desperdicio, 0);
-  const totalLimpio = modo === 'rapida'
-    ? parsedRapido.reduce((s, c) => s + c.total, 0)
-    : totalCarne + totalGrasa;
-
-  const canFinish = modo === 'rapida'
-    ? parsedRapido.every(c => c.total > 0 && c.total <= c.production.weightKg * 1.02)
-    : parsedNormal.every(c => c.carne > 0);
-
-  const blendNombre = `Blend ${productions.map(p => (p.typeName ?? '').replace(/_L$/, '').trim()).join(' + ')}`;
+  const setField = (idx: number, field: 'grasaKg' | 'carneLinpiaKg', val: string) => {
+    setCortes(prev => prev.map((c, i) => i === idx ? { ...c, [field]: val } : c));
+  };
 
   const handleConfirm = async () => {
     if (!canFinish || submitting) return;
     setSubmitting(true);
     if (modo === 'rapida') {
-      await onFinish(parsedRapido.map(p => ({
-        production: p.production,
-        grasaKg: p.grasa,
-        carneLinpiaKg: p.carne,
-        desperdicioKg: p.desperdicio,
-      })));
+      // Distribuir el total proporcionalmente por peso bruto de cada corte
+      const result = productions.map(p => {
+        const ratio = totalBruto > 0 ? p.weightKg / totalBruto : 1 / productions.length;
+        const carne = parseFloat((totalCarneRapido * ratio).toFixed(3));
+        const desp = Math.max(0, parseFloat((p.weightKg - carne).toFixed(3)));
+        return { production: p, grasaKg: 0, carneLinpiaKg: carne, desperdicioKg: desp };
+      });
+      await onFinish(result);
     } else {
       await onFinish(parsedNormal.map(p => ({
         production: p.production,
@@ -118,19 +104,23 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
         </p>
       </div>
 
-      {/* Selector de modo */}
-      <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-2xl">
+      {/* Selector de modo — más visible */}
+      <div className="flex gap-3 mb-6">
         <button
           onClick={() => setModo('rapida')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all
-            ${modo === 'rapida' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          <Zap size={16} className={modo === 'rapida' ? 'text-amber-500' : ''} />
+          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm transition-all border-2
+            ${modo === 'rapida'
+              ? 'bg-amber-400 border-amber-400 text-slate-900 shadow-lg scale-[1.02]'
+              : 'bg-white border-slate-200 text-slate-500 hover:border-amber-300 hover:bg-amber-50'}`}>
+          <Zap size={16} className={modo === 'rapida' ? 'text-slate-900' : 'text-amber-500'} />
           ⚡ Carga Rápida
         </button>
         <button
           onClick={() => setModo('normal')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all
-            ${modo === 'normal' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm transition-all border-2
+            ${modo === 'normal'
+              ? 'bg-slate-800 border-slate-800 text-white shadow-lg scale-[1.02]'
+              : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400 hover:bg-slate-50'}`}>
           <ClipboardList size={16} />
           📋 Normal
         </button>
@@ -140,57 +130,79 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
       {modo === 'rapida' && (
         <div className="space-y-4">
           <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800 font-bold">
-            ⚡ Pesá el total limpio de cada corte (sin separar la grasa). El sistema asigna <strong>15% como grasa</strong> automáticamente.
+            ⚡ Ingresá el peso <strong>total del blend limpiado</strong> (todos los cortes juntos). Luego ajustá el % de grasa y el sistema te dice cuánta agregar.
           </div>
 
-          {cortesRapido.map((corte, idx) => {
-            const p = parsedRapido[idx];
-            const corteNorm = (corte.production.typeName ?? '').replace(/_L$/, '').trim();
-            const excede = p.total > corte.production.weightKg * 1.02;
-            return (
-              <div key={corte.production.id}
-                className="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                <div className="bg-slate-800 px-5 py-3 flex items-center justify-between">
-                  <span className="text-white font-black text-base">🔪 {corteNorm}</span>
-                  <span className="text-slate-300 text-sm font-black">{corte.production.weightKg} kg bruto</span>
+          {/* Input total único */}
+          <div className="bg-white border-2 border-blue-200 rounded-3xl overflow-hidden shadow-sm">
+            <div className="bg-slate-800 px-5 py-3 flex items-center justify-between">
+              <span className="text-white font-black text-base">⚖️ Peso total del blend limpiado</span>
+              <span className="text-slate-300 text-sm font-black">{totalBruto.toFixed(3)} kg bruto</span>
+            </div>
+            <div className="p-4">
+              <p className="text-xs font-black text-slate-500 mb-2 uppercase tracking-wide">
+                {productions.map(p => (p.typeName ?? '').replace(/_L$/, '').trim()).join(' + ')} — todo junto, ya limpiado
+              </p>
+              <div className="relative">
+                <input
+                  type="number" inputMode="decimal" step="0.1" placeholder="0,000"
+                  value={totalRapido} onChange={e => setTotalRapido(e.target.value)}
+                  className="w-full py-4 px-4 text-4xl font-black text-center text-blue-600 bg-blue-50 border-2 border-blue-200 rounded-xl outline-none focus:border-blue-500 transition-colors"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-black text-blue-300">KG</span>
+              </div>
+              {excedeRapido && (
+                <p className="text-xs text-red-600 font-bold mt-2">⚠️ Supera el peso bruto total ({totalBruto.toFixed(3)} kg)</p>
+              )}
+              {totalCarneRapido > 0 && !excedeRapido && (
+                <div className="mt-3 flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+                  <span className="text-sm font-black text-slate-500">🗑️ Desperdicio</span>
+                  <span className="text-xl font-black text-red-500">{desperdicioRapido.toFixed(3)} kg</span>
                 </div>
-                <div className="p-4 space-y-3">
-                  {/* Peso total limpio */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3">
-                    <p className="text-xs font-black text-blue-700 mb-2">⚖️ Peso total limpio (carne + grasa juntas)</p>
-                    <div className="relative">
-                      <input type="number" inputMode="decimal" step="0.1" placeholder="0,000"
-                        value={corte.pesoTotal} onChange={e => setPesoTotal(idx, e.target.value)}
-                        className="w-full py-3 px-4 text-2xl font-black text-center text-blue-600 bg-white border-2 border-blue-200 rounded-xl outline-none focus:border-blue-500" />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black text-blue-300">KG</span>
-                    </div>
-                    {excede && <p className="text-xs text-red-600 font-bold mt-1">⚠️ Supera el peso bruto ({corte.production.weightKg} kg)</p>}
-                  </div>
+              )}
+            </div>
+          </div>
 
-                  {/* Auto-cálculo */}
-                  {p.total > 0 && !excede && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-center">
-                        <p className="text-xs text-green-600 font-black">Carne (85%)</p>
-                        <p className="text-lg font-black text-green-700">{p.carne.toFixed(3)} kg</p>
-                      </div>
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
-                        <p className="text-xs text-amber-600 font-black">Grasa (15%)</p>
-                        <p className="text-lg font-black text-amber-600">{p.grasa.toFixed(3)} kg</p>
-                      </div>
-                      <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2 text-center">
-                        <p className="text-xs text-slate-500 font-black">Desperdicio</p>
-                        <p className="text-lg font-black text-red-500">{p.desperdicio.toFixed(3)} kg</p>
-                      </div>
-                    </div>
-                  )}
+          {/* Selector de % de grasa */}
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+            <p className="text-sm font-black text-amber-900 mb-0.5">🫙 % Grasa de Pella a agregar</p>
+            <p className="text-xs text-amber-600 mb-4">Se calcula sobre el peso total del blend final</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setGrasaPctRapido(prev => Math.max(0, prev - 1))}
+                className="w-14 h-14 rounded-xl bg-amber-200 hover:bg-amber-300 font-black text-amber-900 flex items-center justify-center transition-all active:scale-95 select-none">
+                <Minus size={22} />
+              </button>
+              <div className="flex-1 text-center bg-white rounded-xl py-3 border-2 border-amber-200">
+                <span className="text-5xl font-black text-amber-700">{grasaPctRapido}</span>
+                <span className="text-2xl font-black text-amber-400 ml-1">%</span>
+              </div>
+              <button
+                onClick={() => setGrasaPctRapido(prev => Math.min(50, prev + 1))}
+                className="w-14 h-14 rounded-xl bg-amber-200 hover:bg-amber-300 font-black text-amber-900 flex items-center justify-center transition-all active:scale-95 select-none">
+                <Plus size={22} />
+              </button>
+            </div>
+
+            {totalCarneRapido > 0 && !excedeRapido && (
+              <div className="mt-4 space-y-2 pt-3 border-t border-amber-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-amber-800">🫙 Grasa de pella a agregar:</span>
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-amber-700">{grasaAgregar.toFixed(3)} kg</span>
+                    <span className="text-base font-black text-amber-400 ml-2">/ {Math.round(grasaAgregar * 1000)} gr</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-blue-700">🍔 Total blend para picar:</span>
+                  <span className="text-2xl font-black text-blue-700">{totalBlendPicar.toFixed(3)} kg</span>
                 </div>
               </div>
-            );
-          })}
+            )}
+          </div>
 
-          {/* Resumen rápido */}
-          {canFinish && (
+          {/* Resumen cuando está listo */}
+          {canFinishRapido && (
             <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 space-y-2">
               <p className="font-black text-blue-800 text-sm mb-2">📊 Resumen del blend</p>
               <div className="flex justify-between text-sm">
@@ -198,20 +210,20 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
                 <span className="font-black text-slate-700">{totalBruto.toFixed(3)} kg</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Limpio total pesado</span>
-                <span className="font-black text-slate-700">{totalLimpio.toFixed(3)} kg</span>
+                <span className="text-slate-500">Carne limpiada → <span className="font-black text-blue-700">{blendNombre}</span></span>
+                <span className="font-black text-green-700">+{totalCarneRapido.toFixed(3)} kg</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Carne (85%) → <span className="font-black text-blue-700">{blendNombre}</span></span>
-                <span className="font-black text-green-700">+{totalCarne.toFixed(3)} kg</span>
+                <span className="text-slate-500">Grasa de pella a agregar ({grasaPctRapido}%)</span>
+                <span className="font-black text-amber-600">+{grasaAgregar.toFixed(3)} kg</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Grasa (15%) → Grasa de Pella</span>
-                <span className="font-black text-amber-600">+{totalGrasa.toFixed(3)} kg</span>
+                <span className="text-slate-500">Total blend para picar</span>
+                <span className="font-black text-blue-700">{totalBlendPicar.toFixed(3)} kg</span>
               </div>
               <div className="flex justify-between text-sm border-t border-blue-200 pt-2">
                 <span className="text-slate-500">Desperdicio</span>
-                <span className="font-black text-red-500">{totalDesp.toFixed(3)} kg</span>
+                <span className="font-black text-red-500">{desperdicioRapido.toFixed(3)} kg</span>
               </div>
             </div>
           )}
@@ -269,22 +281,22 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
             );
           })}
 
-          {canFinish && (
+          {canFinishNormal && (
             <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 space-y-2">
               <p className="font-black text-blue-800 text-sm mb-2">📊 Resumen del blend</p>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Carne limpia total → <span className="font-black text-blue-700">{blendNombre}</span></span>
-                <span className="font-black text-green-700">+{totalCarne.toFixed(3)} kg</span>
+                <span className="font-black text-green-700">+{totalCarneNormal.toFixed(3)} kg</span>
               </div>
-              {totalGrasa > 0 && (
+              {totalGrasaNormal > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Grasa → Grasa de Pella</span>
-                  <span className="font-black text-orange-600">+{totalGrasa.toFixed(3)} kg</span>
+                  <span className="font-black text-orange-600">+{totalGrasaNormal.toFixed(3)} kg</span>
                 </div>
               )}
               <div className="flex justify-between text-sm border-t border-blue-200 pt-2">
                 <span className="text-slate-500">Desperdicio total</span>
-                <span className="font-black text-red-500">{totalDesp.toFixed(3)} kg</span>
+                <span className="font-black text-red-500">{totalDespNormal.toFixed(3)} kg</span>
               </div>
             </div>
           )}
