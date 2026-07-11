@@ -176,6 +176,118 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
     });
   };
 
+  // ── MODO BLEND: pantalla directa de medallones (sin input de peso) ───────────
+  if (isFromBlend) {
+    const blendWasteKg = Math.max(0, totalBrutoKg - qty * 0.12);
+    return (
+      <div className="max-w-4xl mx-auto w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={onBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 font-bold px-3 py-2 rounded-xl hover:bg-slate-100 transition-all">
+            <ChevronLeft size={20} /> VOLVER
+          </button>
+          <div className="text-center">
+            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">PASO 2 — BURGER</p>
+            <h2 className="text-2xl font-black text-green-700">🍔 Medallones del Blend</h2>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl">
+            <Clock size={16} className="text-green-400" />
+            <span className="font-mono font-black text-green-400">{timer2.fmt}</span>
+          </div>
+        </div>
+
+        {/* Carnes brutas del paso 1 */}
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
+          <p className="text-xs font-black text-blue-600 uppercase mb-2">Blend del paso 1 (carnes brutas)</p>
+          <div className="flex flex-wrap gap-3">
+            {productions.map(p => (
+              <div key={p.id} className="bg-white border border-blue-200 rounded-xl px-3 py-2 text-sm">
+                <span className="font-bold text-slate-600">{p.typeName.replace('_L', '')}</span>
+                <span className="font-black text-blue-700 ml-2">{formatWeight(p.weightKg)} kg</span>
+              </div>
+            ))}
+            <div className="bg-blue-600 rounded-xl px-3 py-2 text-sm">
+              <span className="font-bold text-blue-200">TOTAL</span>
+              <span className="font-black text-white ml-2">{formatWeight(totalBrutoKg)} kg</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Input medallones */}
+          <div className="space-y-4">
+            <div className="bg-white border-2 border-green-200 rounded-3xl p-6 shadow-sm">
+              <div className="mb-4">
+                <h4 className="font-black text-slate-800 text-lg">🍔 Cantidad de medallones <span className="text-red-500">*</span></h4>
+                <p className="text-xs text-slate-400">Unidades de 120 gr producidas</p>
+              </div>
+              <div className="relative">
+                <input
+                  type="number" inputMode="numeric" placeholder="0"
+                  value={medallones} onChange={e => setMedallones(e.target.value)}
+                  autoFocus
+                  className="w-full p-5 text-6xl font-black text-center border-2 border-green-200 bg-green-50 text-green-600 rounded-2xl outline-none focus:border-green-500 focus:bg-white transition-all"
+                />
+                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xl font-black text-green-300">u</span>
+              </div>
+              {qty > 0 && (
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+                  <p className="text-xs text-amber-600 font-black uppercase mb-1">Peso total medallones</p>
+                  <p className="text-3xl font-black text-amber-700">{formatWeight(qty * 0.12)} <span className="text-xl font-bold text-amber-500">kg</span></p>
+                  <p className="text-xs text-amber-500 mt-1">{qty} × 120 gr</p>
+                </div>
+              )}
+            </div>
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl px-5 py-4 flex items-center justify-between">
+              <span className="font-black text-blue-700 text-sm uppercase">Stock destino</span>
+              <span className="font-black text-blue-800">🍔 Stock Burger</span>
+            </div>
+          </div>
+
+          {/* Resumen */}
+          <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm">
+            <h4 className="font-black text-slate-800 text-base mb-4">📋 Resumen</h4>
+            <div className="space-y-2">
+              <SRow label="Blend total (paso 1)" value={`${formatWeight(totalBrutoKg)} kg`} color="text-blue-700" bg="bg-blue-50 border border-blue-200" />
+              <SRow label="Medallones" value={qty > 0 ? `${qty} u` : '—'} color="text-green-700 text-xl" bg="bg-green-50 border border-green-200" />
+              {qty > 0 && (
+                <>
+                  <SRow label="Peso medallones" value={`${formatWeight(qty * 0.12)} kg`} color="text-amber-700" bg="bg-amber-50" />
+                  <SRow label="Desperdicio" value={`- ${formatWeight(blendWasteKg)} kg`} color="text-red-500" bg="bg-red-50" />
+                </>
+              )}
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                <div className="bg-slate-50 rounded-xl p-2 text-center">
+                  <p className="text-xs font-bold text-slate-400 uppercase">Timer paso 2</p>
+                  <p className="font-black text-slate-600">{timer2.fmt}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onFinish({
+            stockDestino:    'Stock Burger',
+            grasaKg:         0,
+            units:           qty,
+            wasteKg:         Math.max(0, blendWasteKg),
+            totalBlendKg:    totalBrutoKg,
+            carneNetaKg:     totalBrutoKg,
+            grasaPct:        0,
+            paso2DurSeg:     timer2.elapsed,
+            grasaSeparadaKg: 0,
+            grasaExtraKg:    0,
+          })}
+          disabled={qty === 0}
+          className={`w-full mt-8 py-6 rounded-2xl font-black text-2xl transition-all flex items-center justify-center gap-3
+            ${qty > 0 ? 'bg-green-600 text-white hover:bg-green-500 shadow-xl active:scale-[0.98]' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+          <CheckCircle2 size={28} /> CONFIRMAR PRODUCCIÓN → STOCK BURGER
+        </button>
+      </div>
+    );
+  }
+
   // ── PASO 2: PESAJE ──────────────────────────────────────────────────────────
   if (subStep === 'peso') {
     return (
