@@ -100,6 +100,7 @@ export function createButcheryHandlers(s: Setters) {
     const now = Date.now();
     const newProds = entries.map((e, i) => ({
       id: now + i, batchId: now, isBlend: isBlend ?? false, type: e.type,
+      operador: operador || undefined,
       typeName: e.carneLinpiaName
         ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
         : getCutLabel(e.type),

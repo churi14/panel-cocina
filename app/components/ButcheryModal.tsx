@@ -146,7 +146,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                   return (
                     <div key={batchId} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                       <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {batch[0]?.kind && (
                             <span className={`text-sm font-black text-white px-4 py-1.5 rounded-full uppercase
                               ${batch[0].kind === 'lomito' ? 'bg-rose-500' : batch[0].kind === 'burger' ? 'bg-blue-500' : 'bg-amber-500'}`}>
@@ -155,6 +155,14 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                           )}
                           <span className="text-xs font-black text-slate-400 uppercase tracking-wider">
                             {batch.length === 1 ? '1 corte' : `${batch.length} cortes`}
+                          </span>
+                          {batch[0]?.operador && (
+                            <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-1 rounded-full">
+                              👤 {batch[0].operador}
+                            </span>
+                          )}
+                          <span className="text-xs text-slate-400 font-bold">
+                            🕐 {batch[0]?.startTimeFormatted ?? ''}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

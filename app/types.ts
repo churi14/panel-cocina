@@ -69,6 +69,7 @@ export type ButcheryProduction = {
   batchId: number;          // ID compartido entre todos los cortes del mismo lote
   kind?: string;            // 'lomito' | 'burger' | 'milanesa'
   isBlend?: boolean;        // true = batch de limpieza que se mezcla como blend burger
+  operador?: string;        // quién inició el proceso
   type: ButcheryProductionType;
   typeName: string;
   cut: string;
