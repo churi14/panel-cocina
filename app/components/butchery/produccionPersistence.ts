@@ -12,6 +12,7 @@ function toRow(p: ButcheryProduction) {
     cut: p.cut,
     weight_kg: p.weightKg,
     status: p.status,
+    is_blend: p.isBlend ?? false,
     start_time: p.startTime,
     end_time: p.endTime ?? null,
     duration_seconds: p.durationSeconds ?? null,
@@ -35,6 +36,7 @@ function fromRow(row: any): ButcheryProduction {
     cut: row.cut,
     weightKg: parseFloat(row.weight_kg),
     status: row.status,
+    isBlend: row.is_blend ?? false,
     startTime: row.start_time,
     endTime: row.end_time,
     durationSeconds: row.duration_seconds ? parseFloat(row.duration_seconds) : undefined,
@@ -88,6 +90,25 @@ export async function markProduccionDone(id: number) {
       .eq('id', id);
   } catch (e) {
     console.error('Error marcando producción done:', e);
+  }
+}
+
+// Eliminar una producción activa (cancelar proceso)
+export async function deleteProduccion(id: number) {
+  try {
+    await supabase.from('producciones_activas').delete().eq('id', id);
+  } catch (e) {
+    console.error('Error eliminando producción:', e);
+  }
+}
+
+// Eliminar múltiples producciones de un batch
+export async function deleteProduccionBatch(ids: number[]) {
+  if (!ids.length) return;
+  try {
+    await supabase.from('producciones_activas').delete().in('id', ids);
+  } catch (e) {
+    console.error('Error eliminando batch de producciones:', e);
   }
 }
 

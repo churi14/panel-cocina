@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import { Beef, X, Plus, ChevronLeft, Download, FileText, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Beef, X, Plus, ChevronLeft, Download, FileText, CheckCircle2, ChevronRight, Trash2, AlertTriangle } from 'lucide-react';
 import { ButcheryProduction, ButcheryRecord } from '../types';
 import { useOperadores } from '../hooks/useOperadores';
 import { CUTS } from './butchery/cuts';
@@ -14,6 +14,7 @@ import LimpiezaView from './butchery/LimpiezaView';
 import BlendLimpiezaView from './butchery/BlendLimpiezaView';
 import { groupByBatch, createButcheryHandlers } from './butchery/useButcheryHandlers';
 import { addToStockProduccion } from './butchery/stockProduccion';
+import { deleteProduccionBatch } from './butchery/produccionPersistence';
 
 export default function ButcheryModal({ onClose, butcheryProductions, setButcheryProductions, butcheryRecords, setButcheryRecords }: {
   onClose: () => void;
@@ -29,6 +30,7 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
   const [step2Queue, setStep2Queue] = useState<ButcheryProduction[]>([]);
   const [step2Index, setStep2Index] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingBatchId, setDeletingBatchId] = useState<number | null>(null);
   const submittingRef  = useRef(false);
   const blendAccumKg   = useRef(0);   // acumula kg limpios en batch blend
 
@@ -52,6 +54,14 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
     setButcheryProductions, setButcheryRecords,
     setView, setFinishingBatchId, setStep2Queue, setStep2Index,
   });
+
+  const handleDeleteBatch = async (batchId: number) => {
+    const batch = butcheryProductions.filter(p => p.batchId === batchId && p.status !== 'step2_done');
+    const ids = batch.map(p => p.id);
+    await deleteProduccionBatch(ids);
+    setButcheryProductions(prev => prev.filter(p => !ids.includes(p.id)));
+    setDeletingBatchId(null);
+  };
 
   const exportCSV = () => {
     if (!butcheryRecords.length) return;
@@ -147,13 +157,38 @@ export default function ButcheryModal({ onClose, butcheryProductions, setButcher
                             {batch.length === 1 ? '1 corte' : `${batch.length} cortes`}
                           </span>
                         </div>
-                        {someRunning && (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-                            <span className="text-xs font-bold text-rose-500">{runningCount} en curso</span>
-                          </div>
-                        )}
-                        {allReady && !someRunning && <span className="text-xs font-bold text-green-600">✓ Listo para paso 2</span>}
+                        <div className="flex items-center gap-2">
+                          {someRunning && (
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                              <span className="text-xs font-bold text-rose-500">{runningCount} en curso</span>
+                            </div>
+                          )}
+                          {allReady && !someRunning && <span className="text-xs font-bold text-green-600">✓ Listo para paso 2</span>}
+                          {deletingBatchId === batchId ? (
+                            <div className="flex items-center gap-1.5">
+                              <AlertTriangle size={14} className="text-red-500" />
+                              <span className="text-xs font-bold text-red-600">¿Eliminar?</span>
+                              <button
+                                onClick={() => handleDeleteBatch(batchId)}
+                                className="px-2 py-1 bg-red-600 text-white text-xs font-black rounded-lg hover:bg-red-500 transition-colors">
+                                Sí, eliminar
+                              </button>
+                              <button
+                                onClick={() => setDeletingBatchId(null)}
+                                className="px-2 py-1 bg-slate-200 text-slate-700 text-xs font-black rounded-lg hover:bg-slate-300 transition-colors">
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setDeletingBatchId(batchId)}
+                              className="p-1.5 hover:bg-red-100 rounded-lg transition-colors group"
+                              title="Eliminar proceso">
+                              <Trash2 size={15} className="text-slate-300 group-hover:text-red-500 transition-colors" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {batch.map(prod => <ProductionCard key={prod.id} production={prod} />)}

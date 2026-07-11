@@ -90,9 +90,12 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
 }) {
   const [subStep, setSubStep] = useState<'peso' | 'medallones'>('peso');
 
+  // ¿Las carnes vienen de un blend de limpieza?
+  const isFromBlend = productions.some(p => (p.typeName ?? '').startsWith('Blend'));
+
   // Inputs de paso 2
   const [carneNeta, setCarneNeta]   = useState('');
-  const [grasaSep,  setGrasaSep]    = useState(''); // grasa separada de los cortes
+  const [grasaSep,  setGrasaSep]    = useState(''); // grasa separada de los cortes (solo aplica si !isFromBlend)
 
   // Timer continuo desde step2StartTime real
   const timer2 = useTimer(step2StartTime);
@@ -104,48 +107,53 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
   // ── Cálculos principales ──────────────────────────────────────────────────
   const totalBrutoKg    = productions.reduce((s, p) => s + p.weightKg, 0);
   const carneNetaKg     = parseFloat(carneNeta.replace(',', '.'))  || 0;
-  const grasaSepKg      = parseFloat(grasaSep.replace(',', '.'))   || 0;
+  // En modo blend, la grasa no se separa acá (ya se hizo en limpieza)
+  const grasaSepKg      = isFromBlend ? 0 : (parseFloat(grasaSep.replace(',', '.')) || 0);
 
   // Validaciones de carne neta
   const warnCarneGramos  = carneNetaKg > totalBrutoKg * 10; // probablemente gramos
   const sugerirCarneKg   = warnCarneGramos ? parseFloat((carneNetaKg / 1000).toFixed(3)) : null;
-  const warnCarneExcede  = !warnCarneGramos && carneNetaKg > totalBrutoKg;
+  const warnCarneExcede  = !warnCarneGramos && carneNetaKg > totalBrutoKg * 1.05;
 
-  // Validaciones de grasa
-  const warnGrasaGramos  = grasaSepKg > 20;                         // probablemente pusieron gramos
-  const warnGrasaExcede  = !warnGrasaGramos && grasaSepKg > totalBrutoKg; // imposible
+  // Validaciones de grasa (solo relevante si no es blend)
+  const warnGrasaGramos  = !isFromBlend && grasaSepKg > 20;
+  const warnGrasaExcede  = !isFromBlend && !warnGrasaGramos && grasaSepKg > totalBrutoKg;
   const sugerirGrasaKg   = warnGrasaGramos ? parseFloat((grasaSepKg / 1000).toFixed(3)) : null;
 
   // Objetivo de grasa: 34% sobre carne neta
   const grasaIdealKg    = carneNetaKg * (GRASA_TARGET_PCT / 100);
 
-  // Grasa extra que hay que agregar del stock (puede ser 0 si se separó suficiente)
+  // Grasa extra que hay que agregar del stock
+  // - Si es blend: TODA la grasa ideal viene del stock (grasaSep = 0)
+  // - Si no es blend: la diferencia entre ideal y separada
   const grasaExtraKg    = Math.max(0, grasaIdealKg - grasaSepKg);
 
-  // Grasa total que va al blend (lo que se separó + lo que se agrega = ideal)
+  // Grasa total que va al blend
   const grasaTotalKg    = Math.min(grasaSepKg, grasaIdealKg) + grasaExtraKg;
-  // Nota: si grasaSep > grasaIdeal, el exceso va a desperdicio
 
-  // Total blend = carne neta + grasa ideal (proyectado, asumiendo que agregan lo necesario)
+  // Total blend = carne neta + grasa ideal
   const totalBlendKg    = carneNetaKg + grasaIdealKg;
 
-  // Desperdicio = lo que sobra del bruto al separar carne y grasa
-  // (bones, sebo descartado, merma). Auto-calculado, no manual.
-  const wasteAutoKg     = Math.max(0, totalBrutoKg - carneNetaKg - grasaSepKg);
+  // Desperdicio
+  const wasteAutoKg     = isFromBlend
+    ? Math.max(0, totalBrutoKg - carneNetaKg) // en blend: bruto - carne (ya limpiada)
+    : Math.max(0, totalBrutoKg - carneNetaKg - grasaSepKg);
 
   // % de grasa real sobre carne neta
   const grasaPct        = carneNetaKg > 0 ? (grasaIdealKg / carneNetaKg) * 100 : 0;
 
-  // ¿Falta grasa? Diferencia en gramos
+  // ¿Falta grasa?
   const grasaFaltaKg    = grasaIdealKg - grasaSepKg;
   const grasaFaltaGr    = grasaFaltaKg * 1000;
-  const grasaOk         = grasaFaltaKg <= GRASA_TOLERANCE_G / 1000; // ≤ 100g de diferencia
+  const grasaOk         = grasaFaltaKg <= GRASA_TOLERANCE_G / 1000;
 
   // Medallones
   const qty             = parseInt(medallones) || 0;
   const avgGrams        = qty > 0 ? (totalBlendKg / qty) * 1000 : 0;
 
-  const canAdvance2     = carneNetaKg > 0 && grasaSepKg >= 0 && !warnGrasaGramos && !warnGrasaExcede && !warnCarneGramos && !warnCarneExcede;
+  const canAdvance2     = isFromBlend
+    ? carneNetaKg > 0 && !warnCarneGramos && !warnCarneExcede
+    : carneNetaKg > 0 && grasaSepKg >= 0 && !warnGrasaGramos && !warnGrasaExcede && !warnCarneGramos && !warnCarneExcede;
   const canFinish       = qty > 0;
 
   const handleAdvance = () => {
@@ -173,8 +181,24 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
     return (
       <div className="max-w-5xl mx-auto w-full">
         <HelpButton
-          titulo="Burger — Pesaje y separación"
-          items={[
+          titulo={isFromBlend ? 'Burger Blend — Pesaje' : 'Burger — Pesaje y separación'}
+          items={isFromBlend ? [
+            {
+              tipo: 'ok',
+              pregunta: '¿Qué pongo en "Peso del blend"?',
+              respuesta: 'El peso de la carne del blend que vas a usar para hacer los medallones. Ya viene limpia de la carnicería.',
+            },
+            {
+              tipo: 'info',
+              pregunta: '¿Por qué no hay campo de grasa separada?',
+              respuesta: 'Porque la grasa ya fue separada (o calculada) en el paso de limpieza. En este paso solo pesás el blend y el sistema calcula cuánta Grasa de Pella tenés que agregar del stock.',
+            },
+            {
+              tipo: 'no',
+              pregunta: '¿Tengo que separar grasa acá?',
+              respuesta: 'NO. Eso ya está hecho. Solo pesá la carne del blend y avanzá.',
+            },
+          ] : [
             {
               tipo: 'ok',
               pregunta: '¿Qué es "Carne neta limpia"?',
@@ -204,7 +228,9 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
           </button>
           <div className="text-center">
             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">PASO 2 — BURGER</p>
-            <h2 className="text-2xl font-black text-blue-700">⚖️ Pesaje y Separación</h2>
+            <h2 className="text-2xl font-black text-blue-700">
+              {isFromBlend ? '🔀 Pesaje del Blend' : '⚖️ Pesaje y Separación'}
+            </h2>
           </div>
           {/* Timer continuo — sigue aunque vuelvas para atrás */}
           <div className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl">
@@ -230,22 +256,38 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
           </div>
         </div>
 
-        {/* Inputs: solo carne neta y grasa separada */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-          <BigInput
-            label="🥩 Carne neta limpia"
-            sublabel="Peso real de carne limpia pesada"
-            value={carneNeta} onChange={setCarneNeta}
-            unit="KG" color="blue" required
-          />
-
-          <BigInput
-            label="🫙 Grasa separada de los cortes"
-            sublabel="Solo la que extrajiste durante la limpieza"
-            value={grasaSep} onChange={setGrasaSep}
-            unit="KG" color="orange" required
-          />
-        </div>
+        {/* Inputs */}
+        {isFromBlend ? (
+          // ─── MODO BLEND: solo un input, la grasa ya fue manejada en limpieza ───
+          <div className="mb-5 space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 text-sm text-blue-700 font-bold flex items-center gap-2">
+              <span>🔀</span>
+              <span>Estás usando un <strong>blend</strong> — la grasa ya fue manejada en la limpieza. Solo pesá la carne del blend.</span>
+            </div>
+            <BigInput
+              label="🥩 Peso del blend a usar"
+              sublabel="Peso total de la carne del blend (ya limpiada)"
+              value={carneNeta} onChange={setCarneNeta}
+              unit="KG" color="blue" required
+            />
+          </div>
+        ) : (
+          // ─── MODO NORMAL: dos inputs ─────────────────────────────────────────
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+            <BigInput
+              label="🥩 Carne neta limpia"
+              sublabel="Peso real de carne limpia pesada"
+              value={carneNeta} onChange={setCarneNeta}
+              unit="KG" color="blue" required
+            />
+            <BigInput
+              label="🫙 Grasa separada de los cortes"
+              sublabel="Solo la que extrajiste durante la limpieza"
+              value={grasaSep} onChange={setGrasaSep}
+              unit="KG" color="orange" required
+            />
+          </div>
+        )}
 
         {/* Advertencias de carne neta */}
         {warnCarneGramos && (
@@ -360,27 +402,48 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
           </div>
         )}
 
-        {/* ─── AVISO GRASA A AGREGAR — tamaño grande, imposible de ignorar ─── */}
+        {/* ─── AVISO GRASA A AGREGAR ─── */}
         {grasaExtraKg > 0.001 && carneNetaKg > 0 && (
-          <div className="mb-5 rounded-3xl border-4 border-amber-400 bg-amber-50 shadow-lg overflow-hidden">
-            <div className="bg-amber-400 px-6 py-3 flex items-center gap-3">
-              <AlertTriangle size={24} className="text-white shrink-0" />
-              <span className="text-white font-black text-lg uppercase tracking-wide">Agregar grasa del stock</span>
-            </div>
-            <div className="px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-baseline gap-3">
-                <span className="text-7xl font-black text-amber-700">{formatWeight(grasaExtraKg)}</span>
-                <span className="text-3xl font-black text-amber-500">kg</span>
-                <span className="text-4xl font-black text-amber-400 mx-2">/</span>
-                <span className="text-5xl font-black text-amber-600">{Math.round(grasaExtraKg * 1000)}</span>
-                <span className="text-3xl font-black text-amber-500">gr</span>
+          isFromBlend ? (
+            // Blend: aviso limpio, sin alarma
+            <div className="mb-5 rounded-2xl border-2 border-blue-300 bg-blue-50 px-5 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black text-blue-600 uppercase mb-1">🫙 Grasa de Pella a agregar del stock</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-black text-blue-700">{formatWeight(grasaExtraKg)}</span>
+                  <span className="text-2xl font-black text-blue-400">kg</span>
+                  <span className="text-2xl font-bold text-blue-300 mx-1">/</span>
+                  <span className="text-4xl font-black text-blue-600">{Math.round(grasaExtraKg * 1000)}</span>
+                  <span className="text-xl font-black text-blue-400">gr</span>
+                </div>
               </div>
-              <div className="text-right text-sm text-amber-700 space-y-1">
-                <p className="font-bold">Separados: <span className="font-black">{formatWeight(grasaSepKg)} kg</span></p>
-                <p className="font-bold">Objetivo (34%): <span className="font-black">{formatWeight(grasaIdealKg)} kg</span></p>
+              <div className="text-right text-sm text-blue-600 space-y-1">
+                <p className="font-bold">Blend: <span className="font-black">{formatWeight(carneNetaKg)} kg</span></p>
+                <p className="font-bold">Objetivo grasa (34%): <span className="font-black">{formatWeight(grasaIdealKg)} kg</span></p>
               </div>
             </div>
-          </div>
+          ) : (
+            // Normal: alerta grande imposible de ignorar
+            <div className="mb-5 rounded-3xl border-4 border-amber-400 bg-amber-50 shadow-lg overflow-hidden">
+              <div className="bg-amber-400 px-6 py-3 flex items-center gap-3">
+                <AlertTriangle size={24} className="text-white shrink-0" />
+                <span className="text-white font-black text-lg uppercase tracking-wide">Agregar grasa del stock</span>
+              </div>
+              <div className="px-6 py-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-7xl font-black text-amber-700">{formatWeight(grasaExtraKg)}</span>
+                  <span className="text-3xl font-black text-amber-500">kg</span>
+                  <span className="text-4xl font-black text-amber-400 mx-2">/</span>
+                  <span className="text-5xl font-black text-amber-600">{Math.round(grasaExtraKg * 1000)}</span>
+                  <span className="text-3xl font-black text-amber-500">gr</span>
+                </div>
+                <div className="text-right text-sm text-amber-700 space-y-1">
+                  <p className="font-bold">Separados: <span className="font-black">{formatWeight(grasaSepKg)} kg</span></p>
+                  <p className="font-bold">Objetivo (34%): <span className="font-black">{formatWeight(grasaIdealKg)} kg</span></p>
+                </div>
+              </div>
+            </div>
+          )
         )}
 
         <button onClick={handleAdvance} disabled={!canAdvance2}
@@ -474,15 +537,17 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
           <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm">
             <h4 className="font-black text-slate-800 text-base mb-4">📋 Resumen final</h4>
             <div className="space-y-2">
-              <SRow label="Carne neta" value={`${formatWeight(carneNetaKg)} kg`} />
-              <SRow
-                label={`Grasa separada`}
-                value={`${formatWeight(grasaSepKg)} kg`}
-                color="text-orange-500" bg="bg-orange-50"
-              />
+              <SRow label={isFromBlend ? "Blend (carne)" : "Carne neta"} value={`${formatWeight(carneNetaKg)} kg`} />
+              {!isFromBlend && (
+                <SRow
+                  label="Grasa separada"
+                  value={`${formatWeight(grasaSepKg)} kg`}
+                  color="text-orange-500" bg="bg-orange-50"
+                />
+              )}
               {grasaExtraKg > 0.001 && (
                 <SRow
-                  label={`+ Grasa del stock`}
+                  label={isFromBlend ? '+ Grasa de Pella (stock)' : '+ Grasa del stock'}
                   value={`+ ${formatWeight(grasaExtraKg)} kg`}
                   color="text-amber-700 font-black"
                   bg="bg-amber-50 border border-amber-200"

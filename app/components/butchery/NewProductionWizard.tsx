@@ -33,7 +33,14 @@ export function NewProductionWizard({ onStart, onCancel }: {
     : selectedKind ? getCutsByKind(selectedKind) : [];
 
   const toggleCut = (id: string) =>
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelected(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      if (selectedKind === 'limpieza') {
+        // Auto-activar blend cuando hay 2+ cortes, auto-desactivar si baja a 1
+        setLimpiezaIsBlend(next.length >= 2);
+      }
+      return next;
+    });
 
   const handleSelectKind = async (kind: ProductionKind) => {
     setSelectedKind(kind);
@@ -330,11 +337,11 @@ export function NewProductionWizard({ onStart, onCancel }: {
               <div className="flex items-center gap-3">
                 <span className="text-3xl">🍔</span>
                 <div className="text-left">
-                  <p className="font-black text-base">¿Es un blend para burger?</p>
+                  <p className="font-black text-base">Blend — mezcla de cortes</p>
                   <p className="text-xs font-normal mt-0.5 text-slate-500">
                     {limpiezaIsBlend
-                      ? `✅ Se creará: Blend ${selected.map(getCutLabel).join(' + ')}`
-                      : 'Activá si querés mezclar estos cortes en un blend'}
+                      ? `✅ Se procesarán juntos: ${selected.map(getCutLabel).join(' + ')}`
+                      : 'Desactivá si querés limpiar cada corte por separado'}
                   </p>
                 </div>
               </div>
