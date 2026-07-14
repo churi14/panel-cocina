@@ -223,6 +223,26 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
     else setItemMovsFetched([]);
   }, [selectedStockItem?.id, fetchItemMovs]);
 
+  const [itemProdMovsFetched, setItemProdMovsFetched] = useState<Movement[]>([]);
+  const [loadingProdMovs, setLoadingProdMovs]         = useState(false);
+
+  const fetchProdItemMovs = React.useCallback(async (nombre: string) => {
+    setLoadingProdMovs(true);
+    const { data } = await supabase
+      .from('stock_movements')
+      .select('*')
+      .eq('nombre', nombre)
+      .order('fecha', { ascending: false })
+      .limit(500);
+    setItemProdMovsFetched((data ?? []) as Movement[]);
+    setLoadingProdMovs(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedProdItem) fetchProdItemMovs(selectedProdItem.producto);
+    else setItemProdMovsFetched([]);
+  }, [selectedProdItem?.id, fetchProdItemMovs]);
+
   const PROD_CFG: Record<string, { emoji: string; color: string; bg: string; border: string; headerBg: string }> = {
     carnes_limpias: { emoji: '🔪', color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    headerBg: 'bg-red-500/20'    },
     lomito:   { emoji: '🥩', color: 'text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   headerBg: 'bg-rose-500/20'   },
@@ -921,9 +941,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
                     {/* ── TAB HISTORIAL ── */}
                     {prodTab === 'historial' && (() => {
-                      const prodMovs = movements
-                        .filter(m => m.nombre === selectedProdItem.producto)
-                        .sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''));
+                      const prodMovs = itemProdMovsFetched;
                       const totalIngreso = prodMovs.filter(m => m.tipo === 'ingreso').reduce((s, m) => s + Number(m.cantidad), 0);
                       const totalEgreso  = prodMovs.filter(m => m.tipo === 'egreso').reduce((s, m) => s + Number(m.cantidad), 0);
                       return (
