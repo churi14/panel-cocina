@@ -335,203 +335,373 @@ function SyncDetailModal({ log, onClose }: { log: SyncLog; onClose: () => void }
   );
 }
 
-// Sub-tab: Tiempo Real
-function TiempoReal() {
-  const [syncLogs, setSyncLogs]   = useState<SyncLog[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [lastAuto, setLastAuto]   = useState<SyncLog | null>(null);
-  const [popupLog, setPopupLog]   = useState<SyncLog | null>(null);
+// Sub-tab: Dashboard de ventas
+function Dashboard() {
+  const hoy  = new Date().toISOString().slice(0, 10);
+  const hace7 = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
 
-  const loadLogs = async () => {
-    setLoading(true);
+  const [desde,   setDesde]   = useState(hace7);
+  const [hasta,   setHasta]   = useState(hoy);
+  const [loading, setLoading] = useState(false);
+  const [sales,   setSales]   = useState<Sale[]>([]);
+  const [error,   setError]   = useState('');
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
+
+  const fetchData = async (d = desde, h = hasta) => {
+    setLoading(true); setError('');
+    try {
+      const res  = await fetch(`/api/fudo?action=sales&desde=${d}&hasta=${h}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al traer ventas');
+      setSales(data.sales ?? []);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const setRango = (dias: number) => {
+    const h = new Date().toISOString().slice(0, 10);
+    const d = new Date(Date.now() - (dias - 1) * 86400000).toISOString().slice(0, 10);
+    setDesde(d); setHasta(h); fetchData(d, h);
+  };
+
+  const getSaleTs  = (s: Sale) => s.fecha ?? s.date ?? s.created_at ?? '';
+  const getSaleDate = (s: Sale) => getSaleTs(s).slice(0, 10);
+  const getSaleHour = (s: Sale) => parseInt(getSaleTs(s).slice(11, 13)) || 0;
+  const getTurno    = (h: number): 'mediodia' | 'noche' | 'otro' => {
+    if (h >= 12 && h < 16) return 'mediodia';
+    if (h >= 20 || h < 2)  return 'noche';
+    return 'otro';
+  };
+
+  // Construir mapa de fechas del rango (aunque no haya ventas)
+  type DayData = { mediodia: number; noche: number; otro: number; total: number };
+  const byDate: Record<string, DayData> = {};
+  for (let d = new Date(desde); d <= new Date(hasta + 'T23:59:59'); d.setDate(d.getDate() + 1)) {
+    byDate[d.toISOString().slice(0, 10)] = { mediodia: 0, noche: 0, otro: 0, total: 0 };
+  }
+  for (const s of sales) {
+    const key = getSaleDate(s);
+    if (!byDate[key]) byDate[key] = { mediodia: 0, noche: 0, otro: 0, total: 0 };
+    const t = getTurno(getSaleHour(s));
+    byDate[key][t]++; byDate[key].total++;
+  }
+  const dates  = Object.keys(byDate).sort();
+  const maxVal = Math.max(...dates.map(d => byDate[d].total), 1);
+
+  const totalMed   = dates.reduce((s, d) => s + byDate[d].mediodia, 0);
+  const totalNoche = dates.reduce((s, d) => s + byDate[d].noche, 0);
+  const totalOtro  = dates.reduce((s, d) => s + byDate[d].otro, 0);
+  const totalAll   = sales.length;
+
+  // SVG chart dimensions
+  const svgH   = 160;
+  const padL   = 32;
+  const padB   = 28;
+  const padT   = 10;
+  const chartW = Math.max(dates.length * 52, 300);
+  const chartH = svgH - padB - padT;
+  const barW   = 18;
+  const gap    = dates.length > 0 ? (chartW - padL) / dates.length : 52;
+
+  const formatDate = (iso: string) => {
+    const [, m, d] = iso.split('-');
+    return `${parseInt(d)}/${parseInt(m)}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Controles */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <div className="flex flex-wrap gap-3 items-end justify-between">
+          <div className="flex gap-3 items-end">
+            <div>
+              <p className="text-xs text-slate-500 mb-1 font-bold">DESDE</p>
+              <input type="date" value={desde} onChange={e => setDesde(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2 outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1 font-bold">HASTA</p>
+              <input type="date" value={hasta} onChange={e => setHasta(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2 outline-none focus:border-blue-500" />
+            </div>
+            <button onClick={() => fetchData()} disabled={loading}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-all disabled:opacity-40">
+              {loading ? '...' : 'Ver'}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            {[['Hoy', 1], ['7 días', 7], ['14 días', 14], ['30 días', 30]].map(([label, dias]) => (
+              <button key={label} onClick={() => setRango(Number(dias))}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-all">
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {error && <p className="text-red-400 text-sm font-bold">{error}</p>}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Total ventas', value: totalAll,   color: 'text-white' },
+          { label: 'Mediodia',  value: totalMed,   color: 'text-amber-400' },
+          { label: 'Noche',     value: totalNoche, color: 'text-blue-400' },
+          { label: 'Sin turno',    value: totalOtro,  color: 'text-slate-500' },
+        ].map(k => (
+          <div key={k.label} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center">
+            <p className="text-xs text-slate-500 font-bold mb-1">{k.label}</p>
+            <p className={`text-3xl font-black ${k.color}`}>{k.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Gráfico SVG */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <p className="text-xs font-black text-slate-400 uppercase mb-4">Ventas por dia</p>
+        <div className="overflow-x-auto">
+          <svg width={chartW + padL} height={svgH} className="block">
+            {/* Grid lines */}
+            {[0, 0.25, 0.5, 0.75, 1].map(f => {
+              const y = padT + chartH * (1 - f);
+              const val = Math.round(maxVal * f);
+              return (
+                <g key={f}>
+                  <line x1={padL} x2={chartW + padL} y1={y} y2={y} stroke="#1e293b" strokeWidth="1" />
+                  {val > 0 && <text x={padL - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#475569">{val}</text>}
+                </g>
+              );
+            })}
+            {/* Bars */}
+            {dates.map((date, i) => {
+              const d   = byDate[date];
+              const cx  = padL + gap * i + gap / 2;
+              const med   = (d.mediodia / maxVal) * chartH;
+              const noch  = (d.noche    / maxVal) * chartH;
+              const otro  = (d.otro     / maxVal) * chartH;
+              const total = (d.total    / maxVal) * chartH;
+              return (
+                <g key={date}
+                  onMouseEnter={e => setTooltip({ x: cx, y: padT, label: `${formatDate(date)} | Med: ${d.mediodia} | Noche: ${d.noche} | Total: ${d.total}` })}
+                  onMouseLeave={() => setTooltip(null)}
+                  style={{ cursor: 'pointer' }}>
+                  {/* Barra noche (base) */}
+                  {d.noche > 0 && <rect x={cx - barW / 2} y={padT + chartH - noch} width={barW} height={noch} rx="3" fill="#3b82f6" opacity="0.85" />}
+                  {/* Barra mediodía (encima) */}
+                  {d.mediodia > 0 && <rect x={cx - barW / 2} y={padT + chartH - noch - med} width={barW} height={med} rx="3" fill="#f59e0b" opacity="0.85" />}
+                  {/* Barra otro */}
+                  {d.otro > 0 && <rect x={cx - barW / 2} y={padT + chartH - noch - med - otro} width={barW} height={otro} rx="3" fill="#475569" opacity="0.7" />}
+                  {/* Label fecha */}
+                  <text x={cx} y={svgH - 4} textAnchor="middle" fontSize="10" fill={d.total > 0 ? '#94a3b8' : '#334155'}>{formatDate(date)}</text>
+                  {/* Total encima de barra */}
+                  {d.total > 0 && <text x={cx} y={padT + chartH - total - 4} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#e2e8f0">{d.total}</text>}
+                </g>
+              );
+            })}
+            {/* Tooltip */}
+            {tooltip && tooltip.label.split('\n').map((line, i) => (
+              <text key={i} x={tooltip.x} y={tooltip.y - 10 + i * 13} textAnchor="middle" fontSize="10" fill="white" fontWeight="bold">{line}</text>
+            ))}
+          </svg>
+        </div>
+        {/* Leyenda */}
+        <div className="flex gap-4 mt-3 justify-center">
+          {[['#f59e0b', 'Mediodia (12-15hs)'], ['#3b82f6', 'Noche (20-00hs)'], ['#475569', 'Otros']].map(([c, l]) => (
+            <div key={l} className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm" style={{ background: c }} />
+              <span className="text-xs text-slate-400">{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabla por turno */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800">
+          <p className="text-xs font-black text-slate-400 uppercase">Detalle por día y turno</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-xs text-slate-500 uppercase">
+                <th className="px-5 py-3 text-left font-bold">Fecha</th>
+                <th className="px-4 py-3 text-center font-bold text-amber-400">Mediodia (12-15hs)</th>
+                <th className="px-4 py-3 text-center font-bold text-blue-400">Noche (20-00hs)</th>
+                <th className="px-4 py-3 text-center font-bold text-slate-500">Sin turno</th>
+                <th className="px-4 py-3 text-center font-bold text-white">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dates.map(date => {
+                const d = byDate[date];
+                return (
+                  <tr key={date} className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${d.total === 0 ? 'opacity-30' : ''}`}>
+                    <td className="px-5 py-3 font-bold text-slate-300">
+                      {new Date(date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </td>
+                    <td className="px-4 py-3 text-center font-black text-amber-400">{d.mediodia || '—'}</td>
+                    <td className="px-4 py-3 text-center font-black text-blue-400">{d.noche || '—'}</td>
+                    <td className="px-4 py-3 text-center font-black text-slate-500">{d.otro || '—'}</td>
+                    <td className="px-4 py-3 text-center font-black text-white">{d.total || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-800/50 border-t border-slate-700">
+                <td className="px-5 py-3 font-black text-slate-300 text-xs uppercase">TOTAL</td>
+                <td className="px-4 py-3 text-center font-black text-amber-400 text-lg">{totalMed}</td>
+                <td className="px-4 py-3 text-center font-black text-blue-400 text-lg">{totalNoche}</td>
+                <td className="px-4 py-3 text-center font-black text-slate-500">{totalOtro}</td>
+                <td className="px-4 py-3 text-center font-black text-white text-lg">{totalAll}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sub-tab: Tiempo Real (sync logs)
+function TiempoReal() {
+  const [logs,       setLogs]       = useState<SyncLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<SyncLog | null>(null);
+  const [recetasMap,  setRecetasMap]  = useState<RecetasMap>({});
+  const [mapLoaded,   setMapLoaded]   = useState(false);
+
+  useEffect(() => {
+    async function loadRecetas() {
+      const { data } = await supabase.from('recetas_fudo').select('*');
+      const m: RecetasMap = {};
+      for (const row of (data ?? []) as RecetaRow[]) {
+        const key = normalizar(row.producto_fudo);
+        if (!m[key]) m[key] = [];
+        m[key].push({ producto: row.ingrediente, cantidad: Number(row.cantidad), unidad: row.unidad, tabla: row.tabla_origen });
+      }
+      setRecetasMap(m);
+      setMapLoaded(true);
+    }
+    loadRecetas();
+    fetchLogs();
+  }, []);
+
+  async function fetchLogs() {
+    setLoadingLogs(true);
     const { data } = await supabase
       .from('fudo_sync_log')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(30);
-    const all      = (data ?? []) as SyncLog[];
-    const autoLogs = all.filter(l => !l.tipo || l.tipo === 'auto');
-    const logs     = autoLogs.length > 0 ? autoLogs : all;
-    // lastAuto = última ejecución real del cron (cualquiera, incluye 0 ventas)
-    setLastAuto(logs[0] ?? null);
-    // historial solo muestra syncs con ventas reales
-    setSyncLogs(logs.filter(l => (l.ventas ?? 0) > 0));
-    setLoading(false);
-  };
-
-  useEffect(() => { loadLogs(); }, []);
-
-  const tiempoRelativo = (iso: string) => {
-    const diff = Date.now() - new Date(iso).getTime();
-    const min  = Math.floor(diff / 60000);
-    if (min < 1)  return 'hace menos de 1 min';
-    if (min < 60) return `hace ${min} min`;
-    const hs = Math.floor(min / 60);
-    return `hace ${hs}h ${min % 60}min`;
-  };
-
-  const descuentosCount = (log: SyncLog) => {
-    if (!log.descuentos) return 0;
-    if (Array.isArray(log.descuentos)) return log.descuentos.length;
-    try { return JSON.parse(log.descuentos).length; } catch { return 0; }
-  };
+    setLogs((data ?? []) as SyncLog[]);
+    setLoadingLogs(false);
+  }
 
   return (
     <div className="space-y-6">
+      {/* Sync manual */}
+      <SyncManual recetasMap={recetasMap} mapLoaded={mapLoaded} />
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-            <p className="font-black text-white">Auto-sync ACTIVO</p>
+      {/* Historial de syncs */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity size={16} className="text-slate-400" />
+            <p className="font-black text-white text-sm">Historial de syncs</p>
           </div>
-          <button onClick={loadLogs} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
-            <RefreshCw size={15} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
+          <button
+            onClick={fetchLogs}
+            disabled={loadingLogs}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-300 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={12} className={loadingLogs ? 'animate-spin' : ''} />
+            Actualizar
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-800/60 rounded-xl p-3">
-            <p className="text-xs text-slate-500 mb-1">Frecuencia</p>
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-blue-400" />
-              <p className="font-bold text-white text-sm">Cada 10 minutos</p>
-            </div>
-          </div>
-          <div className="bg-slate-800/60 rounded-xl p-3">
-            <p className="text-xs text-slate-500 mb-1">Ultima sync</p>
-            <div className="flex items-center gap-2">
-              <Activity size={14} className="text-green-400" />
-              <p className="font-bold text-white text-sm">
-                {lastAuto ? tiempoRelativo(lastAuto.created_at) : loading ? '...' : 'Sin datos aun'}
-              </p>
-            </div>
-          </div>
-        </div>
-        {lastAuto && (
-          <p className="text-xs text-slate-600 mt-3">
-            {new Date(lastAuto.created_at).toLocaleDateString('es-AR')}{' '}
-            {new Date(lastAuto.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-            {' | '}{lastAuto.ventas ?? 0} ventas{' | '}{descuentosCount(lastAuto)} descuentos
-          </p>
-        )}
-      </div>
-
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
-        <div className="flex items-start gap-3">
-          <Zap size={16} className="text-blue-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-blue-300 font-black text-sm mb-1">Como funciona</p>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Vercel ejecuta el cron automaticamente cada 10 minutos. Trae las ventas de Fudo,
-              descuenta del stock los ingredientes segun las recetas en Supabase, y evita
-              procesar la misma venta dos veces. Cada ciclo queda registrado abajo.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
-          <p className="font-black text-xs text-slate-400 uppercase">Historial de syncs</p>
-          {syncLogs.length > 0 && <span className="text-xs text-slate-600">{syncLogs.length} registros</span>}
-        </div>
-
-        {loading && (
-          <div className="px-5 py-8 text-center">
-            <p className="text-slate-500 text-sm">Cargando historial...</p>
-          </div>
-        )}
-
-        {!loading && syncLogs.length === 0 && (
-          <div className="px-5 py-8 text-center">
-            <p className="text-slate-500 text-sm">Sin ventas procesadas aun.</p>
-            <p className="text-slate-600 text-xs mt-1">Cuando el cron detecte ventas nuevas, aparecen acá.</p>
-          </div>
-        )}
-
-        {!loading && syncLogs.length > 0 && (
-          <div className="divide-y divide-slate-800/50 max-h-[32rem] overflow-y-auto">
-            {syncLogs.map((log, i) => {
-              const cnt = descuentosCount(log);
-              return (
-                <button
-                  key={i}
-                  onClick={() => cnt > 0 ? setPopupLog(log) : undefined}
-                  className={`w-full px-5 py-3 flex items-center justify-between transition-colors text-left ${cnt > 0 ? 'hover:bg-slate-800/30 cursor-pointer' : 'cursor-default'}`}>
+        <div className="divide-y divide-slate-800/50">
+          {logs.length === 0 && !loadingLogs && (
+            <p className="px-5 py-8 text-center text-slate-500 text-sm">Sin syncs registradas</p>
+          )}
+          {logs.map((log, i) => {
+            const desc: any[] = Array.isArray(log.descuentos) ? log.descuentos
+              : (() => { try { return JSON.parse(log.descuentos); } catch { return []; } })();
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedLog(log)}
+                className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-slate-800/30 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  {log.ventas > 0
+                    ? <CheckCircle2 size={16} className="text-green-400 shrink-0" />
+                    : <Clock       size={16} className="text-slate-600 shrink-0" />
+                  }
                   <div>
-                    <p className="text-sm font-bold text-white">
+                    <p className="font-bold text-white text-sm">
                       {log.ventas ?? 0} venta{(log.ventas ?? 0) !== 1 ? 's' : ''} nuevas
-                      <span className="text-slate-500 font-normal"> · {cnt} descuentos</span>
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {new Date(log.created_at).toLocaleDateString('es-AR')}{' '}
+                    <p className="text-xs text-slate-500">
+                      {new Date(log.created_at).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {' '}
                       {new Date(log.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                      {log.tipo === 'auto'   && <span className="ml-2 px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px] font-bold">AUTO</span>}
-                      {log.tipo === 'manual' && <span className="ml-2 px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px] font-bold">MANUAL</span>}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-slate-500 font-mono">{tiempoRelativo(log.created_at)}</p>
-                    {cnt > 0 && <span className="text-slate-600 text-xs">▶</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {popupLog && <SyncDetailModal log={popupLog} onClose={() => setPopupLog(null)} />}
+                </div>
+                <div className="flex items-center gap-2">
+                  {desc.length > 0 && (
+                    <span className="px-2 py-0.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-black">
+                      -{desc.length} items
+                    </span>
+                  )}
+                  {log.tipo && (
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${log.tipo === 'auto' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                      {log.tipo.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
+      {selectedLog && <SyncDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
     </div>
   );
 }
 
-// Componente principal
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function TabVentas() {
-  const [subTab, setSubTab]         = useState<'manual' | 'realtime'>('manual');
-  const [recetasMap, setRecetasMap] = useState<RecetasMap>({});
-  const [mapLoaded, setMapLoaded]   = useState(false);
-
-  useEffect(() => {
-    supabase.from('recetas_fudo').select('producto_fudo,ingrediente,cantidad,unidad,tabla_origen')
-      .then(({ data }) => {
-        const mapa: RecetasMap = {};
-        for (const row of (data ?? []) as RecetaRow[]) {
-          const key = normalizar(row.producto_fudo);
-          if (!mapa[key]) mapa[key] = [];
-          mapa[key].push({ producto: row.ingrediente, cantidad: Number(row.cantidad), unidad: row.unidad, tabla: row.tabla_origen });
-        }
-        setRecetasMap(mapa);
-        setMapLoaded(true);
-      });
-  }, []);
+  const [subTab, setSubTab] = useState<'dashboard' | 'manual' | 'tiemporeal'>('dashboard');
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h2 className="font-black text-xl text-white">Ventas Fudo</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Integracion con Fudo POS descuento de stock</p>
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
+      {/* Sub-tab selector */}
+      <div className="flex gap-2 bg-slate-900 border border-slate-800 rounded-2xl p-1.5">
+        {([
+          { id: 'dashboard',   label: 'Dashboard' },
+          { id: 'tiemporeal',  label: 'Tiempo Real' },
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={`flex-1 py-2 px-3 rounded-xl text-sm font-black transition-all ${
+              subTab === t.id
+                ? 'bg-white text-black shadow'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1">
-        <button
-          onClick={() => setSubTab('manual')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-all
-            ${subTab === 'manual' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-          <RefreshCw size={15} />
-          Sync Manual
-        </button>
-        <button
-          onClick={() => setSubTab('realtime')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-all
-            ${subTab === 'realtime' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-          <div className={`w-2 h-2 rounded-full bg-green-500 ${subTab !== 'realtime' ? 'animate-pulse' : ''}`} />
-          Tiempo Real
-        </button>
-      </div>
-
-      {subTab === 'manual'   && <SyncManual recetasMap={recetasMap} mapLoaded={mapLoaded} />}
-      {subTab === 'realtime' && <TiempoReal />}
+      {subTab === 'dashboard'  && <Dashboard />}
+      {subTab === 'tiemporeal' && <TiempoReal />}
     </div>
   );
 }
