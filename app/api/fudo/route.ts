@@ -149,12 +149,19 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // 4. Filtrar por fecha (createdAt = apertura de venta, igual que Fudo) y armar la respuesta
+      // 4. Filtrar por fecha ART (UTC-3). desde/hasta son fechas en hora Argentina.
+      //    new Date('YYYY-MM-DD') = UTC midnight; + ART_OFFSET = inicio del dia ART en UTC
+      const ART_OFFSET = 3 * 3600 * 1000;
+      const desdeMs = desde ? (new Date(desde).getTime() + ART_OFFSET) : 0;
+      const hastaMs = hasta ? (new Date(hasta).getTime() + 86400000 + ART_OFFSET - 1) : Number.MAX_SAFE_INTEGER;
+
       const sales = salesData
         .filter((s: any) => {
-          const fecha = (s.attributes?.createdAt ?? s.attributes?.openedAt ?? s.attributes?.closedAt ?? '').slice(0, 10);
-          if (desde && fecha < desde) return false;
-          if (hasta && fecha > hasta) return false;
+          const ts = s.attributes?.createdAt ?? s.attributes?.openedAt ?? s.attributes?.closedAt ?? '';
+          if (!ts) return false;
+          const ms = new Date(ts).getTime();
+          if (desde && ms < desdeMs) return false;
+          if (hasta && ms > hastaMs) return false;
           return true;
         })
         .map((s: any) => {
@@ -171,11 +178,13 @@ export async function GET(req: NextRequest) {
               };
             })
             .filter((i: any) => i.quantity > 0);
+          // Usar createdAt (apertura) como fecha de referencia para turnos
+          const fechaRef: string = s.attributes?.createdAt || s.attributes?.openedAt || '';
           return {
             id:       s.id,
-            fecha:    s.attributes?.closedAt ?? s.attributes?.createdAt ?? '',
-            total:    s.attributes?.total ?? 0,
-            saleType: s.attributes?.saleType ?? '',
+            fecha:    fechaRef,
+            total:    s.attributes?.total || 0,
+            saleType: s.attributes?.saleType || '',
             items,
           };
         });
