@@ -156,8 +156,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // ── 5. Agregar descuentos ───────────────────────────────────────────────
-    const descuentoMap: Record<string, { total: number; unidad: string; tabla: string }> = {};
+    // ── 5. Acumular ventas por producto (sin descontar stock — descuento manual por turno) ──
+    const ventaMap: Record<string, { total: number; unidad: string }> = {};
     let itemsReconocidos = 0;
 
     for (const sale of nuevasVentas) {
@@ -167,58 +167,14 @@ export async function GET(req: NextRequest) {
         if (!item) continue;
         const nombre = productById[item.productId] ?? '';
         const qty    = item.quantity ?? 1;
-        const descuentos = buscarEnMapa(nombre, recetasMap);
-        if (descuentos) {
-          itemsReconocidos++;
-          for (const d of descuentos) {
-            const key = `${d.tabla}::${d.producto}`;
-            if (!descuentoMap[key]) descuentoMap[key] = { total: 0, unidad: d.unidad, tabla: d.tabla };
-            descuentoMap[key].total += d.cantidad * qty;
-          }
-        }
+        if (!ventaMap[nombre]) ventaMap[nombre] = { total: 0, unidad: 'u' };
+        ventaMap[nombre].total += qty;
+        itemsReconocidos++;
       }
     }
 
-    const descuentosArray = Object.entries(descuentoMap).map(([key, v]) => ({
-      producto: key.split('::')[1],
-      total:    parseFloat(v.total.toFixed(3)),
-      unidad:   v.unidad,
-      tabla:    v.tabla,
-    }));
-
-    // ── 6. Aplicar descuentos al stock ─────────────────────────────────────
-    const motivo = `Auto-sync Fudo ${today}`;
-    const debug: { producto: string; tabla: string; encontrado: boolean; error?: string }[] = [];
-    for (const d of descuentosArray) {
-      if (d.tabla === 'stock_produccion') {
-        const { data: sp, error: spErr } = await supabase
-          .from('stock_produccion').select('id, cantidad').ilike('producto', d.producto).maybeSingle();
-        debug.push({ producto: d.producto, tabla: 'stock_produccion', encontrado: !!sp, error: spErr?.message });
-        if (sp) {
-          await supabase.from('stock_produccion').update({
-            cantidad:    parseFloat((Number(sp.cantidad) - d.total).toFixed(3)),
-            ultima_prod: new Date().toISOString(),
-          }).eq('id', sp.id);
-          await supabase.from('stock_movements').insert({
-            nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
-            motivo, operador: 'Fudo Cron', fecha: new Date().toISOString(),
-          });
-        }
-      } else if (d.tabla === 'stock') {
-        const { data: sm, error: smErr } = await supabase
-          .from('stock').select('id, cantidad').ilike('nombre', d.producto).maybeSingle();
-        debug.push({ producto: d.producto, tabla: 'stock', encontrado: !!sm, error: smErr?.message });
-        if (sm) {
-          await supabase.from('stock').update({
-            cantidad: parseFloat((Number(sm.cantidad) - d.total).toFixed(3)),
-          }).eq('id', sm.id);
-          await supabase.from('stock_movements').insert({
-            nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
-            motivo, operador: 'Fudo Cron', fecha: new Date().toISOString(),
-          });
-        }
-      }
-    }
+    const descuentosArray: { producto: string; total: number; unidad: string; tabla: string }[] = [];
+    // DESHABILITADO: descuento automatico — se aplica manualmente al cierre de turno
 
     // ── 7. Marcar ventas como procesadas ───────────────────────────────────
     await supabase.from('fudo_ventas_procesadas').upsert(
@@ -240,7 +196,7 @@ export async function GET(req: NextRequest) {
       nuevas_ventas:    nuevasVentas.length,
       items_reconocidos: itemsReconocidos,
       descuentos:       descuentosArray.length,
-      debug,
+      ventas_por_producto: ventaMap,
       ms:               Date.now() - startTime,
     });
 
