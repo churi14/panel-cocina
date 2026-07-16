@@ -367,17 +367,24 @@ function Dashboard() {
   };
 
   const getSaleTs  = (s: Sale) => s.fecha ?? s.date ?? s.created_at ?? '';
-  // Fudo devuelve timestamps en UTC. Argentina = UTC-3, entonces restamos 3h.
+  // Fudo timestamps en UTC → convertir a ART (UTC-3)
   const toART = (ts: string) => new Date(new Date(ts).getTime() - 3 * 3600 * 1000);
-  const getSaleDate = (s: Sale) => {
-    const ts = getSaleTs(s);
-    if (!ts) return '';
-    return toART(ts).toISOString().slice(0, 10);
-  };
   const getSaleHour = (s: Sale) => {
     const ts = getSaleTs(s);
     if (!ts) return 0;
     return toART(ts).getUTCHours();
+  };
+  // Día operativo: el turno noche puede llegar hasta ~02:00 AM del día siguiente.
+  // Ventas antes de las 05:00 ART se agrupan con el día ANTERIOR para que la madrugada
+  // del noche quede en el mismo "día" que empezó ese turno.
+  const getSaleDate = (s: Sale) => {
+    const ts = getSaleTs(s);
+    if (!ts) return '';
+    const art = toART(ts);
+    const h = art.getUTCHours();
+    // Si es antes de las 05:00 ART, restar 1 día
+    const adj = h < 5 ? new Date(art.getTime() - 86400000) : art;
+    return adj.toISOString().slice(0, 10);
   };
   const getTurno    = (h: number): 'mediodia' | 'noche' | 'otro' => {
     if (h >= 12 && h < 16) return 'mediodia';
