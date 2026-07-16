@@ -367,8 +367,18 @@ function Dashboard() {
   };
 
   const getSaleTs  = (s: Sale) => s.fecha ?? s.date ?? s.created_at ?? '';
-  const getSaleDate = (s: Sale) => getSaleTs(s).slice(0, 10);
-  const getSaleHour = (s: Sale) => parseInt(getSaleTs(s).slice(11, 13)) || 0;
+  // Fudo devuelve timestamps en UTC. Argentina = UTC-3, entonces restamos 3h.
+  const toART = (ts: string) => new Date(new Date(ts).getTime() - 3 * 3600 * 1000);
+  const getSaleDate = (s: Sale) => {
+    const ts = getSaleTs(s);
+    if (!ts) return '';
+    return toART(ts).toISOString().slice(0, 10);
+  };
+  const getSaleHour = (s: Sale) => {
+    const ts = getSaleTs(s);
+    if (!ts) return 0;
+    return toART(ts).getUTCHours();
+  };
   const getTurno    = (h: number): 'mediodia' | 'noche' | 'otro' => {
     if (h >= 12 && h < 16) return 'mediodia';
     if (h >= 20 || h < 2)  return 'noche';
