@@ -465,7 +465,8 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     const units = [...new Set(catItems.map((s: any) => s.unidad))];
                     const unit = units.length === 1 ? units[0] : 'u';
                     return (
-                      <div key={cat} className={`rounded-2xl border-2 p-4 ${cfg.bg} ${cfg.border}`}>
+                      <div key={cat} onClick={() => document.getElementById(`prodcat-${cat}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 active:scale-95 transition-all ${cfg.bg} ${cfg.border}`}>
                         <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
                         <p className={`text-3xl font-black ${cfg.color}`}>
                           {total % 1 === 0 ? total : total.toFixed(2).replace('.', ',')}
@@ -483,7 +484,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   const catItems = stockProd.filter((s: any) => s.categoria === cat);
                   if (catItems.length === 0) return null;
                   return (
-                    <div key={cat} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div key={cat} id={`prodcat-${cat}`} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden scroll-mt-4">
                       <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
                         <h2 className={`font-black text-sm uppercase ${cfg.color}`}>{cfg.emoji} {cat}</h2>
                         <span className="text-xs text-slate-500">{catItems.length} items</span>
@@ -1865,11 +1866,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
       )}
 
       {showEntryModal && (
-        <StockEntryModal onClose={() => { setShowEntryModal(false); setSelectedStockItem(null); fetchMovements(); }} />
+        <StockEntryModal onClose={() => setShowEntryModal(false)} />
       )}
-      {showFactura && (
-        <FacturaModal onClose={() => setShowFactura(false)} onConfirm={() => { setShowFactura(false); fetchMovements(); }} />
-      )}
+
     </div>
   );
 }
