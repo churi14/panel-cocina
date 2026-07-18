@@ -102,7 +102,7 @@ export function createButcheryHandlers(s: Setters) {
       id: now + i, batchId: now, isBlend: isBlend ?? false, type: e.type,
       operador: operador || undefined,
       typeName: e.carneLinpiaName
-        ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
+        ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '').replace(/_L$/, '') + '_L'
         : getCutLabel(e.type),
       cut: e.carneLinpiaName ?? getCutLabel(e.type), weightKg: e.weight, kind,
       startTime: now, status: 'step1_running' as const, date: new Date().toLocaleDateString(),
@@ -113,7 +113,7 @@ export function createButcheryHandlers(s: Setters) {
     saveProduccionesMany(newProds as any);
     entries.forEach(e => {
       const nombreCorte = e.carneLinpiaName
-        ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '') + '_L'
+        ? e.carneLinpiaName.replace('Carne Limpia Burger - ', '').replace(' Limpia', '').replace(/_L$/, '') + '_L'
         : getCutLabel(e.type);
       logProduccionEvento('inicio_paso1', kind, nombreCorte, e.weight,
         `Inicio paso 1 - ${nombreCorte} ${e.weight}kg - ${operador}`, operador);
