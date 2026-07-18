@@ -117,10 +117,10 @@ function calcularDescuentos(producto: string, cantidad: number): Descuento[] {
   if (p.includes('napolitana'))
     return [{ nombre: 'TOMATE TRITURADO', tabla: 'stock', cantidad: parseFloat((cantidad * 0.97).toFixed(3)), unidad: 'kg' }];
   if (p.includes('criolla'))
-    return [{ nombre: 'TOMATE', tabla: 'stock', cantidad: parseFloat((cantidad * 0.50).toFixed(3)), unidad: 'kg' }];
+    return [{ nombre: 'TOMATE DE CAJON', tabla: 'stock', cantidad: parseFloat((cantidad * 0.50).toFixed(3)), unidad: 'kg' }];
 
   // Verduras — 1:1 con merma ~20%
-  if (p.includes('tomate'))  return [{ nombre: 'TOMATE',  tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];
+  if (p.includes('tomate'))  return [{ nombre: 'TOMATE DE CAJON',  tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];
   if (p.includes('lechuga')) return [{ nombre: 'LECHUGA', tabla: 'stock', cantidad: parseFloat((cantidad * 1.3).toFixed(3)), unidad: 'kg' }];
   if (p.includes('cebolla')) return [{ nombre: 'CEBOLLA', tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];
   if (p.includes('morrón') || p.includes('morron')) return [{ nombre: 'MORRON', tabla: 'stock', cantidad: parseFloat((cantidad * 1.2).toFixed(3)), unidad: 'kg' }];

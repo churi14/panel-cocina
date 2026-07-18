@@ -175,14 +175,14 @@ export async function deductStockForSalsa(recipeId: string, baseKgUsado: number,
 
 // ─── Stock map verduras: nombre en stock ──────────────────────────────────────
 export const VERDURA_STOCK_MAP: Record<string, string> = {
-  'verdura_tomate_rodajas': 'TOMATE',
+  'verdura_tomate_rodajas': 'TOMATE PRODUCIDO',
   'verdura_lechuga':        'LECHUGA',
   'verdura_cebolla_brunoise': 'CEBOLLA',
   'verdura_cebolla_rodajas':  'CEBOLLA',
   'verdura_morron':           'MORRON',
 };
 export const VERDURA_PROD_MAP: Record<string, string> = {
-  'verdura_tomate_rodajas':   'Tomate cortado',
+  'verdura_tomate_rodajas':   'TOMATE PRODUCIDO',
   'verdura_lechuga':          'Lechuga preparada',
   'verdura_cebolla_brunoise': 'Cebolla brunoise',
   'verdura_cebolla_rodajas':  'Cebolla rodajas',
