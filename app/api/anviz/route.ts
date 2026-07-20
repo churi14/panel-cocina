@@ -124,6 +124,18 @@ function calcularTurnos(
   return filas;
 }
 
+// ── Helpers de mes ───────────────────────────────────────────────────────────
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function getMesKey(fechaStr: string): string {
+  const [, m, y] = fechaStr.split('/');
+  return `${y}-${m}`;
+}
+function getMesLabel(fechaStr: string): string {
+  const [, m, y] = fechaStr.split('/');
+  return `${MESES_ES[parseInt(m, 10) - 1]} ${y}`;
+}
+
 // ── Paleta de colores por empleado (cicla si hay más de 5) ───────────────────
 const EMP_PALETTES = [
   { header: 'FF1E3A5F', row1: 'FFDBEAFE', row2: 'FFEff6ff' }, // azul
@@ -195,49 +207,96 @@ async function generarExcel(filas: Fila[]): Promise<Buffer> {
     ws.getRow(rowIdx).height = 20;
     rowIdx++;
 
-    let totalMinutes = 0;
-    let diasConHoras = 0;
-    let rowToggle    = true;
-
+    // ── Agrupar por mes dentro del empleado ──────────────────────────────────
+    const mesMapa = new Map<string, Fila[]>();
     for (const f of empFilas) {
-      const row = ws.addRow([f.empleado, f.dia, f.fecha, f.entrada, f.salida, f.horas, f.obs ?? '']);
-      row.height = 18;
+      const mk = getMesKey(f.fecha);
+      if (!mesMapa.has(mk)) mesMapa.set(mk, []);
+      mesMapa.get(mk)!.push(f);
+    }
 
-      if (f.horas) {
-        const [h, m] = f.horas.split(':').map(Number);
-        totalMinutes += h * 60 + m;
-        diasConHoras++;
+    let totalEmpMinutes = 0;
+    let totalEmpDias    = 0;
+
+    for (const [, mesFilas] of mesMapa) {
+      const mesLabel = getMesLabel(mesFilas[0].fecha);
+
+      // ── Sub-header de mes ──────────────────────────────────────────────────
+      ws.mergeCells(`A${rowIdx}:G${rowIdx}`);
+      const mesHeaderCell = ws.getCell(`A${rowIdx}`);
+      mesHeaderCell.value     = `    📅  ${mesLabel.toUpperCase()}`;
+      mesHeaderCell.font      = { bold: true, size: 9, color: { argb: pal.header } };
+      mesHeaderCell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      mesHeaderCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      ws.getRow(rowIdx).height = 15;
+      rowIdx++;
+
+      let mesMinutes = 0;
+      let mesDias    = 0;
+      let rowToggle  = true;
+
+      for (const f of mesFilas) {
+        const row = ws.addRow([f.empleado, f.dia, f.fecha, f.entrada, f.salida, f.horas, f.obs ?? '']);
+        row.height = 18;
+
+        if (f.horas) {
+          const [h, m] = f.horas.split(':').map(Number);
+          mesMinutes += h * 60 + m;
+          totalEmpMinutes += h * 60 + m;
+          mesDias++;
+          totalEmpDias++;
+        }
+
+        let bgArgb = rowToggle ? pal.row1 : pal.row2;
+        let obsFontArgb = 'FF64748B';
+        if (f.obs === 'Falta marcar salida') { bgArgb = 'FFFEE2E2'; obsFontArgb = 'FF991B1B'; }
+        else if (f.obs?.includes('juntas'))  { bgArgb = 'FFFFEDD5'; obsFontArgb = 'FF9A3412'; }
+
+        row.eachCell({ includeEmpty: true }, (cell, col) => {
+          cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
+          cell.alignment = { horizontal: col <= 1 ? 'left' : 'center', vertical: 'middle' };
+          cell.font      = { size: 10 };
+          cell.border    = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } };
+          if (col === 6 && f.horas) { cell.font = { size: 10, bold: true, color: { argb: 'FF166534' } }; }
+          if (col === 7 && f.obs)   { cell.font = { size: 9, italic: true, color: { argb: obsFontArgb } }; }
+        });
+
+        rowToggle = !rowToggle;
+        rowIdx++;
       }
 
-      // Color de fondo según estado
-      let bgArgb = rowToggle ? pal.row1 : pal.row2;
-      let obsFontArgb = 'FF64748B';
-      if (f.obs === 'Falta marcar salida') { bgArgb = 'FFFEE2E2'; obsFontArgb = 'FF991B1B'; }
-      else if (f.obs?.includes('juntas'))   { bgArgb = 'FFFFEDD5'; obsFontArgb = 'FF9A3412'; }
+      // ── Subtotal mensual ──────────────────────────────────────────────────
+      const mesH   = Math.floor(mesMinutes / 60);
+      const mesM   = mesMinutes % 60;
+      const mesStr = `${String(mesH).padStart(2, '0')}:${String(mesM).padStart(2, '0')}`;
 
-      row.eachCell({ includeEmpty: true }, (cell, col) => {
-        cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgArgb } };
-        cell.alignment = { horizontal: col <= 1 ? 'left' : 'center', vertical: 'middle' };
-        cell.font      = { size: 10 };
-        cell.border    = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } };
+      ws.mergeCells(`A${rowIdx}:E${rowIdx}`);
+      const mesTotRow   = ws.getRow(rowIdx);
+      mesTotRow.height  = 18;
 
-        // Horas trabajadas: verde y negrita
-        if (col === 6 && f.horas) {
-          cell.font = { size: 10, bold: true, color: { argb: 'FF166534' } };
-        }
-        // Observaciones: color según tipo
-        if (col === 7 && f.obs) {
-          cell.font = { size: 9, italic: true, color: { argb: obsFontArgb } };
-        }
+      const mesTotLabel = ws.getCell(`A${rowIdx}`);
+      mesTotLabel.value     = `  Subtotal ${mesLabel} · ${mesDias} día${mesDias !== 1 ? 's' : ''}`;
+      mesTotLabel.font      = { bold: true, size: 9, italic: true, color: { argb: 'FF475569' } };
+      mesTotLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+
+      const mesTotHoras = ws.getCell(`F${rowIdx}`);
+      mesTotHoras.value     = mesStr;
+      mesTotHoras.font      = { bold: true, size: 10, color: { argb: 'FF1D4ED8' } };
+      mesTotHoras.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      mesTotRow.eachCell({ includeEmpty: true }, cell => {
+        cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F4FD' } };
+        cell.border = {
+          top:    { style: 'hair', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'hair', color: { argb: 'FFCBD5E1' } },
+        };
       });
-
-      rowToggle = !rowToggle;
       rowIdx++;
     }
 
-    // ── Fila de totales por empleado ─────────────────────────────────────────
-    const totalH   = Math.floor(totalMinutes / 60);
-    const totalM   = totalMinutes % 60;
+    // ── Total global del empleado ─────────────────────────────────────────────
+    const totalH   = Math.floor(totalEmpMinutes / 60);
+    const totalM   = totalEmpMinutes % 60;
     const totalStr = `${String(totalH).padStart(2, '0')}:${String(totalM).padStart(2, '0')}`;
 
     ws.mergeCells(`A${rowIdx}:E${rowIdx}`);
@@ -245,8 +304,8 @@ async function generarExcel(filas: Fila[]): Promise<Buffer> {
     totRow.height = 20;
 
     const totLabelCell = ws.getCell(`A${rowIdx}`);
-    totLabelCell.value     = `Total ${empleado} · ${diasConHoras} día${diasConHoras !== 1 ? 's' : ''}`;
-    totLabelCell.font      = { bold: true, size: 10, italic: true, color: { argb: 'FF475569' } };
+    totLabelCell.value     = `TOTAL ${empleado.toUpperCase()} · ${totalEmpDias} día${totalEmpDias !== 1 ? 's' : ''}`;
+    totLabelCell.font      = { bold: true, size: 10, color: { argb: 'FF0F172A' } };
     totLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
     const totHorasCell = ws.getCell(`F${rowIdx}`);
@@ -257,8 +316,8 @@ async function generarExcel(filas: Fila[]): Promise<Buffer> {
     totRow.eachCell({ includeEmpty: true }, cell => {
       cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
       cell.border = {
-        top:    { style: 'thin',  color: { argb: 'FF94A3B8' } },
-        bottom: { style: 'thin',  color: { argb: 'FF94A3B8' } },
+        top:    { style: 'medium', color: { argb: 'FF94A3B8' } },
+        bottom: { style: 'medium', color: { argb: 'FF94A3B8' } },
       };
     });
     rowIdx++;

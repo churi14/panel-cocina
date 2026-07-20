@@ -1,6 +1,8 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { RefreshCw, X } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 type Props = {
   stockProd: any[];
@@ -31,6 +33,10 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [subTab, setSubTab]       = useState<'produccion' | 'desperdicios'>('produccion');
   const [selectedActiva, setSelectedActiva] = useState<any | null>(null);
+  const [editingStock, setEditingStock] = useState(false);
+  const [editStockVal, setEditStockVal] = useState('');
+  const [savingStock,  setSavingStock]  = useState(false);
+  const savingRef = useRef(false);
 
   // Todas las categorías presentes, en orden preferido
   const allCats = [
@@ -440,10 +446,58 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedProdItem(null)} className="p-2 hover:bg-slate-800 rounded-xl">
-                  <X size={20} className="text-slate-400" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingStock(v => !v); setEditStockVal(String(selectedProdItem.cantidad)); }}
+                    className="px-3 py-1.5 text-xs font-black bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-all">
+                    ✏️ Editar stock
+                  </button>
+                  <button onClick={() => { setSelectedProdItem(null); setEditingStock(false); }} className="p-2 hover:bg-slate-800 rounded-xl">
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
               </div>
+
+              {/* ── Edición directa de stock ── */}
+              {editingStock && (
+                <div className="px-5 py-3 border-b border-amber-500/30 bg-amber-500/10 flex items-center gap-3 shrink-0">
+                  <p className="text-xs font-black text-amber-400 uppercase shrink-0">Nuevo stock</p>
+                  <input
+                    type="number" inputMode="decimal" step="0.001"
+                    value={editStockVal}
+                    onChange={e => setEditStockVal(e.target.value)}
+                    className="flex-1 bg-slate-800 border-2 border-amber-500 text-white rounded-xl px-3 py-1.5 text-lg font-black text-center outline-none"
+                  />
+                  <span className="text-slate-400 text-sm font-bold shrink-0">{selectedProdItem.unidad}</span>
+                  <button
+                    disabled={savingStock || editStockVal === ''}
+                    onClick={async () => {
+                      const nuevo = parseFloat(editStockVal.replace(',', '.'));
+                      if (isNaN(nuevo) || savingRef.current) return;
+                      savingRef.current = true; setSavingStock(true);
+                      const diff = nuevo - parseFloat(selectedProdItem.cantidad);
+                      await supabase.from('stock_produccion').update({ cantidad: nuevo, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
+                      if (Math.abs(diff) > 0.001) {
+                        await supabase.from('stock_movements').insert({
+                          nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
+                          tipo: diff >= 0 ? 'ingreso' : 'egreso', cantidad: Math.abs(parseFloat(diff.toFixed(3))),
+                          unidad: selectedProdItem.unidad,
+                          motivo: `Corrección (${selectedProdItem.cantidad} → ${nuevo})`,
+                          operador: 'Admin', fecha: new Date().toISOString(),
+                        });
+                      }
+                      setSelectedProdItem((p: any) => p ? { ...p, cantidad: nuevo } : null);
+                      await fetchMovements();
+                      setEditingStock(false); setSavingStock(false); savingRef.current = false;
+                    }}
+                    className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-xl text-sm disabled:opacity-40">
+                    {savingStock ? '...' : '✓ Guardar'}
+                  </button>
+                  <button onClick={() => setEditingStock(false)} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl text-sm">
+                    Cancelar
+                  </button>
+                </div>
+              )}
 
               <div className="flex-1 overflow-y-auto p-5 space-y-5">
 
