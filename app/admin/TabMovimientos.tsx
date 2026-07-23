@@ -21,8 +21,17 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Movement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
-  const [filterFudo, setFilterFudo]         = useState(false);
+  const [filterFudo, setFilterFudo]   = useState(false);
+  const [vistaTab, setVistaTab]       = useState<'todos' | 'correcciones'>('todos');
 
+  const correcciones = movements.filter(m =>
+    m.motivo && (
+      m.motivo.toLowerCase().includes('corrección') ||
+      m.motivo.toLowerCase().includes('correccion') ||
+      m.motivo.toLowerCase().includes('corrección directa') ||
+      m.motivo.toLowerCase().includes('corrección manual')
+    )
+  ).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
   const filtered = movements.filter(m => {
     if (filterType !== 'all' && m.tipo !== filterType) return false;
@@ -97,6 +106,78 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+
+      {/* Sub-tabs */}
+      <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 gap-1 w-fit">
+        {([
+          { id: 'todos',        label: '📋 Todos los movimientos' },
+          { id: 'correcciones', label: `✏️ Correcciones manuales${correcciones.length > 0 ? ` (${correcciones.length})` : ''}` },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setVistaTab(t.id)}
+            className={`px-4 py-2 rounded-xl text-sm font-black transition-all
+              ${vistaTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── VISTA CORRECCIONES ── */}
+      {vistaTab === 'correcciones' && (
+        <div className="space-y-3">
+          {correcciones.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-600">
+              <p className="text-3xl mb-3">✅</p>
+              <p className="font-bold">Sin correcciones manuales registradas</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500 font-bold uppercase px-1">{correcciones.length} ajustes manuales — ordenados por fecha</p>
+              <div className="grid gap-2">
+                {correcciones.map(m => {
+                  // Extraer from→to del motivo si existe
+                  const match = m.motivo?.match(/\(?([\d.,]+)\s*→\s*([\d.,]+)\)?/);
+                  const desde = match ? parseFloat(match[1]) : null;
+                  const hasta = match ? parseFloat(match[2]) : null;
+                  const diff = hasta !== null && desde !== null ? hasta - desde : null;
+                  const diffPos = diff !== null && diff >= 0;
+                  return (
+                    <div key={m.id} className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                      {/* Icono diff */}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0
+                        ${diff === null ? 'bg-slate-800' : diffPos ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                        {diff === null ? '✏️' : diffPos ? '↑' : '↓'}
+                      </div>
+                      {/* Info producto */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-white text-sm truncate">{m.nombre}</p>
+                        <p className="text-xs text-slate-500 truncate">{m.motivo}</p>
+                      </div>
+                      {/* from → to */}
+                      {desde !== null && hasta !== null && (
+                        <div className="text-center shrink-0">
+                          <p className="text-xs text-slate-500">{desde} → {hasta} {m.unidad}</p>
+                          <p className={`text-sm font-black ${diffPos ? 'text-green-400' : 'text-red-400'}`}>
+                            {diffPos ? '+' : ''}{diff?.toFixed(m.unidad === 'u' ? 0 : 2)} {m.unidad}
+                          </p>
+                        </div>
+                      )}
+                      {/* Operador + fecha */}
+                      <div className="text-right shrink-0 min-w-[100px]">
+                        <p className="text-xs font-bold text-slate-400">{m.operador ?? '—'}</p>
+                        <p className="text-[10px] text-slate-600">
+                          {new Date(m.fecha).toLocaleDateString('es-AR')} {new Date(m.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {vistaTab === 'todos' && <>
       {/* Filtros */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
         <div className="flex bg-slate-800 p-1 rounded-xl gap-1">
@@ -350,6 +431,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
           </div>
         );
       })()}
+      </>}
     </div>
   );
 }

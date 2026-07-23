@@ -989,36 +989,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             </div>
                           )}
 
-                          {/* Corrección rápida desde historial */}
-                          <div className="border-t border-slate-700 pt-4">
-                            <p className="text-xs font-black text-slate-400 uppercase mb-2">Corregir stock directo</p>
-                            <div className="flex gap-2">
-                              <input type="number" inputMode="decimal" step="0.001"
-                                placeholder={`Nuevo valor (${selectedProdItem.unidad})`}
-                                className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500"
-                                id="correccion-directa-input"
-                              />
-                              <button
-                                onClick={async () => {
-                                  const input = document.getElementById('correccion-directa-input') as HTMLInputElement;
-                                  const val = parseFloat(input.value.replace(',', '.'));
-                                  if (isNaN(val)) return;
-                                  await supabase.from('stock_produccion').update({ cantidad: val, ultima_prod: new Date().toISOString() }).eq('id', selectedProdItem.id);
-                                  await supabase.from('stock_movements').insert({
-                                    nombre: selectedProdItem.producto, categoria: selectedProdItem.categoria,
-                                    tipo: 'ingreso', cantidad: val, unidad: selectedProdItem.unidad,
-                                    motivo: `Corrección manual admin: ${parseFloat(selectedProdItem.cantidad).toFixed(2)} → ${val}`,
-                                    operador: 'Admin', fecha: new Date().toISOString(),
-                                  });
-                                  await fetchMovements();
-                                  setSelectedProdItem((prev: any) => prev ? { ...prev, cantidad: val } : null);
-                                  input.value = '';
-                                }}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-all">
-                                ✓ Aplicar
-                              </button>
-                            </div>
-                          </div>
+                          {/* corrección: usar el botón "Corregir stock" del header */}
                         </div>
                       );
                     })()}

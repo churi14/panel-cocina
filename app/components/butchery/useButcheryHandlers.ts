@@ -35,7 +35,7 @@ const CORTE_STOCK_MAP: Record<string, string> = {
   'Aguja':           'AGUJA',
 };
 
-export async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string) {
+export async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string, fechaInicio?: string, operadorNombre?: string) {
   if (!kgToDeduct || kgToDeduct <= 0) return { ok: true, stockActual: 0, nombre: nombreCorte };
   const nombre = CORTE_STOCK_MAP[nombreCorte];
   if (!nombre) return { ok: true, stockActual: 0, nombre: nombreCorte };
@@ -46,11 +46,14 @@ export async function deductStockByName(nombreCorte: string, kgToDeduct: number,
   // Permitir stock negativo — se cubrirá con la próxima factura
   const newQty = parseFloat((data.cantidad - kgToDeduct).toFixed(3));
   await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', data.id);
+  // Usar fechaInicio para que el egreso aparezca en el momento en que el operador
+  // puso la carne, no cuando finalizó la producción.
   await supabase.from('stock_movements').insert({
     stock_id: data.id, nombre, categoria: 'CARNES', tipo: 'egreso',
     cantidad: kgToDeduct, unidad: 'kg',
-    motivo: `Produccion${kind ? ' - ' + kind : ''} (${nombreCorte})`,
-    operador: 'Sistema', fecha: new Date().toISOString(),
+    motivo: `Inicio limpieza${kind && kind !== 'limpieza' ? ' - ' + kind : ''} — ${nombreCorte} · ${kgToDeduct} kg`,
+    operador: operadorNombre ?? 'Sistema',
+    fecha: fechaInicio ?? new Date().toISOString(),
   });
   await checkAndNotifyStock(nombre, newQty, 'kg', data);
   return { ok: data.cantidad >= kgToDeduct, stockActual: data.cantidad, nombre };
@@ -208,7 +211,10 @@ export function createButcheryHandlers(s: Setters) {
 
   const handleFinishBurgerBlend = async (result: BurgerBlendResult) => {
     const now = Date.now(); const batchKind = step2Queue[0]?.kind ?? 'burger';
-    for (const prod of step2Queue) await deductStockByName(prod.typeName, prod.weightKg, batchKind);
+    for (const prod of step2Queue) {
+      const fechaInicioBlend = prod.startTime ? new Date(prod.startTime).toISOString() : undefined;
+      await deductStockByName(prod.typeName, prod.weightKg, batchKind, fechaInicioBlend, operador);
+    }
     step2Queue.forEach((prod, i) => {
       const baseKg = result.carneNetaKg ?? (result.totalBlendKg - result.grasaKg);
       const wasteShare = baseKg > 0 ? (prod.weightKg / baseKg) * result.wasteKg : 0;
@@ -259,7 +265,9 @@ export function createButcheryHandlers(s: Setters) {
     const stockNombre = isNalgaConTapa ? 'NALGA CON TAPA' : corteNorm;
 
     // 1. Descontar carne cruda del stock materias primas
-    await deductStockByName(stockNombre, prod.weightKg, 'limpieza');
+    // Usar startTime del prod para que el egreso quede en el momento de inicio
+    const fechaInicioLimpieza = prod.startTime ? new Date(prod.startTime).toISOString() : undefined;
+    await deductStockByName(stockNombre, prod.weightKg, 'limpieza', fechaInicioLimpieza, operador);
 
     // 2. Agregar carne limpia principal (Nalga_L)
     const productoCarne = `${corteNorm}_L`;
