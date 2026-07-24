@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
-  LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2
+  LogOut, Bell, Package, TrendingUp,
+  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -13,7 +13,7 @@ import TabMovimientos from './TabMovimientos';
 import TabProduccion  from './TabProduccion';
 import TabStock       from './TabStock';
 
-import TabAnalytics   from './TabAnalytics';
+
 import TabVentas      from './TabVentas';
 import TabEquipo      from './TabEquipo';
 import TabTareas      from './TabTareas';
@@ -45,7 +45,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'produccion' | 'factura' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -183,10 +183,8 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const TABS = [
     { id: 'dashboard',  label: 'Dashboard',   icon: <Activity  size={16} /> },
     { id: 'movements',  label: 'Movimientos', icon: <Package   size={16} /> },
-    { id: 'stock',      label: 'Stock',       icon: <Package   size={16} /> },
-    { id: 'produccion', label: 'Producción',  icon: <TrendingUp size={16} /> },
-    { id: 'factura',    label: 'Facturas',    icon: <FileText  size={16} /> },
-    { id: 'analytics',  label: 'Analytics',   icon: <BarChart3 size={16} /> },
+    { id: 'stock',      label: 'Stock',       icon: <Package    size={16} /> },
+    { id: 'factura',    label: 'Facturas',    icon: <FileText   size={16} /> },
     { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
     { id: 'equipo',     label: 'Operadores',   icon: <Users size={16} /> },
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
@@ -273,9 +271,14 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'dashboard'  && <TabDashboard   movements={movements} notifications={notifications} stats={stats} setNotifications={setNotifications} setActiveTab={setActiveTab} cocinaActiva={cocinaActiva} prodHistorial={prodHistorial} />}
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} produccionEventos={produccionEventos} />}
 
-        {activeTab === 'stock'      && <TabStock       stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />}
-        {activeTab === 'produccion' && <TabProduccion  stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />}
-        {activeTab === 'analytics'  && <TabAnalytics   movements={movements} produccionEventos={produccionEventos} prodHistorial={prodHistorial} />}
+        {activeTab === 'stock'      && (
+          <div className="space-y-8">
+            <TabProduccion stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />
+            <div className="border-t border-slate-800 pt-8">
+              <TabStock stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />
+            </div>
+          </div>
+        )}
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'equipo'     && <TabEquipo />}
         {activeTab === 'tareas'     && <TabTareas />}
