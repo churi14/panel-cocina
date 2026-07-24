@@ -27,12 +27,19 @@ function buscarEnMapa(nombreFudo: string, mapa: RecetasMap): StockDescuento[] | 
 }
 
 // Sub-tab: Sync Manual
+type DescuentoEditable = {
+  producto: string; unidad: string; tabla: string;
+  cantidadOriginal: number; cantidad: string;
+  incluir: boolean; stockActual: number | null;
+};
+
 function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoaded: boolean }) {
   const [desde, setDesde]       = useState(() => new Date().toISOString().slice(0, 10));
   const [hasta, setHasta]       = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading]   = useState(false);
   const [syncing, setSyncing]   = useState(false);
   const [resumen, setResumen]   = useState<SyncResumen | null>(null);
+  const [editables, setEditables] = useState<DescuentoEditable[]>([]);
   const [salesRaw, setSalesRaw] = useState<Sale[]>([]);
   const [error, setError]       = useState('');
   const [applied, setApplied]   = useState(false);
@@ -44,7 +51,7 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
   }, []);
 
   const fetchSales = async () => {
-    setLoading(true); setError(''); setResumen(null); setSalesRaw([]); setApplied(false);
+    setLoading(true); setError(''); setResumen(null); setEditables([]); setSalesRaw([]); setApplied(false);
     try {
       const res  = await fetch(`/api/fudo?action=sales&desde=${desde}&hasta=${hasta}`);
       const text = await res.text();
@@ -78,54 +85,71 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
         }
       }
 
-      setResumen({
-        ventas: sales.length,
-        itemsReconocidos,
-        itemsNoReconocidos: Array.from(noReconocidos),
-        descuentos: Object.entries(descuentoMap).map(([key, v]) => ({
-          producto: key.split('::')[1], total: parseFloat(v.total.toFixed(3)), unidad: v.unidad, tabla: v.tabla,
-        })),
-      });
+      const descuentos = Object.entries(descuentoMap).map(([key, v]) => ({
+        producto: key.split('::')[1], total: parseFloat(v.total.toFixed(3)), unidad: v.unidad, tabla: v.tabla,
+      }));
+
+      setResumen({ ventas: sales.length, itemsReconocidos, itemsNoReconocidos: Array.from(noReconocidos), descuentos });
+
+      // Buscar stock actual para cada producto en paralelo
+      const stockActuals = await Promise.all(descuentos.map(async d => {
+        if (d.tabla === 'stock_produccion') {
+          const { data: sp } = await supabase.from('stock_produccion').select('cantidad').ilike('producto', d.producto).maybeSingle();
+          return sp ? Number(sp.cantidad) : null;
+        } else {
+          const { data: sm } = await supabase.from('stock').select('cantidad').ilike('nombre', d.producto).maybeSingle();
+          return sm ? Number(sm.cantidad) : null;
+        }
+      }));
+
+      setEditables(descuentos.map((d, i) => ({
+        producto: d.producto, unidad: d.unidad, tabla: d.tabla,
+        cantidadOriginal: d.total, cantidad: String(d.total),
+        incluir: true, stockActual: stockActuals[i],
+      })));
     } catch (e: any) { setError(e.message); }
     setLoading(false);
   };
 
+  const setEditable = (i: number, patch: Partial<DescuentoEditable>) =>
+    setEditables(prev => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e));
+
   const aplicarDescuentos = async () => {
     if (!resumen) return;
     setSyncing(true);
+    const aAplicar = editables.filter(e => e.incluir && parseFloat(e.cantidad) > 0);
     try {
-      for (const d of resumen.descuentos) {
+      for (const d of aAplicar) {
+        const cant = parseFloat(d.cantidad);
         if (d.tabla === 'stock_produccion') {
           const { data: sp } = await supabase.from('stock_produccion')
             .select('id, cantidad').ilike('producto', d.producto).maybeSingle();
           if (sp) {
             await supabase.from('stock_produccion').update({
-              cantidad:    parseFloat((Number(sp.cantidad) - d.total).toFixed(3)),
+              cantidad: parseFloat((Number(sp.cantidad) - cant).toFixed(3)),
               ultima_prod: new Date().toISOString(),
             }).eq('id', sp.id);
-            await supabase.from('stock_movements').insert({
-              nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
-              motivo: `Ventas Fudo ${desde}${desde !== hasta ? ' -> ' + hasta : ''}`,
-              operador: 'Fudo API', fecha: new Date().toISOString(),
-            });
           }
-        } else if (d.tabla === 'stock') {
+        } else {
           const { data: sm } = await supabase.from('stock')
             .select('id, cantidad').ilike('nombre', d.producto).maybeSingle();
           if (sm) {
             await supabase.from('stock').update({
-              cantidad: parseFloat((Number(sm.cantidad) - d.total).toFixed(3)),
+              cantidad: parseFloat((Number(sm.cantidad) - cant).toFixed(3)),
             }).eq('id', sm.id);
-            await supabase.from('stock_movements').insert({
-              nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: d.total, unidad: d.unidad,
-              motivo: `Ventas Fudo ${desde}${desde !== hasta ? ' -> ' + hasta : ''}`,
-              operador: 'Fudo API', fecha: new Date().toISOString(),
-            });
           }
         }
+        await supabase.from('stock_movements').insert({
+          nombre: d.producto, categoria: 'FUDO', tipo: 'egreso', cantidad: cant, unidad: d.unidad,
+          motivo: `Ventas Fudo ${desde}${desde !== hasta ? ' -> ' + hasta : ''}`,
+          operador: 'Fudo API', fecha: new Date().toISOString(),
+        });
       }
-      await supabase.from('fudo_sync_log').insert({ desde, hasta, ventas: resumen.ventas, descuentos: resumen.descuentos });
-      // Marcar fecha(s) como procesadas en cierre diario
+      await supabase.from('fudo_sync_log').insert({
+        desde, hasta, ventas: resumen.ventas,
+        descuentos: aAplicar.map(e => ({ producto: e.producto, total: parseFloat(e.cantidad), unidad: e.unidad, tabla: e.tabla })),
+      });
+      // Marcar fechas como procesadas
       const fechasPeriodo: string[] = [];
       for (let d = new Date(desde); d <= new Date(hasta); d.setDate(d.getDate() + 1)) {
         fechasPeriodo.push(d.toISOString().slice(0, 10));
@@ -139,6 +163,9 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
     } catch (e: any) { setError(e.message); }
     setSyncing(false);
   };
+
+  const totalActivos = editables.filter(e => e.incluir).length;
+  const hayNegativos = editables.some(e => e.incluir && e.stockActual !== null && (e.stockActual - parseFloat(e.cantidad || '0')) < 0);
 
   return (
     <div className="space-y-6">
@@ -210,21 +237,93 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
             ))}
           </div>
 
-          {resumen.descuentos.length > 0 && (
+          {editables.length > 0 && (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-800">
-                <p className="font-black text-sm text-slate-300 uppercase">Se va a descontar del stock:</p>
-              </div>
-              {resumen.descuentos.map((d, i) => (
-                <div key={i} className="px-5 py-3 flex items-center justify-between border-b border-slate-800/50">
-                  <div className="flex items-center gap-3">
-                    <Package size={15} className="text-slate-500" />
-                    <span className="font-bold text-white text-sm">{d.producto}</span>
-                    <span className="text-xs text-slate-600">{d.tabla}</span>
-                  </div>
-                  <span className="font-black text-red-400">-{d.total} {d.unidad}</span>
+              <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+                <p className="font-black text-sm text-white">Revisá y ajustá antes de confirmar</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setEditables(p => p.map(e => ({ ...e, incluir: true })))}
+                    className="text-xs text-green-400 font-bold hover:text-green-300">Todos ✓</button>
+                  <span className="text-slate-700">|</span>
+                  <button onClick={() => setEditables(p => p.map(e => ({ ...e, incluir: false })))}
+                    className="text-xs text-slate-500 font-bold hover:text-slate-400">Ninguno</button>
                 </div>
-              ))}
+              </div>
+
+              {/* Header columnas */}
+              <div className="grid grid-cols-[auto_1fr_140px_110px] gap-0 px-5 py-2 border-b border-slate-800 text-[10px] font-black text-slate-600 uppercase">
+                <div className="w-8" />
+                <div>Producto</div>
+                <div className="text-center">Stock actual → quedaría</div>
+                <div className="text-right">Cantidad</div>
+              </div>
+
+              <div className="divide-y divide-slate-800/50">
+                {editables.map((e, i) => {
+                  const cant      = parseFloat(e.cantidad) || 0;
+                  const restante  = e.stockActual !== null ? e.stockActual - cant : null;
+                  const negativo  = restante !== null && restante < 0;
+                  const editado   = cant !== e.cantidadOriginal;
+                  return (
+                    <div key={i} className={`grid grid-cols-[auto_1fr_140px_110px] gap-0 items-center px-5 py-3 transition-colors
+                      ${!e.incluir ? 'opacity-40' : ''} ${negativo && e.incluir ? 'bg-red-500/5' : ''}`}>
+
+                      {/* Checkbox */}
+                      <div className="w-8">
+                        <input type="checkbox" checked={e.incluir} onChange={ev => setEditable(i, { incluir: ev.target.checked })}
+                          className="w-4 h-4 accent-green-500 cursor-pointer" />
+                      </div>
+
+                      {/* Nombre + tabla */}
+                      <div>
+                        <p className="font-bold text-white text-sm">{e.producto}</p>
+                        <p className="text-[10px] text-slate-600">{e.tabla === 'stock_produccion' ? 'producción' : 'materias primas'}</p>
+                      </div>
+
+                      {/* Stock actual → quedaría */}
+                      <div className="text-center">
+                        {e.stockActual !== null ? (
+                          <p className={`text-xs font-black ${negativo && e.incluir ? 'text-red-400' : 'text-slate-400'}`}>
+                            {e.stockActual.toFixed(1)} → {(e.stockActual - cant).toFixed(1)} {e.unidad}
+                            {negativo && e.incluir && <span className="ml-1">⚠️</span>}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-700">—</p>
+                        )}
+                      </div>
+
+                      {/* Input cantidad */}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {editado && <span className="text-[9px] text-blue-400 font-black">editado</span>}
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-red-400 text-xs font-black">−</span>
+                          <input
+                            type="number" min="0" step="0.1"
+                            value={e.cantidad}
+                            onChange={ev => setEditable(i, { cantidad: ev.target.value })}
+                            className="w-20 bg-slate-800 border border-slate-700 focus:border-blue-500 text-white font-black text-sm rounded-lg pl-5 pr-2 py-1.5 outline-none text-right"
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500 w-5 shrink-0">{e.unidad}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer resumen */}
+              <div className="px-5 py-3 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
+                <p className="text-xs text-slate-500">
+                  {totalActivos} de {editables.length} ítems incluidos
+                  {hayNegativos && <span className="text-red-400 ml-2 font-bold">⚠️ algunos quedarían en negativo</span>}
+                </p>
+                {editables.some(e => parseFloat(e.cantidad) !== e.cantidadOriginal) && (
+                  <button onClick={() => setEditables(p => p.map(e => ({ ...e, cantidad: String(e.cantidadOriginal) })))}
+                    className="text-xs text-slate-500 hover:text-white font-bold">
+                    ↩ restaurar originales
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -239,11 +338,11 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
             </div>
           )}
 
-          {resumen.descuentos.length > 0 && (
+          {totalActivos > 0 && (
             <button onClick={aplicarDescuentos} disabled={syncing}
-              className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black text-lg rounded-2xl transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-3">
+              className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black text-lg rounded-2xl transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-3 shadow-lg shadow-red-900/30">
               <ShoppingCart size={22} />
-              {syncing ? 'Aplicando...' : `Confirmar y descontar stock (${resumen.ventas} ventas)`}
+              {syncing ? 'Aplicando...' : `Confirmar y descontar ${totalActivos} ítem${totalActivos !== 1 ? 's' : ''}`}
             </button>
           )}
         </>
