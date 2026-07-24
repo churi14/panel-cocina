@@ -46,6 +46,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   };
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
+  const [stockSubTab, setStockSubTab] = useState<'produccion' | 'materias'>('produccion');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -272,11 +273,26 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} produccionEventos={produccionEventos} />}
 
         {activeTab === 'stock'      && (
-          <div className="space-y-8">
-            <TabProduccion stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />
-            <div className="border-t border-slate-800 pt-8">
-              <TabStock stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />
+          <div>
+            {/* Sub-tabs de Stock */}
+            <div className="flex gap-1 mb-6 bg-slate-900 rounded-2xl p-1 w-fit">
+              <button
+                onClick={() => setStockSubTab('produccion')}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${stockSubTab === 'produccion' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                🍳 Producción
+              </button>
+              <button
+                onClick={() => setStockSubTab('materias')}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${stockSubTab === 'materias' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                📦 Materias primas
+              </button>
             </div>
+            {stockSubTab === 'produccion' && (
+              <TabProduccion stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />
+            )}
+            {stockSubTab === 'materias' && (
+              <TabStock stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />
+            )}
           </div>
         )}
         {activeTab === 'ventas'     && <TabVentas />}
