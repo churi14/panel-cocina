@@ -241,6 +241,22 @@ function OperadorModal({ stat, idx, onClose }: { stat: OpStat; idx: number; onCl
                                 {fmtHora(s.ini.fecha)}
                                 {s.fin && <span className="text-slate-500"> → {fmtHora(s.fin.fecha)}</span>}
                               </p>
+                              {/* Quién inició / quién cerró si son distintos */}
+                              {(() => {
+                                const opener = s.ini.operador;
+                                const closer = s.fin?.operador;
+                                const difieren = closer && opener && closer.toLowerCase().trim() !== opener.toLowerCase().trim();
+                                if (difieren) {
+                                  return (
+                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                      <span className="text-blue-400 font-bold">{opener}</span>
+                                      <span className="text-slate-600"> → cerró </span>
+                                      <span className="text-purple-400 font-bold">{closer}</span>
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              })()}
                               {!s.fin && !sesionSinCerrar(s) && (
                                 <span className="text-[10px] bg-amber-500/20 text-amber-400 font-black px-1.5 py-0.5 rounded-full">en curso</span>
                               )}
