@@ -125,6 +125,15 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
         }
       }
       await supabase.from('fudo_sync_log').insert({ desde, hasta, ventas: resumen.ventas, descuentos: resumen.descuentos });
+      // Marcar fecha(s) como procesadas en cierre diario
+      const fechasPeriodo: string[] = [];
+      for (let d = new Date(desde); d <= new Date(hasta); d.setDate(d.getDate() + 1)) {
+        fechasPeriodo.push(d.toISOString().slice(0, 10));
+      }
+      await supabase.from('fudo_cierre_diario').upsert(
+        fechasPeriodo.map(f => ({ fecha: f, status: 'procesado', procesado_por: 'admin', procesado_at: new Date().toISOString() })),
+        { onConflict: 'fecha' }
+      );
       setLastSync(new Date().toISOString());
       setApplied(true);
     } catch (e: any) { setError(e.message); }
@@ -142,7 +151,17 @@ function SyncManual({ recetasMap, mapLoaded }: { recetasMap: RecetasMap; mapLoad
       {mapLoaded && <p className="text-xs text-green-500">{Object.keys(recetasMap).length} productos mapeados desde Supabase</p>}
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-        <p className="text-xs font-black text-slate-400 uppercase mb-4">Rango de fechas</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-black text-slate-400 uppercase">Rango de fechas</p>
+          <button
+            onClick={() => {
+              const ayer = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+              setDesde(ayer); setHasta(ayer);
+            }}
+            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-black text-xs rounded-lg transition-all border border-amber-500/30">
+            ⚡ Cerrar día de ayer
+          </button>
+        </div>
         <div className="flex gap-4 items-end">
           <div className="flex-1">
             <label className="text-xs text-slate-500 mb-1 block">Desde</label>

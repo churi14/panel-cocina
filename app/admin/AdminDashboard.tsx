@@ -54,6 +54,8 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [prodHistorial, setProdHistorial]       = useState<any[]>([]);
   const [cocinaActiva, setCocinaActiva]         = useState<any[]>([]);
   const [stats, setStats]                       = useState({ ingresos: 0, egresos: 0, operadores: 0, hoy: 0 });
+  const [cierresPendientes, setCierresPendientes] = useState<{ fecha: string; ventas_count: number }[]>([]);
+  const [cierreDismissed, setCierreDismissed]   = useState(false);
 
   const fetchMovements = async () => {
     setLoading(true);
@@ -81,6 +83,16 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       hoy:        m.filter(x => x.fecha?.slice(0, 10) === today).length,
     });
     setLoading(false);
+    // Verificar cierres pendientes de Fudo
+    const today = new Date().toISOString().slice(0, 10);
+    supabase.from('fudo_cierre_diario')
+      .select('fecha, ventas_count')
+      .eq('status', 'pendiente')
+      .gt('ventas_count', 0)
+      .lt('fecha', today)
+      .order('fecha', { ascending: false })
+      .limit(7)
+      .then(({ data }) => { if (data?.length) setCierresPendientes(data as any); });
   };
 
   useEffect(() => {
@@ -239,6 +251,23 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
           </button>
         ))}
       </nav>
+
+      {/* BANNER CIERRE FUDO PENDIENTE */}
+      {!cierreDismissed && cierresPendientes.length > 0 && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 md:px-8 py-3 flex items-center gap-3">
+          <AlertTriangle size={18} className="text-amber-400 shrink-0" />
+          <p className="text-amber-300 text-sm font-bold flex-1">
+            {cierresPendientes.length === 1
+              ? `Tenés ${cierresPendientes[0].ventas_count} ventas del ${new Date(cierresPendientes[0].fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })} sin descontar del stock`
+              : `Tenés ventas de ${cierresPendientes.length} días sin descontar del stock`}
+          </p>
+          <button onClick={() => setActiveTab('ventas')}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-lg transition-all">
+            Ir a Ventas
+          </button>
+          <button onClick={() => setCierreDismissed(true)} className="text-amber-600 hover:text-amber-400 text-xs font-bold px-2">✕</button>
+        </div>
+      )}
 
       {/* CONTENT */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">

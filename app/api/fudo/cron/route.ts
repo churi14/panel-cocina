@@ -191,6 +191,20 @@ export async function GET(req: NextRequest) {
       tipo:       'auto',
     });
 
+    // ── 9. Registrar en fudo_cierre_diario para notificación matutina ──────
+    const { data: cierreExist } = await supabase
+      .from('fudo_cierre_diario')
+      .select('status, ventas_count')
+      .eq('fecha', today)
+      .maybeSingle();
+    if (!cierreExist || cierreExist.status === 'pendiente') {
+      await supabase.from('fudo_cierre_diario').upsert({
+        fecha:        today,
+        status:       'pendiente',
+        ventas_count: (cierreExist?.ventas_count ?? 0) + nuevasVentas.length,
+      }, { onConflict: 'fecha' });
+    }
+
     return NextResponse.json({
       ok:               true,
       nuevas_ventas:    nuevasVentas.length,
