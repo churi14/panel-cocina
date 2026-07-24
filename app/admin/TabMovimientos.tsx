@@ -11,9 +11,10 @@ type Props = {
   filterOp: string;
   setFilterOp: React.Dispatch<React.SetStateAction<string>>;
   fetchMovements: () => Promise<void>;
+  produccionEventos?: any[];
 };
 
-export default function TabMovimientos({ movements, filterType, setFilterType, filterOp, setFilterOp, fetchMovements }: Props) {
+export default function TabMovimientos({ movements, filterType, setFilterType, filterOp, setFilterOp, fetchMovements, produccionEventos = [] }: Props) {
   const [editingM, setEditingM] = useState<Movement | null>(null);
   const [editCantidad, setEditCantidad] = useState('');
   const [editMotivo, setEditMotivo] = useState('');
@@ -22,7 +23,8 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   const [deleteConfirm, setDeleteConfirm] = useState<Movement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [filterFudo, setFilterFudo]   = useState(false);
-  const [vistaTab, setVistaTab]       = useState<'todos' | 'correcciones'>('todos');
+  const [vistaTab, setVistaTab]       = useState<'todos' | 'correcciones' | 'producciones'>('todos');
+  const [selectedSesion, setSelectedSesion] = useState<any | null>(null);
 
   const correcciones = movements.filter(m =>
     m.motivo && (
@@ -32,6 +34,26 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
       m.motivo.toLowerCase().includes('corrección manual')
     )
   ).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+  // ── Sesiones de producción: parear inicio con fin ────────────────────────────
+  const sesiones = (() => {
+    const inicios = produccionEventos.filter(e => e.tipo === 'inicio_paso1');
+    const fines   = produccionEventos.filter(e => e.tipo === 'fin_paso2' || e.tipo === 'fin_cocina');
+    return inicios.map(ini => {
+      // Buscar el fin más cercano con mismo corte y kind que ocurrió después del inicio
+      const iniMs = new Date(ini.fecha).getTime();
+      const fin = fines
+        .filter(f =>
+          f.corte?.toLowerCase() === ini.corte?.toLowerCase() &&
+          f.kind  === ini.kind &&
+          new Date(f.fecha).getTime() > iniMs
+        )
+        .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())[0];
+      const finMs = fin ? new Date(fin.fecha).getTime() : null;
+      const durMin = finMs ? Math.round((finMs - iniMs) / 60000) : null;
+      return { ini, fin: fin ?? null, durMin, iniMs };
+    }).sort((a, b) => b.iniMs - a.iniMs); // más recientes primero
+  })();
 
   const filtered = movements.filter(m => {
     if (filterType !== 'all' && m.tipo !== filterType) return false;
@@ -108,10 +130,11 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
     <div className="max-w-6xl mx-auto space-y-6">
 
       {/* Sub-tabs */}
-      <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 gap-1 w-fit">
+      <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 gap-1 w-fit flex-wrap">
         {([
-          { id: 'todos',        label: '📋 Todos los movimientos' },
-          { id: 'correcciones', label: `✏️ Correcciones manuales${correcciones.length > 0 ? ` (${correcciones.length})` : ''}` },
+          { id: 'todos',        label: '📋 Movimientos' },
+          { id: 'producciones', label: `🔪 Producciones${sesiones.length > 0 ? ` (${sesiones.length})` : ''}` },
+          { id: 'correcciones', label: `✏️ Correcciones${correcciones.length > 0 ? ` (${correcciones.length})` : ''}` },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setVistaTab(t.id)}
             className={`px-4 py-2 rounded-xl text-sm font-black transition-all
@@ -173,6 +196,107 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
                 })}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── VISTA PRODUCCIONES ── */}
+      {vistaTab === 'producciones' && (
+        <div className="space-y-3">
+          {sesiones.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-600">
+              <p className="text-3xl mb-3">🔪</p>
+              <p className="font-bold">Sin producciones registradas</p>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {sesiones.map((s, i) => {
+                const kindEmoji: Record<string, string> = { lomito: '🥩', burger: '🍔', milanesa: '🍗', limpieza: '🔪', carnes_limpias: '🔪', cocina: '🍳', salsa: '🫙', verduras: '🥬', fiambre: '🧀' };
+                const emoji = kindEmoji[s.ini.kind] ?? '🔪';
+                const durStr = s.durMin !== null
+                  ? s.durMin < 60
+                    ? `${s.durMin} min`
+                    : `${Math.floor(s.durMin / 60)}h ${s.durMin % 60}m`
+                  : null;
+                const fmtHora = (iso: string) =>
+                  new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                const fmtFecha = (iso: string) =>
+                  new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+                return (
+                  <div key={i}
+                    onClick={() => setSelectedSesion(selectedSesion?.ini?.id === s.ini.id ? null : s)}
+                    className="bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl p-4 cursor-pointer transition-all">
+                    <div className="flex items-center gap-4">
+                      {/* Emoji + kind */}
+                      <div className="text-2xl shrink-0">{emoji}</div>
+                      {/* Corte + kind */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-white text-sm">{s.ini.corte}</p>
+                        <p className="text-xs text-slate-500 capitalize">{s.ini.kind}</p>
+                      </div>
+                      {/* Peso */}
+                      <div className="text-center shrink-0">
+                        <p className="font-black text-amber-400 text-sm">{s.ini.peso_kg?.toFixed(1)} kg</p>
+                        <p className="text-[10px] text-slate-600">entrada</p>
+                      </div>
+                      {/* Duración */}
+                      <div className="text-center shrink-0 w-16">
+                        {durStr ? (
+                          <>
+                            <p className={`font-black text-sm ${s.durMin! > 120 ? 'text-red-400' : s.durMin! > 60 ? 'text-amber-400' : 'text-green-400'}`}>{durStr}</p>
+                            <p className="text-[10px] text-slate-600">duración</p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-slate-600 italic">en curso</p>
+                        )}
+                      </div>
+                      {/* Operador */}
+                      <div className="text-right shrink-0 min-w-[90px]">
+                        <p className="text-xs font-bold text-slate-300">{s.ini.operador ?? '—'}</p>
+                        <p className="text-[10px] text-slate-600">{fmtFecha(s.ini.fecha)}</p>
+                      </div>
+                    </div>
+
+                    {/* ── Detalle expandido ── */}
+                    {selectedSesion?.ini?.id === s.ini.id && (
+                      <div className="mt-4 pt-4 border-t border-slate-800 grid grid-cols-2 gap-3 text-xs">
+                        <div className="bg-slate-800 rounded-xl p-3">
+                          <p className="text-slate-500 uppercase font-black mb-1">▶ Inicio</p>
+                          <p className="text-white font-bold">{fmtHora(s.ini.fecha)}</p>
+                          <p className="text-slate-400">{s.ini.operador}</p>
+                          <p className="text-slate-500 mt-1 italic truncate">{s.ini.detalle}</p>
+                        </div>
+                        <div className="bg-slate-800 rounded-xl p-3">
+                          <p className="text-slate-500 uppercase font-black mb-1">✓ Fin</p>
+                          {s.fin ? (
+                            <>
+                              <p className="text-white font-bold">{fmtHora(s.fin.fecha)}</p>
+                              <p className="text-slate-400">{s.fin.operador}</p>
+                              {s.fin.peso_kg != null && <p className="text-green-400 font-black mt-1">{s.fin.peso_kg?.toFixed(2)} kg neto</p>}
+                              <p className="text-slate-500 mt-1 italic truncate">{s.fin.detalle}</p>
+                            </>
+                          ) : (
+                            <p className="text-amber-400 font-bold">Sin registrar</p>
+                          )}
+                        </div>
+                        {s.durMin !== null && (
+                          <div className="col-span-2 bg-slate-800 rounded-xl p-3 flex items-center justify-between">
+                            <span className="text-slate-400">Tiempo total de producción</span>
+                            <span className={`font-black text-base ${s.durMin > 120 ? 'text-red-400' : s.durMin > 60 ? 'text-amber-400' : 'text-green-400'}`}>{durStr}</span>
+                          </div>
+                        )}
+                        {s.ini.waste_kg > 0 && (
+                          <div className="col-span-2 bg-slate-800 rounded-xl p-3 flex items-center justify-between">
+                            <span className="text-slate-400">Desperdicio</span>
+                            <span className="font-black text-red-400">{s.fin?.waste_kg?.toFixed(2) ?? s.ini.waste_kg?.toFixed(2)} kg</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
