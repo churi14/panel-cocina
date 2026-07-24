@@ -12,7 +12,7 @@ import TabDashboard   from './TabDashboard';
 import TabMovimientos from './TabMovimientos';
 import TabProduccion  from './TabProduccion';
 import TabStock       from './TabStock';
-import TabReportes    from './TabReportes';
+
 import TabAnalytics   from './TabAnalytics';
 import TabVentas      from './TabVentas';
 import TabEquipo      from './TabEquipo';
@@ -45,7 +45,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'factura' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'produccion' | 'factura' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -183,7 +183,6 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const TABS = [
     { id: 'dashboard',  label: 'Dashboard',   icon: <Activity  size={16} /> },
     { id: 'movements',  label: 'Movimientos', icon: <Package   size={16} /> },
-    { id: 'reports',    label: 'Reportes',    icon: <BarChart3 size={16} /> },
     { id: 'stock',      label: 'Stock',       icon: <Package   size={16} /> },
     { id: 'produccion', label: 'Producción',  icon: <TrendingUp size={16} /> },
     { id: 'factura',    label: 'Facturas',    icon: <FileText  size={16} /> },
@@ -273,7 +272,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         {activeTab === 'dashboard'  && <TabDashboard   movements={movements} notifications={notifications} stats={stats} setNotifications={setNotifications} setActiveTab={setActiveTab} cocinaActiva={cocinaActiva} prodHistorial={prodHistorial} />}
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} produccionEventos={produccionEventos} />}
-        {activeTab === 'reports'    && <TabReportes    movements={movements} />}
+
         {activeTab === 'stock'      && <TabStock       stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />}
         {activeTab === 'produccion' && <TabProduccion  stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />}
         {activeTab === 'analytics'  && <TabAnalytics   movements={movements} produccionEventos={produccionEventos} prodHistorial={prodHistorial} />}
