@@ -76,17 +76,32 @@ function weekKey(iso: string) {
 }
 function buildSesiones(eventos: Evento[], opNombre: string): Sesion[] {
   const norm = opNombre.toLowerCase().trim();
-  const mine = eventos.filter(e => e.operador?.toLowerCase().trim() === norm);
-  const inicios = mine.filter(e => e.tipo === 'inicio_paso1');
-  const fines   = mine.filter(e => e.tipo === 'fin_paso2' || e.tipo === 'fin_cocina');
+  // Inicios: filtramos por operador (tanto carnicería como cocina)
+  const inicios = eventos.filter(e =>
+    e.operador?.toLowerCase().trim() === norm &&
+    (e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina')
+  );
+  // Fins: buscamos en TODOS los eventos (fin_paso2/fin_cocina pueden no tener operador guardado)
+  const todosLosFines = eventos.filter(e => e.tipo === 'fin_paso2' || e.tipo === 'fin_cocina');
   return inicios.map(ini => {
     const iniMs = new Date(ini.fecha).getTime();
-    const fin = fines
-      .filter(f => f.corte?.toLowerCase() === ini.corte?.toLowerCase() && f.kind === ini.kind && new Date(f.fecha).getTime() > iniMs)
+    // Buscar fin más próximo con mismo corte+kind después del inicio
+    const fin = todosLosFines
+      .filter(f =>
+        f.corte?.toLowerCase() === ini.corte?.toLowerCase() &&
+        f.kind === ini.kind &&
+        new Date(f.fecha).getTime() > iniMs
+      )
       .sort((a,b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())[0] ?? null;
     const durMin = fin ? Math.round((new Date(fin.fecha).getTime() - iniMs) / 60000) : null;
     return { ini, fin, durMin, iniMs };
   }).sort((a,b) => b.iniMs - a.iniMs);
+}
+
+// Sesión vieja sin fin (>3 horas) = sin cerrar, no "en curso"
+function sesionSinCerrar(s: Sesion): boolean {
+  if (s.fin !== null) return false;
+  return Date.now() - s.iniMs > 3 * 60 * 60 * 1000;
 }
 
 // ─────────────────────────────────────────────────────
@@ -226,8 +241,11 @@ function OperadorModal({ stat, idx, onClose }: { stat: OpStat; idx: number; onCl
                                 {fmtHora(s.ini.fecha)}
                                 {s.fin && <span className="text-slate-500"> → {fmtHora(s.fin.fecha)}</span>}
                               </p>
-                              {!s.fin && (
+                              {!s.fin && !sesionSinCerrar(s) && (
                                 <span className="text-[10px] bg-amber-500/20 text-amber-400 font-black px-1.5 py-0.5 rounded-full">en curso</span>
+                              )}
+                              {sesionSinCerrar(s) && (
+                                <span className="text-[10px] bg-red-500/15 text-red-400 font-black px-1.5 py-0.5 rounded-full">sin cerrar ⚠️</span>
                               )}
                             </div>
                             {/* Duración */}
@@ -629,7 +647,12 @@ export default function TabEquipo() {
                     <div className="mt-3 pt-3 border-t border-slate-800">
                       <div className="flex items-center gap-1 h-1.5">
                         {sesionesEnPeriodo.slice(0, 10).map((s, i) => (
-                          <div key={i} className={`flex-1 h-full rounded-full ${s.durMin===null?'bg-amber-500':s.durMin<=30?'bg-green-500':s.durMin<=60?'bg-amber-500':'bg-red-500'}`} />
+                          <div key={i} className={`flex-1 h-full rounded-full ${
+                            sesionSinCerrar(s) ? 'bg-slate-600' :
+                            s.durMin===null ? 'bg-amber-500' :
+                            s.durMin<=30 ? 'bg-green-500' :
+                            s.durMin<=60 ? 'bg-amber-500' : 'bg-red-500'
+                          }`} />
                         ))}
                         {sesionesEnPeriodo.length > 10 && <span className="text-[9px] text-slate-600 ml-1">+{sesionesEnPeriodo.length-10}</span>}
                       </div>
