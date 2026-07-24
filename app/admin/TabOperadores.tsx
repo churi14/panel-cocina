@@ -81,7 +81,7 @@ export default function TabOperadores() {
     setLoading(true);
     const [{ data: evs }, { data: prfs }] = await Promise.all([
       supabase.from('produccion_eventos').select('*').order('fecha', { ascending: false }).limit(3000),
-      supabase.from('perfiles').select('*'),
+      supabase.from('operadores').select('*').order('nombre'),
     ]);
     setEventos((evs ?? []) as Evento[]);
     setPerfiles(prfs ?? []);
@@ -101,8 +101,8 @@ export default function TabOperadores() {
   const perfilesActivos = perfiles
     .filter(p => p.activo !== false)
     .reduce((acc: any[], p: any) => {
-      const key = p.nombre.toLowerCase().trim();
-      if (!acc.find((x: any) => x.nombre.toLowerCase().trim() === key)) acc.push(p);
+      const key = (p.nombre ?? '').toLowerCase().trim();
+      if (key && !acc.find((x: any) => (x.nombre ?? '').toLowerCase().trim() === key)) acc.push(p);
       return acc;
     }, []);
 
