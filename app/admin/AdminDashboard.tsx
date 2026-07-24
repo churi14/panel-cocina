@@ -84,12 +84,12 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
     setLoading(false);
     // Verificar cierres pendientes de Fudo
-    const today = new Date().toISOString().slice(0, 10);
+    const hoy = new Date().toISOString().slice(0, 10);
     supabase.from('fudo_cierre_diario')
       .select('fecha, ventas_count')
       .eq('status', 'pendiente')
       .gt('ventas_count', 0)
-      .lt('fecha', today)
+      .lt('fecha', hoy)
       .order('fecha', { ascending: false })
       .limit(7)
       .then(({ data }) => { if (data?.length) setCierresPendientes(data as any); });
