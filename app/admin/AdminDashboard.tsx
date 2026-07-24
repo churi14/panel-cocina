@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp, TrendingDown,
-  RefreshCw, BarChart3, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText
+  RefreshCw, BarChart3, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -18,8 +18,9 @@ import TabVentas      from './TabVentas';
 import TabEquipo      from './TabEquipo';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
-import TabFichador    from './TabFichador';
-import TabFactura     from './TabFactura';
+import TabFichador      from './TabFichador';
+import TabFactura       from './TabFactura';
+import TabDesperdicios  from './TabDesperdicios';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
@@ -44,7 +45,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'factura' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'reports' | 'stock' | 'produccion' | 'factura' | 'analytics' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -106,13 +107,20 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         }));
       });
 
+    // Helpers para re-fetch parcial sin reload completo
+    const refreshStock = () => {
+      supabase.from('stock').select('*').order('categoria').order('nombre').then(({ data }) => { if (data) setStock(data); });
+      supabase.from('stock_produccion').select('*').order('categoria').order('producto').then(({ data }) => { if (data) setStockProd(data); });
+    };
+
     // Canal único por sesión para evitar conflictos entre dispositivos
     const channelId = `admin_realtime_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const channel = supabase
       .channel(channelId)
+      // ── stock_movements: nuevo movimiento ───────────────────────────────────
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stock_movements' }, (payload) => {
         const m = payload.new as Movement;
-        setMovements(prev => [m, ...prev]);
+        setMovements(prev => [m, ...prev.slice(0, 199)]);
         setNotifications(prev => [{
           id: Date.now(),
           message: `${m.operador ?? 'Alguien'} ${m.tipo === 'ingreso' ? 'cargó' : 'descontó'} ${m.cantidad} ${m.unidad} de ${m.nombre}`,
@@ -125,17 +133,36 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
           egresos:  m.tipo === 'egreso'  ? prev.egresos  + 1 : prev.egresos,
           hoy: prev.hoy + 1,
         }));
+        // Re-fetch stock para reflejar los nuevos totales al instante
+        refreshStock();
       })
+      // ── stock: cambio directo en tabla (Fudo sync, ediciones manuales) ──────
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stock' }, () => {
+        supabase.from('stock').select('*').order('categoria').order('nombre').then(({ data }) => { if (data) setStock(data); });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stock_produccion' }, () => {
+        supabase.from('stock_produccion').select('*').order('categoria').order('producto').then(({ data }) => { if (data) setStockProd(data); });
+      })
+      // ── produccion_eventos: nueva producción ─────────────────────────────────
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'produccion_eventos' }, (payload) => {
         const e = payload.new as any;
         const emoji = e.kind === 'lomito' ? '🥩' : e.kind === 'burger' ? '🍔' : e.kind === 'cocina' ? '🍳' : '🥪';
         const tipo  = e.tipo === 'inicio_paso1' ? 'INICIO' : e.tipo === 'inicio_cocina' ? 'INICIO COCINA' : e.tipo === 'fin_cocina' ? 'FIN COCINA' : 'FINALIZADO';
+        setProduccionEventos(prev => [e, ...prev.slice(0, 199)]);
         setNotifications(prev => [{
           id: Date.now(),
           message: `${emoji} ${tipo} — ${e.corte} ${e.peso_kg}kg (${e.kind})${e.operador && e.operador !== 'Sistema' ? ' · ' + e.operador : ''}`,
           type: ((e.tipo === 'inicio_paso1' || e.tipo === 'inicio_cocina') ? 'ingreso' : 'egreso') as 'ingreso' | 'egreso' | 'alert',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }, ...prev].slice(0, 20));
+      })
+      // ── producciones_activas: tablet de carnicería actualiza estado ──────────
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'producciones_activas' }, () => {
+        supabase.from('producciones_activas').select('*').order('start_time', { ascending: false }).limit(100).then(({ data }) => { if (data) setProdHistorial(data); });
+      })
+      // ── cocina_produccion_activa: tablet de cocina actualiza estado ──────────
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cocina_produccion_activa' }, () => {
+        supabase.from('cocina_produccion_activa').select('*').eq('status', 'running').order('start_time', { ascending: false }).then(({ data }) => { if (data) setCocinaActiva(data); });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -153,7 +180,8 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'equipo',     label: 'Operadores',   icon: <Users size={16} /> },
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
     { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
-    { id: 'fichador',   label: 'Fichador',     icon: <Users size={16} /> },
+    { id: 'fichador',      label: 'Fichador',      icon: <Users size={16} /> },
+    { id: 'desperdicios',  label: 'Desperdicios',  icon: <Trash2 size={16} /> },
   ] as const;
 
   return (
@@ -215,7 +243,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       {/* CONTENT */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         {activeTab === 'dashboard'  && <TabDashboard   movements={movements} notifications={notifications} stats={stats} setNotifications={setNotifications} setActiveTab={setActiveTab} cocinaActiva={cocinaActiva} prodHistorial={prodHistorial} />}
-        {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} />}
+        {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} produccionEventos={produccionEventos} />}
         {activeTab === 'reports'    && <TabReportes    movements={movements} />}
         {activeTab === 'stock'      && <TabStock       stock={stock} stockProd={stockProd} movements={movements} fetchMovements={fetchMovements} />}
         {activeTab === 'produccion' && <TabProduccion  stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />}
@@ -224,8 +252,9 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'equipo'     && <TabEquipo />}
         {activeTab === 'tareas'     && <TabTareas />}
         {activeTab === 'auditoria'  && <TabAuditoria />}
-        {activeTab === 'fichador'   && <TabFichador />}
-        {activeTab === 'factura'    && <TabFactura />}
+        {activeTab === 'fichador'      && <TabFichador />}
+        {activeTab === 'factura'       && <TabFactura />}
+        {activeTab === 'desperdicios'  && <TabDesperdicios />}
       </main>
 
       <AdminTour />

@@ -29,6 +29,7 @@ import ProducidosPorUsuario from './components/butchery/ProducidosPorUsuario';
 import { supabase } from './supabase';
 import { useTestMode } from './components/TestModeContext';
 import { FlaskConical, Snowflake } from 'lucide-react';
+import MermaRapidaModal from './components/MermaRapidaModal';
 
 // ── PWA: registrar service worker ────────────────────────────────────────────
 function usePWA() {
@@ -51,8 +52,20 @@ export default function Page() {
   usePWA();
   const { user, perfil, loading } = useAuth();
 
-  // Hook ANTES de cualquier return
-  const [verCocina, setVerCocina] = React.useState(false);
+  // Hook ANTES de cualquier return — persiste en localStorage para que F5 no vuelva al admin
+  const [verCocina, setVerCocina] = React.useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('view_preference') === 'cocina';
+  });
+
+  const irACocina = () => {
+    localStorage.setItem('view_preference', 'cocina');
+    setVerCocina(true);
+  };
+  const irAAdmin = () => {
+    localStorage.setItem('view_preference', 'admin');
+    setVerCocina(false);
+  };
 
   // ── Spinner mientras carga la sesión ──────────────────────────────────────
   if (loading) return (
@@ -76,10 +89,10 @@ export default function Page() {
 
   // ── Renderizar según rol — sin navegación, sin reload ─────────────────────
   if ((perfil.rol === 'admin' || perfil.rol === 'administrativa') && !verCocina) {
-    return <AdminDashboardWrapper onIrACocina={() => setVerCocina(true)} />;
+    return <AdminDashboardWrapper onIrACocina={irACocina} />;
   }
 
-  return <Dashboard onIrAAdmin={perfil.rol === 'admin' || perfil.rol === 'administrativa' ? () => setVerCocina(false) : undefined} />;
+  return <Dashboard onIrAAdmin={perfil.rol === 'admin' || perfil.rol === 'administrativa' ? irAAdmin : undefined} />;
 }
 
 // ── Dashboard real — todos los hooks acá, sin conditionals antes ──────────────
@@ -111,6 +124,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const [showProducidos, setShowProducidos] = useState(false);
   const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
   const [isCamaraOpen, setIsCamaraOpen]             = useState(false);
+  const [isMermaOpen, setIsMermaOpen]               = useState(false);
   const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
   const [isRecipeManagerOpen, setIsRecipeManagerOpen] = useState(false);
 
@@ -418,19 +432,14 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   useEffect(() => {
     // Carnicería
     loadProduccionesActivas().then(prods => {
-      if (prods.length > 0) {
-        setButcheryProductions(prods);
-      }
+      if (prods.length > 0) setButcheryProductions(prods);
     });
     cleanOldProducciones();
 
-    // ✅ Cocina: restaurar producciones activas al hacer F5
-    supabase
-      .from('cocina_produccion_activa')
-      .select('*')
-      .eq('status', 'running')
-      .then(({ data }) => {
-        if (data && data.length > 0) {
+    // Cocina: restaurar producciones activas al hacer F5
+    const fetchCocinaActiva = () =>
+      supabase.from('cocina_produccion_activa').select('*').eq('status', 'running').then(({ data }) => {
+        if (data) {
           setActiveProductions(data.map((d: any) => ({
             id: d.id ?? d.start_time,
             recipeName: d.recipe_name ?? 'Producción en curso',
@@ -444,6 +453,24 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
           })));
         }
       });
+
+    fetchCocinaActiva();
+
+    // ── Real-time: actualizar si otra tablet hace cambios ──────────────────
+    const channelId = `cocina_rt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const channel = supabase
+      .channel(channelId)
+      // Producciones de carnicería: otra tablet inició/finalizó algo
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'producciones_activas' }, () => {
+        loadProduccionesActivas().then(prods => setButcheryProductions(prods));
+      })
+      // Producciones de cocina: otra tablet inició/finalizó algo
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cocina_produccion_activa' }, () => {
+        fetchCocinaActiva();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // 4. Producciones de Carnicería (multi-producción simultánea)
@@ -558,7 +585,20 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                     <button onClick={() => setIsCamaraOpen(true)} className="w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 bg-slate-900 hover:bg-blue-600 text-white">ABRIR CÁMARA <ChevronRight size={16} /></button>
                 </div>
                 <div id="tour-card-stock-entry"><QuickActionCard title="Cargar Stock / Facturas" subtitle="Sumá mercadería al stock" icon={<Truck size={24} />} color="blue" onClick={() => setIsEntryModalOpen(true)} /></div>
-                <div id="tour-card-stock-exit"><QuickActionCard title="Uso Manual / Mermas" subtitle="Descontar stock manualmente" icon={<PackageMinus size={24} />} color="orange" onClick={() => setIsStockModalOpen(true)} /></div>
+                <div id="tour-card-merma">
+                  <div onClick={() => setIsMermaOpen(true)} className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-red-200 cursor-pointer">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-red-100 text-red-600">
+                        <Trash2 size={28} />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold mb-1 text-slate-800">Registrar Merma</h3>
+                    <p className="text-sm font-medium mb-4 text-slate-400">Se cayó, consumo, descarte</p>
+                    <div className="w-full py-3 font-bold rounded-xl bg-slate-900 hover:bg-red-600 text-white transition-all flex items-center justify-center gap-2">
+                      REGISTRAR <ChevronRight size={16} />
+                    </div>
+                  </div>
+                </div>
             </section>
             <section className="grid grid-cols-1 gap-6">
                 <div id="tour-card-stock-view"><QuickActionCard title="Ver Stock" subtitle="Stock actual por categoría" icon={<BarChart3 size={24} />} color="green" onClick={() => setIsStockViewOpen(true)} /></div>
@@ -582,6 +622,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       )}
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} operadorNombre={perfil?.nombre ?? ''} />}
       {isCamaraOpen && <CamaraFrioModal onClose={() => setIsCamaraOpen(false)} operadorNombre={perfil?.nombre ?? ''} />}
+      {isMermaOpen && <MermaRapidaModal onClose={() => setIsMermaOpen(false)} operadorNombre={perfil?.nombre ?? ''} />}
 
       {/* ── TOUR ── */}
       <KitchenTour />
