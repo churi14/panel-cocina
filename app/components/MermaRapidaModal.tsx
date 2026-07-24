@@ -156,7 +156,10 @@ export default function MermaRapidaModal({ onClose, operadorNombre }: { onClose:
           {/* STEP 2: Razón */}
           {step === 'razon' && (
             <div className="p-6 space-y-3">
-              <p className="text-sm text-slate-500 mb-1">Registrando como: <span className="font-black text-slate-700">{operador}</span></p>
+              <p className="text-sm text-slate-500 mb-1">
+                Registrando como: <span className="font-black text-slate-700">{operador}</span>
+                <button onClick={() => setStep('operador')} className="ml-2 text-xs text-blue-500 hover:text-blue-700 font-bold underline">cambiar</button>
+              </p>
               {RAZONES.map(r => (
                 <button key={r.id} onClick={() => { setRazon(r); setStep('producto'); }}
                   className="w-full flex items-center gap-4 px-5 py-4 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-300 rounded-2xl transition-all active:scale-95 text-left">
