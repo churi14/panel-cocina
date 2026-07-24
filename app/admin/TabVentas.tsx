@@ -697,6 +697,44 @@ function Dashboard() {
           </table>
         </div>
       </div>
+
+      {/* Ranking productos vendidos */}
+      {sales.length > 0 && (() => {
+        const rankMap: Record<string, number> = {};
+        for (const s of sales) {
+          const items: SaleItem[] = s.items ?? s.subitems ?? [];
+          for (const item of items) {
+            const nombre = item.name ?? item.nombre ?? item.productName ?? '';
+            if (!nombre.trim()) continue;
+            rankMap[nombre] = (rankMap[nombre] ?? 0) + (item.quantity ?? item.cantidad ?? 1);
+          }
+        }
+        const ranking = Object.entries(rankMap).sort((a, b) => b[1] - a[1]);
+        if (ranking.length === 0) return null;
+        const maxQ = ranking[0][1];
+        return (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <p className="text-xs font-black text-slate-400 uppercase">Productos vendidos en el período</p>
+              <span className="text-xs text-slate-600 font-bold">{ranking.length} productos · {ranking.reduce((s,[,q])=>s+q,0)} unidades</span>
+            </div>
+            <div className="divide-y divide-slate-800/50 max-h-80 overflow-y-auto">
+              {ranking.map(([nombre, qty], i) => (
+                <div key={nombre} className="flex items-center gap-3 px-5 py-3">
+                  <span className="text-slate-700 font-black text-xs w-5 shrink-0">{i+1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white text-sm truncate">{nombre}</p>
+                    <div className="mt-1 h-1.5 bg-slate-800 rounded-full">
+                      <div className="h-1.5 bg-blue-500 rounded-full" style={{ width: `${Math.round(qty/maxQ*100)}%` }} />
+                    </div>
+                  </div>
+                  <span className="font-black text-white text-sm shrink-0">{qty}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
