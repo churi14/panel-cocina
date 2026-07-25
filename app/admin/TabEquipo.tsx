@@ -74,6 +74,9 @@ function weekKey(iso: string) {
   const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
   return new Date(d.getTime() - day * 86400000).toISOString().slice(0,10);
 }
+// Normaliza corte para comparar: saca _L, minúsculas, trim
+function normCorte(c: string = '') { return c.toLowerCase().replace(/_l$/i, '').trim(); }
+
 function buildSesiones(eventos: Evento[], opNombre: string): Sesion[] {
   const norm = opNombre.toLowerCase().trim();
   // Inicios: filtramos por operador (tanto carnicería como cocina)
@@ -86,9 +89,10 @@ function buildSesiones(eventos: Evento[], opNombre: string): Sesion[] {
   return inicios.map(ini => {
     const iniMs = new Date(ini.fecha).getTime();
     // Buscar fin más próximo con mismo corte+kind después del inicio
+    // Normalizar corte para que "Lomo_L" matchee con "Lomo"
     const fin = todosLosFines
       .filter(f =>
-        f.corte?.toLowerCase() === ini.corte?.toLowerCase() &&
+        normCorte(f.corte) === normCorte(ini.corte) &&
         f.kind === ini.kind &&
         new Date(f.fecha).getTime() > iniMs
       )

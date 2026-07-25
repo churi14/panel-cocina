@@ -179,7 +179,8 @@ export function createButcheryHandlers(s: Setters) {
         nombre: carneLinpiaName, categoria: 'carnes_limpias', tipo: 'egreso',
         cantidad: prod.weightKg, unidad: 'kg',
         motivo: `Paso 2 ${kindLabel} → ${productoDestino}${cantidadDestinoTxt ? ` (${cantidadDestinoTxt})` : ''} — ${operador}`,
-        operador: 'Sistema', fecha: new Date().toISOString(),
+        operador: operador || 'Sistema',
+        fecha: prod.step2StartTime ? new Date(prod.step2StartTime).toISOString() : new Date().toISOString(),
       });
     }
     await logProduccionEvento('fin_paso2', kindLabel, corteDisplay, prod.weightKg,
@@ -272,17 +273,17 @@ export function createButcheryHandlers(s: Setters) {
     // 2. Agregar carne limpia principal (Nalga_L)
     const productoCarne = `${corteNorm}_L`;
     if (params.carneLinpiaKg > 0) {
-      await addToStockProduccion({ producto: productoCarne, categoria: 'carnes_limpias', cantidad: params.carneLinpiaKg, unidad: 'kg' });
+      await addToStockProduccion({ producto: productoCarne, categoria: 'carnes_limpias', cantidad: params.carneLinpiaKg, unidad: 'kg', operador, motivo: `Limpieza ${corteNorm} → ${productoCarne}` });
     }
 
     // 3. Segundo producto — Tapa_Nalga_L (solo nalga_con_tapa)
     if (params.carneLinpia2 && params.carneLinpia2.kg > 0) {
-      await addToStockProduccion({ producto: params.carneLinpia2.producto, categoria: 'carnes_limpias', cantidad: params.carneLinpia2.kg, unidad: 'kg' });
+      await addToStockProduccion({ producto: params.carneLinpia2.producto, categoria: 'carnes_limpias', cantidad: params.carneLinpia2.kg, unidad: 'kg', operador, motivo: `Limpieza ${corteNorm} → ${params.carneLinpia2.producto}` });
     }
 
     // 4. Grasa → stock_produccion
     if (params.grasaKg > 0) {
-      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'carnes_limpias', cantidad: params.grasaKg, unidad: 'kg' });
+      await addToStockProduccion({ producto: 'Grasa de Pella', categoria: 'carnes_limpias', cantidad: params.grasaKg, unidad: 'kg', operador, motivo: `Grasa de limpieza ${corteNorm}` });
     }
 
     // 5. Log + push
