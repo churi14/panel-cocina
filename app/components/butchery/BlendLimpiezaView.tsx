@@ -35,9 +35,9 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
   // ── Cálculos modo rápido ──────────────────────────────────────────────────
   const totalCarneRapido = parseFloat(totalRapido.replace(',', '.')) || 0;
   const grasaPctFrac = grasaPctRapido / 100;
-  // grasa = X% del blend total → grasa = carne * pct/(1-pct)
+  // grasa = X% de la carne limpia
   const grasaAgregar = totalCarneRapido > 0
-    ? parseFloat((totalCarneRapido * grasaPctFrac / (1 - grasaPctFrac)).toFixed(3))
+    ? parseFloat((totalCarneRapido * grasaPctFrac).toFixed(3))
     : 0;
   const totalBlendPicar = parseFloat((totalCarneRapido + grasaAgregar).toFixed(3));
   const desperdicioRapido = Math.max(0, parseFloat((totalBruto - totalCarneRapido).toFixed(3)));
@@ -166,7 +166,7 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
           {/* Selector de % de grasa */}
           <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
             <p className="text-sm font-black text-amber-900 mb-0.5">🫙 % Grasa de Pella a agregar</p>
-            <p className="text-xs text-amber-600 mb-4">Se calcula sobre el peso total del blend final</p>
+            <p className="text-xs text-amber-600 mb-4">Se calcula sobre el peso de la carne limpia</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setGrasaPctRapido(prev => Math.max(0, prev - 1))}
