@@ -21,8 +21,8 @@ const COLOR = {
   totalFont:   '0F172A', // slate-950
 };
 
-function hex(color: string): ExcelJS.Color {
-  return { argb: 'FF' + color };
+function hex(color: string) {
+  return { argb: 'FF' + color } as ExcelJS.Color;
 }
 
 function headerStyle(ws: ExcelJS.Worksheet, row: number, cols: number, text: string, bg = COLOR.header) {
