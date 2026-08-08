@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp,
-  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2
+  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -21,6 +21,7 @@ import TabAuditoria   from './TabAuditoria';
 import TabFichador      from './TabFichador';
 import TabFactura       from './TabFactura';
 import TabDesperdicios  from './TabDesperdicios';
+import ExportModal     from './ExportModal';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
@@ -57,6 +58,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [stats, setStats]                       = useState({ ingresos: 0, egresos: 0, operadores: 0, hoy: 0 });
   const [cierresPendientes, setCierresPendientes] = useState<{ fecha: string; ventas_count: number }[]>([]);
   const [cierreDismissed, setCierreDismissed]   = useState(false);
+  const [showExport, setShowExport] = useState(false);
 
   const fetchMovements = async () => {
     setLoading(true);
@@ -219,6 +221,12 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
           </button>
           <PushButton />
           <TestModeButton />
+          <button
+            onClick={() => setShowExport(true)}
+            title="Exportar a Excel"
+            className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/40 rounded-xl text-emerald-400 transition-colors text-xs font-black">
+            <FileSpreadsheet size={16} /> <span className="hidden md:inline">Excel</span>
+          </button>
           <button onClick={fetchMovements} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
             <RefreshCw size={18} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -304,6 +312,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'desperdicios'  && <TabDesperdicios />}
       </main>
 
+      {showExport && <ExportModal onClose={() => setShowExport(false)} />}
       <AdminTour />
     </div>
   );
