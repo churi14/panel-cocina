@@ -30,6 +30,7 @@ import { supabase } from './supabase';
 import { useTestMode } from './components/TestModeContext';
 import { FlaskConical, Snowflake } from 'lucide-react';
 import MermaRapidaModal from './components/MermaRapidaModal';
+import ProcedimientosModal from './components/ProcedimientosModal';
 
 // ── PWA: registrar service worker ────────────────────────────────────────────
 function usePWA() {
@@ -125,6 +126,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
   const [isKitchenModalOpen, setIsKitchenModalOpen] = useState(false);
   const [isCamaraOpen, setIsCamaraOpen]             = useState(false);
   const [isMermaOpen, setIsMermaOpen]               = useState(false);
+  const [isProcedimientosOpen, setIsProcedimientosOpen] = useState(false);
   const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
   const [isRecipeManagerOpen, setIsRecipeManagerOpen] = useState(false);
 
@@ -374,10 +376,10 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
     // ── SALSAS PRODUCCIÓN ─────────────────────────────────────────────────────
     { id: 'salsa_club',    name: 'Salsa Club',    category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
-        { name: 'Mayonesa',       qty: 100, unit: '%', isBase: true },
-        { name: 'Ajo',            qty: 2,   unit: '%' },
-        { name: 'Jugo de limón',  qty: 1,   unit: '%' },
-        { name: 'Sal',            qty: 0.5, unit: '%' },
+        { name: 'Aceite',  qty: 100, unit: '%', isBase: true },
+        { name: 'Leche',   qty: 1,   unit: '%' },
+        { name: 'Sal',     qty: 0.5, unit: '%' },
+        { name: 'Ajo',     qty: 2,   unit: '%' },
       ]},
     { id: 'salsa_mayo_mila', name: 'Mayo Mila', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
@@ -387,16 +389,16 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       ]},
     { id: 'salsa_spread', name: 'Salsa Spread', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
-        { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
-        { name: 'Ketchup',   qty: 20,  unit: '%' },
-        { name: 'Mostaza',   qty: 5,   unit: '%' },
-        { name: 'Sal',       qty: 0.3, unit: '%' },
+        { name: 'Mayonesa', qty: 100, unit: '%', isBase: true },
+        { name: 'Ketchup',  qty: 20,  unit: '%' },
+        { name: 'Relish',   qty: 5,   unit: '%' },
+        { name: 'Vinagre',  qty: 0.3, unit: '%' },
+        { name: 'Azúcar',   qty: 0.3, unit: '%' },
       ]},
     { id: 'salsa_crema', name: 'Salsa Crema', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
         { name: 'Queso crema', qty: 100, unit: '%', isBase: true },
-        { name: 'Ajo',         qty: 2,   unit: '%' },
-        { name: 'Sal',         qty: 0.5, unit: '%' },
+        { name: 'Mayonesa',    qty: 20,  unit: '%' },
       ]},
     { id: 'salsa_ajo', name: 'Salsa de Ajo', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
       ingredients: [
@@ -560,7 +562,13 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       <main className="flex-1 bg-white rounded-2xl shadow-sm overflow-y-auto relative flex flex-col">
         <header className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-8 py-6 flex justify-between items-center">
             <div><h2 className="text-2xl font-bold text-slate-800">Centro de Producción</h2><p className="text-slate-500 text-sm">Gestión integral de cocina, carnicería y stock.</p></div>
-            <div className="flex items-center gap-3"><span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-200 animate-pulse">SISTEMA ONLINE</span></div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setIsProcedimientosOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-xs font-black rounded-full transition-colors">
+                <BookOpen size={13} /> Procedimientos
+              </button>
+              <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-200 animate-pulse">SISTEMA ONLINE</span>
+            </div>
         </header>
 
         <div className="p-8 max-w-7xl mx-auto space-y-10 w-full">
@@ -623,6 +631,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       {isKitchenModalOpen && <KitchenProductionModal onClose={() => setIsKitchenModalOpen(false)} activeProductions={activeProductions} setActiveProductions={setActiveProductions} recipesDB={recipesDB} setProductionHistory={setProductionHistory} operadorNombre={perfil?.nombre ?? ''} />}
       {isCamaraOpen && <CamaraFrioModal onClose={() => setIsCamaraOpen(false)} operadorNombre={perfil?.nombre ?? ''} />}
       {isMermaOpen && <MermaRapidaModal onClose={() => setIsMermaOpen(false)} operadorNombre={perfil?.nombre ?? ''} />}
+      {isProcedimientosOpen && <ProcedimientosModal onClose={() => setIsProcedimientosOpen(false)} />}
 
       {/* ── TOUR ── */}
       <KitchenTour />

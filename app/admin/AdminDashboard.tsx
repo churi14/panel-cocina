@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp,
-  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet
+  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet, BookOpen
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -20,8 +20,9 @@ import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
 import TabFichador      from './TabFichador';
 import TabFactura       from './TabFactura';
-import TabDesperdicios  from './TabDesperdicios';
-import ExportModal     from './ExportModal';
+import TabDesperdicios    from './TabDesperdicios';
+import TabProcedimientos  from './TabProcedimientos';
+import ExportModal        from './ExportModal';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
@@ -46,7 +47,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios' | 'procedimientos'>('dashboard');
   const [stockSubTab, setStockSubTab] = useState<'produccion' | 'materias'>('produccion');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
@@ -193,7 +194,8 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
     { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
     { id: 'fichador',      label: 'Fichador',      icon: <Users size={16} /> },
-    { id: 'desperdicios',  label: 'Desperdicios',  icon: <Trash2 size={16} /> },
+    { id: 'desperdicios',   label: 'Desperdicios',   icon: <Trash2    size={16} /> },
+    { id: 'procedimientos', label: 'Procedimientos', icon: <BookOpen  size={16} /> },
   ] as const;
 
   return (
@@ -309,7 +311,8 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'auditoria'  && <TabAuditoria />}
         {activeTab === 'fichador'      && <TabFichador />}
         {activeTab === 'factura'       && <TabFactura />}
-        {activeTab === 'desperdicios'  && <TabDesperdicios />}
+        {activeTab === 'desperdicios'   && <TabDesperdicios />}
+        {activeTab === 'procedimientos' && <TabProcedimientos />}
       </main>
 
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}
