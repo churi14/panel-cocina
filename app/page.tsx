@@ -562,13 +562,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       <main className="flex-1 bg-white rounded-2xl shadow-sm overflow-y-auto relative flex flex-col">
         <header className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-slate-100 px-8 py-6 flex justify-between items-center">
             <div><h2 className="text-2xl font-bold text-slate-800">Centro de Producción</h2><p className="text-slate-500 text-sm">Gestión integral de cocina, carnicería y stock.</p></div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setIsProcedimientosOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-xs font-black rounded-full transition-colors">
-                <BookOpen size={13} /> Procedimientos
-              </button>
-              <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-200 animate-pulse">SISTEMA ONLINE</span>
-            </div>
+            <div className="flex items-center gap-3"><span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-200 animate-pulse">SISTEMA ONLINE</span></div>
         </header>
 
         <div className="p-8 max-w-7xl mx-auto space-y-10 w-full">
@@ -585,7 +579,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                     <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProductions.length > 0 ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div id="tour-card-camara" className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-blue-200">
                     <div className="flex justify-between items-start mb-6"><div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-blue-100 text-blue-600"><Snowflake size={28}/></div></div>
                     <h3 className="text-xl font-bold mb-1 text-slate-800">Cámara de Frío</h3>
@@ -605,6 +599,18 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                     <div className="w-full py-3 font-bold rounded-xl bg-slate-900 hover:bg-red-600 text-white transition-all flex items-center justify-center gap-2">
                       REGISTRAR <ChevronRight size={16} />
                     </div>
+                  </div>
+                </div>
+                <div onClick={() => setIsProcedimientosOpen(true)} className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-amber-200 cursor-pointer">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-amber-100 text-amber-600">
+                      <BookOpen size={28} />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold mb-1 text-slate-800">Procedimientos</h3>
+                  <p className="text-sm font-medium mb-4 text-slate-400">Estándares y recetas del equipo</p>
+                  <div className="w-full py-3 font-bold rounded-xl bg-slate-900 hover:bg-amber-600 text-white transition-all flex items-center justify-center gap-2">
+                    VER <ChevronRight size={16} />
                   </div>
                 </div>
             </section>
