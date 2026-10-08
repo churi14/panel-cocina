@@ -57,6 +57,30 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   const isPercent  = selectedProduct?.recipeType === 'percent';
   const isVerdura  = selectedProduct?.recipeType === 'verdura';
+
+  const [outputKg, setOutputKg] = useState('');
+
+  // Ratio total de la receta: suma de todos los porcentajes / 100
+  const totalPercentRatio = selectedProduct && isPercent
+    ? selectedProduct.ingredients.reduce((sum: number, ing: any) => sum + (ing.qty / 100), 0)
+    : 1;
+
+  // Sync bidireccional: base ingredient ↔ output total
+  const handleBaseChange = (val: string) => {
+    setBaseQtyKg(val);
+    const base = parseFloat(val);
+    if (!isNaN(base) && base > 0 && totalPercentRatio > 0)
+      setOutputKg((base * totalPercentRatio).toFixed(3));
+    else setOutputKg('');
+  };
+  const handleOutputChange = (val: string) => {
+    setOutputKg(val);
+    const out = parseFloat(val);
+    if (!isNaN(out) && out > 0 && totalPercentRatio > 0)
+      setBaseQtyKg((out / totalPercentRatio).toFixed(3));
+    else setBaseQtyKg('');
+  };
+
   const baseQtyGr = parseFloat(baseQtyKg || '0') * 1000;
 
   const groupedRecipes = recipesDB.reduce((acc: any, r: Recipe) => {
@@ -74,6 +98,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setSelectedProduct(r);
     setTargetUnits(r.baseYield || 0);
     setBaseQtyKg('');
+    setOutputKg('');
     setCheckedIngredients(new Set());
     setSelectedMenjunjeStock('');
     // Si es menjunje, fetch stocks disponibles
@@ -113,6 +138,12 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     } else {
       const mult = selectedProduct.baseYield > 0 ? targetUnits / selectedProduct.baseYield : 0;
       const val = ing.qty * mult;
+      // Conversión automática g → kg para ingredientes en gramos
+      if (ing.unit === 'g') {
+        if (val >= 1000) return `${(val / 1000).toFixed(2)} kg`;
+        if (val >= 100)  return `${Math.round(val)} g`;
+        return `${val.toFixed(1)} g`;
+      }
       return `${val % 1 === 0 ? val.toFixed(0) : val.toFixed(2)} ${ing.unit}`;
     }
   };
@@ -780,16 +811,33 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                     </div>
                   </div>
                 ) : isPercent ? (
-                  <div className="mb-6">
-                    <label className="block text-sm font-bold text-slate-600 mb-1">
-                      {selectedProduct?.ingredients.find((i: any) => i.isBase)?.name ?? 'Ingrediente base'}
-                    </label>
-                    <p className="text-xs text-slate-400 mb-3">Ingresá la cantidad en kg</p>
-                    <div className="relative">
-                      <input type="number" inputMode="decimal" step="0.1" value={baseQtyKg}
-                        onChange={e => setBaseQtyKg(e.target.value)} placeholder="0"
-                        className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white" />
-                      <span className="absolute right-4 top-6 text-sm font-bold text-slate-300">KG</span>
+                  <div className="mb-6 space-y-3">
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase mb-1">
+                        {selectedProduct?.ingredients.find((i: any) => i.isBase)?.name ?? 'Base'}
+                      </label>
+                      <div className="relative">
+                        <input type="number" inputMode="decimal" step="0.1" value={baseQtyKg}
+                          onChange={e => handleBaseChange(e.target.value)} placeholder="0"
+                          className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white" />
+                        <span className="absolute right-4 top-6 text-sm font-bold text-slate-300">KG</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 border-t border-slate-200" />
+                      <span className="text-xs text-slate-400 font-bold">o</span>
+                      <div className="flex-1 border-t border-slate-200" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-slate-400 uppercase mb-1">
+                        Rendimiento objetivo
+                      </label>
+                      <div className="relative">
+                        <input type="number" inputMode="decimal" step="0.1" value={outputKg}
+                          onChange={e => handleOutputChange(e.target.value)} placeholder="0"
+                          className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-blue-200 text-blue-600 focus:border-blue-500 focus:bg-white" />
+                        <span className="absolute right-4 top-6 text-sm font-bold text-slate-300">KG</span>
+                      </div>
                     </div>
                   </div>
                 ) : selectedProduct ? (

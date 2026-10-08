@@ -405,15 +405,14 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
         { name: 'Ajo',       qty: 8,   unit: '%' },
       ]},
-    { id: 'salsa_criolla', name: 'Criolla', category: 'Salsas', baseYield: 0, unit: 'kg', recipeType: 'percent',
+    { id: 'salsa_criolla', name: 'Criolla', category: 'Salsas', baseYield: 1.21, unit: 'kg', recipeType: 'percent',
       ingredients: [
-        { name: 'Tomate',    qty: 100, unit: '%', isBase: true },
-        { name: 'Cebolla',   qty: 40,  unit: '%' },
-        { name: 'Morrón',    qty: 20,  unit: '%' },
-        { name: 'Aceite',    qty: 10,  unit: '%' },
-        { name: 'Vinagre',   qty: 5,   unit: '%' },
-        { name: 'Sal',       qty: 1,   unit: '%' },
-        { name: 'Orégano',   qty: 0.5, unit: '%' },
+        { name: 'Tomate',   qty: 100,  unit: '%', isBase: true },
+        { name: 'Morrón',   qty: 100,  unit: '%' },
+        { name: 'Cebolla',  qty: 61.9, unit: '%' },
+        { name: 'Aceite',   qty: 11.9, unit: '%' },
+        { name: 'Vinagre',  qty: 11.9, unit: '%' },
+        { name: 'Sal',      qty: 2.4,  unit: '%' },
       ]},
 
     // ── PREP / FRITURA ────────────────────────────────────────────────────────
@@ -425,6 +424,20 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Leche',     qty: 39,   unit: '%' },
         { name: 'Sal',       qty: 1.5,  unit: '%' },
         { name: 'Pimienta',  qty: 0.8,  unit: '%' },
+      ]},
+
+    // ── PANADERÍA ─────────────────────────────────────────────────────────────
+    { id: 'pan_mila', name: 'Pan Mila', category: 'Panificados', baseYield: 30, unit: 'uds',
+      ingredients: [
+        { name: 'Harina 000',        qty: 1570,  unit: 'g' },
+        { name: 'Harina 0000',       qty: 1570,  unit: 'g' },
+        { name: 'Agua tibia',        qty: 1570,  unit: 'g' },
+        { name: 'Leva instantánea',  qty: 31.4,  unit: 'g' },
+        { name: 'Mejorante conc.',   qty: 1.57,  unit: 'g' },
+        { name: 'Mejormiga',         qty: 37.68, unit: 'g' },
+        { name: 'Sal',               qty: 62.80, unit: 'g' },
+        { name: 'Azúcar',            qty: 62.80, unit: 'g' },
+        { name: 'Aceite',            qty: 219.8, unit: 'g' },
       ]},
   ]);
 
