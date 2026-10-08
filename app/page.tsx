@@ -578,9 +578,11 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
             <div className="flex items-center gap-3"><span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-200 animate-pulse">SISTEMA ONLINE</span></div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto space-y-10 w-full">
+        <div className="p-8 max-w-7xl mx-auto space-y-8 w-full">
             {activeProductions.length > 0 && <LiveProductionMonitor />}
-            <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Producción</p>
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div id="tour-card-carniceria" className={`group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-slate-900 border-rose-500' : 'bg-white border-slate-100 hover:border-rose-200'}`}>
                     <div className="flex justify-between items-start mb-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-600'}`}><Beef size={28}/></div>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 && <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">{butcheryProductions.filter(p => p.status === 'step1_running').length} EN CURSO</span>}</div>
                     <h3 className={`text-xl font-bold mb-1 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'text-white' : 'text-slate-800'}`}>Carnicería</h3><p className={`text-sm font-medium mb-4 ${butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? 'text-slate-400' : 'text-slate-400'}`}>{butcheryProductions.filter(p => p.status === 'step1_running').length > 0 ? `${butcheryProductions.filter(p => p.status === 'step1_running').map(p => p.typeName).join(', ')}` : 'Lomito, Burger y Milanesa'}</p>
@@ -592,44 +594,46 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
                     <button onClick={() => setIsKitchenModalOpen(true)} className={`w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${activeProductions.length > 0 ? 'bg-green-600 text-white hover:bg-green-500' : 'bg-slate-900 hover:bg-amber-600 text-white'}`}>{'ABRIR RECETARIO'} <ChevronRight size={16} /></button>
                 </div>
             </section>
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div id="tour-card-camara" className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-blue-200">
-                    <div className="flex justify-between items-start mb-6"><div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-blue-100 text-blue-600"><Snowflake size={28}/></div></div>
-                    <h3 className="text-xl font-bold mb-1 text-slate-800">Cámara de Frío</h3>
-                    <p className="text-sm font-medium mb-4 text-slate-400">Carne, Pan Kalis y Medallones</p>
-                    <button onClick={() => setIsCamaraOpen(true)} className="w-full py-3 font-bold rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 bg-slate-900 hover:bg-blue-600 text-white">ABRIR CÁMARA <ChevronRight size={16} /></button>
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Gestión</p>
+            <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div id="tour-card-camara" className="group rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-blue-200">
+                    <div className="mb-4"><div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm bg-blue-100 text-blue-600"><Snowflake size={22}/></div></div>
+                    <h3 className="text-base font-black mb-0.5 text-slate-800">Cámara de Frío</h3>
+                    <p className="text-xs font-medium mb-4 text-slate-400">Carne, Pan Kalis y Medallones</p>
+                    <button onClick={() => setIsCamaraOpen(true)} className="w-full py-2.5 font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 bg-slate-900 hover:bg-blue-600 text-white text-sm">ABRIR <ChevronRight size={14} /></button>
                 </div>
                 <div id="tour-card-stock-entry"><QuickActionCard title="Cargar Stock / Facturas" subtitle="Sumá mercadería al stock" icon={<Truck size={24} />} color="blue" onClick={() => setIsEntryModalOpen(true)} /></div>
                 <div id="tour-card-merma">
-                  <div onClick={() => setIsMermaOpen(true)} className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-red-200 cursor-pointer">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-red-100 text-red-600">
-                        <Trash2 size={28} />
+                  <div onClick={() => setIsMermaOpen(true)} className="group rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-red-200 cursor-pointer">
+                    <div className="mb-4">
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm bg-red-100 text-red-600">
+                        <Trash2 size={22} />
                       </div>
                     </div>
-                    <h3 className="text-xl font-bold mb-1 text-slate-800">Registrar Merma</h3>
-                    <p className="text-sm font-medium mb-4 text-slate-400">Se cayó, consumo, descarte</p>
-                    <div className="w-full py-3 font-bold rounded-xl bg-slate-900 hover:bg-red-600 text-white transition-all flex items-center justify-center gap-2">
-                      REGISTRAR <ChevronRight size={16} />
+                    <h3 className="text-base font-black mb-0.5 text-slate-800">Registrar Merma</h3>
+                    <p className="text-xs font-medium mb-4 text-slate-400">Se cayó, consumo, descarte</p>
+                    <div className="w-full py-2.5 font-bold rounded-xl text-sm bg-slate-900 hover:bg-red-600 text-white transition-all flex items-center justify-center gap-2">
+                      REGISTRAR <ChevronRight size={14} />
                     </div>
                   </div>
                 </div>
-                <div onClick={() => setIsProcedimientosOpen(true)} className="group rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-amber-200 cursor-pointer">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm bg-amber-100 text-amber-600">
-                      <BookOpen size={28} />
+                <div onClick={() => setIsProcedimientosOpen(true)} className="group rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border bg-white border-slate-100 hover:border-amber-200 cursor-pointer">
+                  <div className="mb-4">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm bg-amber-100 text-amber-600">
+                      <BookOpen size={22} />
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold mb-1 text-slate-800">Procedimientos</h3>
-                  <p className="text-sm font-medium mb-4 text-slate-400">Estándares y recetas del equipo</p>
-                  <div className="w-full py-3 font-bold rounded-xl bg-slate-900 hover:bg-amber-600 text-white transition-all flex items-center justify-center gap-2">
-                    VER <ChevronRight size={16} />
+                  <h3 className="text-base font-black mb-0.5 text-slate-800">Procedimientos</h3>
+                  <p className="text-xs font-medium mb-4 text-slate-400">Estándares del equipo</p>
+                  <div className="w-full py-2.5 font-bold rounded-xl text-sm bg-slate-900 hover:bg-amber-600 text-white transition-all flex items-center justify-center gap-2">
+                    VER <ChevronRight size={14} />
                   </div>
                 </div>
-            </section>
-            <section className="grid grid-cols-1 gap-6">
                 <div id="tour-card-stock-view"><QuickActionCard title="Ver Stock" subtitle="Stock actual por categoría" icon={<BarChart3 size={24} />} color="green" onClick={() => setIsStockViewOpen(true)} /></div>
             </section>
+            </div>
             <ProduccionDelDia />
             <TareasPanel operadorActual={perfil?.nombre} />
         </div>

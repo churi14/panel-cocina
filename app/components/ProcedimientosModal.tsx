@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, AlertTriangle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 
 type Paso = {
   titulo: string;
@@ -12,15 +12,21 @@ type Paso = {
 
 type Procedimiento = {
   id: string;
+  icono: string;
   nombre: string;
-  pasos: Paso[];
+  descripcion: string;
+  categoria: string;
   aviso?: string;
+  pasos: Paso[];
 };
 
 const PROCEDIMIENTOS: Procedimiento[] = [
   {
     id: 'panceta',
-    nombre: '🥓 Panceta',
+    icono: '🥓',
+    nombre: 'Panceta',
+    descripcion: 'Corte, cocción y guardado',
+    categoria: 'Cocción',
     aviso: 'Todos hacemos el mismo procedimiento para mantener gramaje, cocción y textura.',
     pasos: [
       {
@@ -51,10 +57,22 @@ const PROCEDIMIENTOS: Procedimiento[] = [
 ];
 
 export default function ProcedimientosModal({ onClose }: { onClose: () => void }) {
-  const [seleccionado, setSeleccionado] = useState<string>(PROCEDIMIENTOS[0].id);
+  const [view, setView] = useState<'list' | 'detail'>('list');
+  const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [pasoAbierto, setPasoAbierto] = useState<number | null>(0);
 
-  const proc = PROCEDIMIENTOS.find(p => p.id === seleccionado)!;
+  const proc = PROCEDIMIENTOS.find(p => p.id === seleccionado) ?? null;
+
+  const abrirProcedimiento = (id: string) => {
+    setSeleccionado(id);
+    setPasoAbierto(0);
+    setView('detail');
+  };
+
+  const volver = () => {
+    setView('list');
+    setSeleccionado(null);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/70 backdrop-blur-sm"
@@ -63,71 +81,98 @@ export default function ProcedimientosModal({ onClose }: { onClose: () => void }
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-900/40 to-slate-900 px-6 py-5 flex items-center justify-between border-b border-slate-800 shrink-0">
-          <div>
-            <h2 className="font-black text-white text-lg">Procedimientos</h2>
-            <p className="text-slate-400 text-xs">Estándares del equipo</p>
+        <div className="bg-gradient-to-r from-amber-900/40 to-slate-900 px-5 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            {view === 'detail' && (
+              <button onClick={volver}
+                className="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-full flex items-center justify-center text-slate-400 transition-colors">
+                <ArrowLeft size={15} />
+              </button>
+            )}
+            <div>
+              <h2 className="font-black text-white text-base">
+                {view === 'list' ? 'Procedimientos' : proc?.nombre}
+              </h2>
+              <p className="text-slate-400 text-xs">
+                {view === 'list'
+                  ? `${PROCEDIMIENTOS.length} procedimiento${PROCEDIMIENTOS.length !== 1 ? 's' : ''}`
+                  : proc?.categoria}
+              </p>
+            </div>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-full flex items-center justify-center text-slate-400">
+            className="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-full flex items-center justify-center text-slate-400 transition-colors">
             <X size={16} />
           </button>
         </div>
 
-        {/* Selector de procedimiento (si hay más de uno) */}
-        {PROCEDIMIENTOS.length > 1 && (
-          <div className="flex gap-2 px-4 py-3 border-b border-slate-800 overflow-x-auto shrink-0">
-            {PROCEDIMIENTOS.map(p => (
-              <button key={p.id} onClick={() => { setSeleccionado(p.id); setPasoAbierto(0); }}
-                className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all
-                  ${seleccionado === p.id ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-slate-900 text-slate-400 border border-slate-800'}`}>
-                {p.nombre}
-              </button>
+        {/* LISTA DE CARDS */}
+        {view === 'list' && (
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid grid-cols-2 gap-3">
+              {PROCEDIMIENTOS.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => abrirProcedimiento(p.id)}
+                  className="bg-slate-900 border border-slate-800 hover:border-amber-500/60 rounded-2xl p-5 flex flex-col items-center gap-3 transition-all active:scale-95 group">
+                  <div className="w-14 h-14 bg-slate-800 group-hover:bg-amber-500/15 rounded-2xl flex items-center justify-center text-3xl transition-colors">
+                    {p.icono}
+                  </div>
+                  <div className="text-center">
+                    <p className="font-black text-white text-sm">{p.nombre}</p>
+                    <p className="text-slate-500 text-xs mt-0.5 leading-tight">{p.descripcion}</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-500/70 uppercase tracking-wide">{p.categoria}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* DETALLE DEL PROCEDIMIENTO */}
+        {view === 'detail' && proc && (
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Aviso */}
+            {proc.aviso && (
+              <div className="flex gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+                <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-amber-300 text-sm leading-relaxed">{proc.aviso}</p>
+              </div>
+            )}
+
+            {/* Pasos */}
+            {proc.pasos.map((paso, i) => (
+              <div key={i} className="border border-slate-800 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setPasoAbierto(pasoAbierto === i ? null : i)}
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-slate-800/40 transition-colors">
+                  <span className="font-black text-white text-sm">{paso.titulo}</span>
+                  {pasoAbierto === i
+                    ? <ChevronUp size={16} className="text-slate-400" />
+                    : <ChevronDown size={16} className="text-slate-400" />}
+                </button>
+
+                {pasoAbierto === i && (
+                  <div className="px-4 pb-4 pt-3 space-y-3 border-t border-slate-800 bg-slate-900/40">
+                    <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{paso.contenido}</p>
+                    {paso.highlight && (
+                      <div className="bg-orange-500/15 border border-orange-500/40 rounded-xl px-4 py-3">
+                        <p className="text-orange-300 font-black text-sm text-center">{paso.highlight}</p>
+                      </div>
+                    )}
+                    {paso.alerta && (
+                      <div className="flex gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                        <AlertTriangle size={13} className="text-red-400 shrink-0 mt-0.5" />
+                        <p className="text-red-300 text-xs leading-relaxed">{paso.alerta}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
 
-        {/* Contenido */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {/* Aviso */}
-          {proc.aviso && (
-            <div className="flex gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
-              <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-amber-300 text-sm leading-relaxed">{proc.aviso}</p>
-            </div>
-          )}
-
-          {/* Pasos */}
-          {proc.pasos.map((paso, i) => (
-            <div key={i} className="border border-slate-800 rounded-xl overflow-hidden">
-              <button
-                onClick={() => setPasoAbierto(pasoAbierto === i ? null : i)}
-                className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-slate-800/40 transition-colors">
-                <span className="font-black text-white text-sm">{paso.titulo}</span>
-                {pasoAbierto === i
-                  ? <ChevronUp size={16} className="text-slate-400" />
-                  : <ChevronDown size={16} className="text-slate-400" />}
-              </button>
-
-              {pasoAbierto === i && (
-                <div className="px-4 pb-4 pt-3 space-y-3 border-t border-slate-800 bg-slate-900/40">
-                  <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{paso.contenido}</p>
-                  {paso.highlight && (
-                    <div className="bg-orange-500/15 border border-orange-500/40 rounded-xl px-4 py-3">
-                      <p className="text-orange-300 font-black text-sm text-center">{paso.highlight}</p>
-                    </div>
-                  )}
-                  {paso.alerta && (
-                    <div className="flex gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
-                      <AlertTriangle size={13} className="text-red-400 shrink-0 mt-0.5" />
-                      <p className="text-red-300 text-xs leading-relaxed">{paso.alerta}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
