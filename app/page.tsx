@@ -146,15 +146,16 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
     // ── PANIFICADOS ──────────────────────────────────────────────────────────
     {
       id: 'pan_lomito', name: 'Pan de Lomito', category: 'Panificados',
-      baseYield: 140, unit: 'u', recipeType: 'percent',
+      baseYield: 82, unit: 'u',
       ingredients: [
-        { name: 'Harina 0000',        qty: 100,  unit: '%', isBase: true },
-        { name: 'Levadura en polvo',  qty: 1,    unit: '%' },
-        { name: 'Azúcar',             qty: 2,    unit: '%' },
-        { name: 'Mejormiga',          qty: 0.5,  unit: '%' },
-        { name: 'Sal',                qty: 1.25, unit: '%' },
-        { name: 'Aceite',             qty: 15,   unit: '%' },
-        { name: 'Agua',               qty: 53,   unit: '%' },
+        { name: 'Harina 000',        qty: 3000,  unit: 'g' },
+        { name: 'Harina 0000',       qty: 6000,  unit: 'g' },
+        { name: 'Agua tibia',        qty: 4500,  unit: 'g' },
+        { name: 'Leva instantánea',  qty: 90,    unit: 'g' },
+        { name: 'Mejormiga',         qty: 108,   unit: 'g' },
+        { name: 'Sal',               qty: 112.2, unit: 'g' },
+        { name: 'Azúcar',            qty: 180,   unit: 'g' },
+        { name: 'Aceite',            qty: 900,   unit: 'g' },
       ]
     },
     {
@@ -405,14 +406,14 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Mayonesa',  qty: 100, unit: '%', isBase: true },
         { name: 'Ajo',       qty: 8,   unit: '%' },
       ]},
-    { id: 'salsa_criolla', name: 'Criolla', category: 'Salsas', baseYield: 1.21, unit: 'kg', recipeType: 'percent',
+    { id: 'salsa_criolla', name: 'Criolla', category: 'Salsas', baseYield: 1.21, unit: 'kg',
       ingredients: [
-        { name: 'Tomate',   qty: 100,  unit: '%', isBase: true },
-        { name: 'Morrón',   qty: 100,  unit: '%' },
-        { name: 'Cebolla',  qty: 61.9, unit: '%' },
-        { name: 'Aceite',   qty: 11.9, unit: '%' },
-        { name: 'Vinagre',  qty: 11.9, unit: '%' },
-        { name: 'Sal',      qty: 2.4,  unit: '%' },
+        { name: 'Morrón rojo y verde', qty: 420, unit: 'g' },
+        { name: 'Cebolla',             qty: 260, unit: 'g' },
+        { name: 'Tomate',              qty: 420, unit: 'g' },
+        { name: 'Sal',                 qty: 10,  unit: 'g' },
+        { name: 'Aceite',              qty: 50,  unit: 'g' },
+        { name: 'Vinagre',             qty: 50,  unit: 'g' },
       ]},
 
     // ── PREP / FRITURA ────────────────────────────────────────────────────────

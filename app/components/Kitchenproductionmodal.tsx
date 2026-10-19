@@ -157,7 +157,9 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     const now = Date.now();
     const finalTargetUnits = (isVerdura || isFiambre) ? parseFloat(verduraBrutoKg) : isPercent ? parseFloat(baseQtyKg) : targetUnits;
     const finalUnit = (isVerdura || isFiambre) ? 'kg' : isPercent ? 'kg base' : selectedProduct.unit;
-    const finalBaseKg = (isVerdura || isFiambre) ? parseFloat(verduraBrutoKg) : parseFloat(baseQtyKg || '0');
+    const finalBaseKg = (isVerdura || isFiambre) ? parseFloat(verduraBrutoKg)
+      : isPercent ? parseFloat(baseQtyKg || '0')
+      : selectedProduct.unit === 'kg' ? targetUnits : 0; // batch en kg: los kg son el total
 
     const newProd: import('../types').ActiveProductionItem = {
       id: now,
@@ -650,7 +652,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                   <div className="mb-8">
                     <label className="block text-sm font-bold text-slate-600 mb-2">Cantidad a producir</label>
                     <div className="relative">
-                      <input type="number" value={targetUnits}
+                      <input type="number" inputMode="decimal" step="any" value={targetUnits}
                         onChange={e => setTargetUnits(Math.max(0, Number(e.target.value)))}
                         className="w-full p-4 border-2 rounded-xl text-4xl font-black text-center outline-none transition-all bg-slate-50 border-amber-200 text-amber-600 focus:border-amber-500 focus:bg-white" />
                       <span className="absolute right-4 top-6 text-sm font-bold text-slate-300 uppercase">{selectedProduct.unit}</span>
