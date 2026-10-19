@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef } from 'react';
 import { supabase } from '../supabase';
-import { clearCocinaProduccion } from './kitchenHelpers';
+import { clearCocinaProduccion, addProduccion, deductStockForRecipe, notifyError } from './kitchenHelpers';
 
 type Prod = {
   id: number;
@@ -18,14 +18,15 @@ type Props = {
   operador: string;
   onFinalizado: () => void;
   onCancelar: () => void;
+  recipe?: any; // receta completa, para descontar ingredientes automáticamente
 };
 
-export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCancelar }: Props) {
+export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCancelar, recipe }: Props) {
   const [unidades, setUnidades] = useState('');
   const [guardando, setGuardando] = useState(false);
   const guardandoRef = useRef(false);
 
-  const baseKg = prod.baseKg ?? prod.targetUnits;
+  const baseKg = prod.baseKg || 0; // kg de harina base (0 en recetas batch como Pan Mila)
 
   // Normalizar nombre del producto — unificar variantes al nombre canónico en DB
   const PAN_ALIAS: Record<string, string> = {
@@ -46,16 +47,9 @@ export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCa
     setGuardando(true);
 
     // Actualizar stock_produccion
-    const { data: existe } = await supabase.from('stock_produccion')
-      .select('id, cantidad').eq('producto', nombrePan).maybeSingle();
-    if (existe) {
-      await supabase.from('stock_produccion')
-        .update({ cantidad: existe.cantidad + unidadesNum, ultima_prod: new Date().toISOString() })
-        .eq('id', existe.id);
-    } else {
-      await supabase.from('stock_produccion')
-        .insert({ producto: nombrePan, categoria: 'pan', cantidad: unidadesNum, unidad: 'u', ultima_prod: new Date().toISOString() });
-    }
+    if (recipe) await deductStockForRecipe(recipe, baseKg, prod.targetUnits, operador);
+    if (!(await addProduccion(nombrePan, unidadesNum, 'pan', 'u')))
+      notifyError(`No se pudo sumar ${nombrePan} al stock producido`);
 
     // Evento
     await supabase.from('produccion_eventos').insert({

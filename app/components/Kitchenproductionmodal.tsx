@@ -10,8 +10,7 @@ import { supabase } from '../supabase';
 import { sendResumenTurno } from './pushEvents';
 import {
   saveCocinaProduccion, clearCocinaProduccion,
-  deductStockForMilanesa, deductStockForFraccion, deductStockForFiambre, deductStockForVerdura,
-  VERDURA_STOCK_MAP, FIAMBRE_STOCK_MAP,
+  deductStockForFraccion,
   formatQty,
 } from './kitchenHelpers';
 import KitchenFinalizarSalsa    from './KitchenFinalizarSalsa';
@@ -180,7 +179,8 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setBaseQtyKg('');
 
     // Persistir en Supabase y notificar al admin
-    await saveCocinaProduccion(now, selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador, selectedProduct.id);
+    const guardada = await saveCocinaProduccion(now, selectedProduct.name, finalTargetUnits, finalUnit, finalBaseKg, now, operador, selectedProduct.id);
+    if (!guardada) alert('⚠️ La producción no se pudo guardar en la nube. Si refrescás la página se pierde: avisale al admin.');
   };
 
   // ── Produccion activa seleccionada para finalizar ────────────────────────
@@ -213,6 +213,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
 
   const activeRecipeId = finishingProd?.recipeId ?? selectedProduct?.id ?? '';
   const activeRecipeName = finishingProd?.recipeName ?? '';
+  const activeRecipe = recipesDB.find((r: any) => r.id === activeRecipeId) ?? recipesDB.find((r: any) => r.name === activeRecipeName);
   const isFraccion       = (selectedProduct as any)?.recipeType === 'fraccion';
   const isVerduraRecipe  = activeRecipeId.startsWith('verdura_');
   const isFiambreRecipe  = activeRecipeId.startsWith('fiambre_');
@@ -221,11 +222,11 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const isPanRecipe      = activeRecipeId.startsWith('pan_');
   const isMilanesaRecipe = !activeRecipeId.startsWith('empanado_') && (
     activeRecipeName.toLowerCase().includes('menjunje') ||
-    recipesDB.find((r: any) => r.name === activeRecipeName)?.category === 'Milanesas'
+    activeRecipe?.category === 'Milanesas'
   );
   const isSalsaRecipe    = !isFraccion && !isPanRecipe && !isMilanesaRecipe && !isVerduraRecipe && !isFiambreRecipe && !isEmpanadoRecipe &&
     (activeRecipeId.startsWith('salsa_') ||
-     ['Salsas', 'Prep'].includes(recipesDB.find((r: any) => r.name === activeRecipeName)?.category ?? ''));
+     ['Salsas', 'Prep'].includes(activeRecipe?.category ?? ''));
   const menjunjeTipo = activeRecipeName.toLowerCase().includes('pollo') ? 'Pollo' : 'Carne';
 
 
@@ -264,275 +265,78 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     onClose();
   };
 
+  // Cierre genérico. Pan, menjunje, empanado, salsa, fiambre y verdura se cierran en sus
+  // componentes KitchenFinalizar*; acá solo queda el fraccionado y el cierre simple.
   const handleFinish = async () => {
     const prod = finishingProd;
-    if (!prod) return;
-    if (finishingRef.current) return;
+    if (!prod || finishingRef.current) return;
+    if (isPanRecipe) { setShowPanModal(true); return; }
+    if (isMilanesaRecipe) { setShowMenjunjeModal(true); return; }
+
+    // Fraccionado: primero pedir pote y cantidad
+    if (isFraccion) {
+      if (!showFraccionModal) { setShowFraccionModal(true); return; }
+      if (!fraccionPote || !(parseInt(fraccionCantidad) > 0)) {
+        alert('Elegí el pote e ingresá cuántos llenaste.');
+        return;
+      }
+    }
+
     finishingRef.current = true;
-    if (isFraccion && !showFraccionModal) { setShowFraccionModal(true); finishingRef.current = false; return; }
-    setShowFraccionModal(false);
-    // Pan: pedir unidades
-    if (isPanRecipe && !showPanModal) { setShowPanModal(true); return; }
-    setShowPanModal(false);
-    // Menjunje milanesa
-    if (isMilanesaRecipe && !showMenjunjeModal) {
-      // IMPORTANTE: usar solo baseKg, nunca targetUnits como kg
-      // targetUnits puede ser unidades (ej: 200 milanesas) y el sistema lo tomaría como 200kg
-      const rawKg = prod.baseKg ?? 0;
-      const kgBase = String(rawKg);
-      setMenjunjeKg(kgBase);
-      setMilanesaKgSalieron(kgBase);
-      setShowMenjunjeModal(true);
-      return;
-    }
-    setShowMenjunjeModal(false);
-    // Empanado: pedir kg menjunje y kg salidos
-    // Empanado: pre-llenar kg si no están cargados aún
-    if (isEmpanadoRecipe && !empanadoMenjunjeKg) {
-      // IMPORTANTE: usar solo baseKg, nunca targetUnits como kg
-      const rawKg = prod.baseKg ?? 0;
-      const kgBase = String(rawKg);
-      setEmpanadoMenjunjeKg(kgBase);
-      setEmpanadoSalieronKg(kgBase);
-      setShowEmpanadoModal(false);
-      return;
-    }
-    setShowEmpanadoModal(false);
-    // Salsa: pedir kg producidos
-    if (isSalsaRecipe && !showSalsaModal) { setShowSalsaModal(true); return; }
-    setShowSalsaModal(false);
+    try {
+      const endTime = Date.now();
+      const baseKg = prod.baseKg ?? 0;
 
-    const endTime = Date.now();
-    const dur = (endTime - prod.startTime) / 1000;
-    const baseKg = prod.baseKg ?? 0;
+      setProductionHistory((prev: ProductionRecord[]) => [...prev, {
+        id: Date.now(), date: new Date().toLocaleDateString('es-AR'), timestamp: endTime,
+        recipeName: prod.recipeName,
+        quantity: prod.targetUnits, unit: prod.unit,
+        durationSeconds: (endTime - prod.startTime) / 1000,
+        startTime: new Date(prod.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
 
-    setProductionHistory((prev: ProductionRecord[]) => [...prev, {
-      id: Date.now(), date: new Date().toLocaleDateString(), timestamp: endTime,
-      recipeName: prod.recipeName,
-      quantity: prod.targetUnits, unit: prod.unit,
-      durationSeconds: dur,
-      startTime: new Date(prod.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }]);
-
-    // Si es menjunje, descontar stock
-    if (isMilanesaRecipe && menjunjeCorte && menjunjeKg) {
-      const kg = parseFloat(menjunjeKg);
-      // Ingredientes menjunje por kg de milanesa (proporcional)
-      // Proporciones reales del menjunje: base 10kg carne
-      const ingredientes = [
-        { nombre: 'HUEVO',    cantidad: Math.ceil(kg * 4.2),                      unidad: 'u'  },
-        { nombre: 'AJO',      cantidad: parseFloat((kg * 0.0125).toFixed(3)),     unidad: 'kg' },
-        { nombre: 'LIMÓN',    cantidad: parseFloat((kg * 0.0175).toFixed(3)),     unidad: 'u'  },
-        { nombre: 'SAL',      cantidad: parseFloat((kg * 0.0195).toFixed(3)),     unidad: 'kg' },
-        { nombre: 'PEREJIL',  cantidad: parseFloat((kg * 0.015).toFixed(3)),      unidad: 'kg' },
-      ];
-      // corte viene del input, tipo (carne/pollo) viene de la receta seleccionada
-      const corteKey = menjunjeCorte || menjunjeTipo;
-      await deductStockForMilanesa(corteKey, kg, ingredientes);
-
-      // Registrar milanesas producidas en stock_produccion
-      const kgSalieron = parseFloat(milanesaKgSalieron) || 0;
-      const unidades   = parseInt(milanesaUnidades) || 0;
-      if (kgSalieron > 0 && unidades > 0) {
-        const grPorU = Math.round((kgSalieron / unidades) * 1000);
-        const tipoMila = corteKey.toLowerCase().includes('pollo') ? 'Suprema de Pollo' : 
-                         activeRecipeName.toLowerCase().includes('suprema') ? 'Suprema' : 'Milanesa';
-        const productoNombre = `${tipoMila} - ${corteKey}`;
-        
-        // Upsert en stock_produccion
-        const { data: existente } = await supabase.from('stock_produccion')
-          .select('id, cantidad').eq('producto', productoNombre).maybeSingle();
-        if (existente) {
-          await supabase.from('stock_produccion')
-            .update({ cantidad: parseFloat((existente.cantidad + unidades).toFixed(0)), ultima_prod: new Date().toISOString() })
-            .eq('id', existente.id);
-        } else {
-          await supabase.from('stock_produccion')
-            .insert({ producto: productoNombre, categoria: 'milanesa', cantidad: unidades, unidad: 'u', ultima_prod: new Date().toISOString() });
-        }
-
-        // Notificar al admin
-        await fetch('/api/push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: `✅ Menjunje finalizado · \${operador}`,
-            body: `\${unidades} \${tipoMila} (\${kgSalieron}kg · \${grPorU}g/u) — \${corteKey}`,
-            tag: 'menjunje-fin', url: '/admin',
-          }),
-        });
-
-        // Guardar rendimiento en produccion_eventos
-        await supabase.from('produccion_eventos').insert({
-          tipo: 'fin_cocina', kind: 'milanesa', corte: productoNombre,
-          peso_kg: kgSalieron, waste_kg: parseFloat(menjunjeKg) - kgSalieron,
-          operador, detalle: `\${unidades}u · \${grPorU}g/u · de \${menjunjeKg}kg carne`,
-          fecha: new Date().toISOString(),
-        });
-      }
-    }
-
-    // Registrar preparación de fiambres — manejado por KitchenFinalizarFiambre
-
-    // Registrar empanado de milanesa
-    if (isEmpanadoRecipe && empanadoMenjunjeKg && empanadoSalieronKg) {
-      const mKg  = parseFloat(empanadoMenjunjeKg);
-      const sKg  = parseFloat(empanadoSalieronKg);
-      const tipo = empanadoTipoActual === 'pollo' ? 'Pollo' : 'Carne';
-      // Nombre específico por corte si eligieron uno, sino genérico
-      const corteLabel = empanadoCorteStock
-        ? empanadoCorteStock.replace('Milanesa - ', '')
-        : tipo;
-      const prodNombre = `Milanesa de ${tipo} Empanada - ${corteLabel}`;
-      // Descontar menjunje — buscar por el stock específico seleccionado o por tipo genérico
-      const menjNombre = empanadoCorteStock || (empanadoTipoActual === 'pollo' ? 'Menjunje Milanesa Pollo' : 'Menjunje Milanesa Carne');
-      const { data: menjData } = await supabase.from('stock_produccion')
-        .select('id, cantidad').ilike('producto', menjNombre).maybeSingle();
-      if (menjData) {
-        const newQty = parseFloat((Number(menjData.cantidad) - mKg).toFixed(3));
-        await supabase.from('stock_produccion')
-          .update({ cantidad: newQty }).eq('id', menjData.id);
-      }
-      // Descontar pan rallado y huevo del stock (proporcional: 1kg menjunje = 0.15kg pan rallado, 1 huevo)
-      const panRalladoKg = parseFloat((mKg * 0.15).toFixed(3));
-      const huevos = Math.ceil(mKg * 1);
-      for (const [nom, qty, u] of [['PAN RALLADO', panRalladoKg, 'kg'], ['HUEVO', huevos, 'u']] as [string,number,string][]) {
-        const { data: sd } = await supabase.from('stock').select('id, cantidad').eq('nombre', nom).maybeSingle();
-        if (sd) {
-          const nq = parseFloat((Number(sd.cantidad) - qty).toFixed(3));
-          await supabase.from('stock').update({ cantidad: nq, fecha_actualizacion: new Date().toISOString().slice(0,10) }).eq('id', sd.id);
-          await supabase.from('stock_movements').insert({ nombre: nom, categoria: 'SECOS', tipo: 'egreso', cantidad: qty, unidad: u, motivo: `Empanado ${tipo}`, operador, fecha: new Date().toISOString() });
+      // Fraccionado de salsas en potes
+      if (isFraccion) {
+        const potes = (selectedProduct as any)?.potes ?? [];
+        const ps = potes.find((p: any) => p.id === fraccionPote);
+        if (ps) {
+          const cant = parseInt(fraccionCantidad);
+          const kg = parseFloat((cant * ps.capacidadKg).toFixed(3));
+          await deductStockForFraccion((selectedProduct as any).stockNombre, (selectedProduct as any).stockOrigen ?? 'stock', kg, cant, ps.label, operador);
+          await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `🫙 Fraccionado · ${operador}`, body: `${cant} potes ${ps.label} de ${(selectedProduct as any).stockNombre} (${kg}kg)`, tag: 'fraccion-salsa', url: '/admin' }) });
         }
       }
-      // Agregar milanesa empanada
-      if (sKg > 0) {
-        const { data: epd } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', prodNombre).maybeSingle();
-        if (epd) {
-          await supabase.from('stock_produccion').update({ cantidad: parseFloat((Number(epd.cantidad)+sKg).toFixed(3)), ultima_prod: new Date().toISOString() }).eq('id', epd.id);
-        } else {
-          await supabase.from('stock_produccion').insert({ producto: prodNombre, categoria: 'milanesa', cantidad: sKg, unidad: 'kg', ultima_prod: new Date().toISOString() });
-        }
+
+      // Limpiar Supabase y notificar al admin
+      await clearCocinaProduccion(prod.id, prod.recipeName, baseKg, operador);
+      const remaining = activeProductions.filter(p => p.id !== prod.id);
+      setActiveProductions(remaining);
+
+      // Si no quedan producciones activas → resumen de turno a admins
+      if (remaining.length === 0) {
+        const { data: stockProdData } = await supabase
+          .from('stock_produccion')
+          .select('producto, cantidad, unidad, categoria')
+          .order('categoria')
+          .order('ultima_prod', { ascending: false });
+        const stockResumen = (stockProdData ?? []).map((s: any) => ({
+          producto: s.producto, cantidad: s.cantidad, unidad: s.unidad,
+        }));
+        await sendResumenTurno(
+          [{ recipeName: prod.recipeName, operador, cantidad: prod.targetUnits, unidad: prod.unit }],
+          stockResumen as { producto: string; cantidad: number; unidad: string }[]
+        );
       }
-      await supabase.from('produccion_eventos').insert({ tipo: 'fin_cocina', kind: 'milanesa', corte: prodNombre, peso_kg: sKg, waste_kg: parseFloat((mKg - sKg).toFixed(3)), operador, detalle: `${mKg}kg menjunje → ${sKg}kg empanada`, fecha: new Date().toISOString() });
-      await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `✅ Empanado ${tipo} · ${operador}`, body: `${sKg}kg milanesa empanada de ${mKg}kg menjunje`, tag: 'empanado-fin', url: '/admin' }) });
+
+      setFinishingProd(null);
+      setFraccionPote('');
+      setFraccionCantidad('');
+      setShowFraccionModal(false);
+      onClose();
+    } finally {
+      finishingRef.current = false;
     }
-
-    // Salsa: manejado por KitchenFinalizarSalsa
-
-    // Empanado: manejado por KitchenFinalizarEmpanado
-
-    // Registrar pan producido en stock_produccion
-    if (isPanRecipe && panUnidades && parseInt(panUnidades) > 0) {
-      const unidadesPan = parseInt(panUnidades);
-      const nombrePan = prod.recipeName; // "Pan de Lomito" o "Pan Sanguchero"
-      const { data: existePan } = await supabase.from('stock_produccion')
-        .select('id, cantidad').eq('producto', nombrePan).maybeSingle();
-      if (existePan) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: existePan.cantidad + unidadesPan, ultima_prod: new Date().toISOString() })
-          .eq('id', existePan.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: nombrePan, categoria: 'pan', cantidad: unidadesPan, unidad: 'u', ultima_prod: new Date().toISOString() });
-      }
-      // Notificar
-      await fetch('/api/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `🍞 ${nombrePan} finalizado · ${operador}`,
-          body: `${unidadesPan} unidades producidas`,
-          tag: 'pan-producido', url: '/admin',
-        }),
-      });
-      // Log evento
-      await supabase.from('produccion_eventos').insert({
-        tipo: 'fin_cocina', kind: 'pan', corte: nombrePan,
-        peso_kg: prod.baseKg ?? 0, operador,
-        detalle: `${unidadesPan}u producidas`,
-        fecha: new Date().toISOString(),
-      });
-    }
-
-    // Descuento stock verduras producidas
-    if (isVerduraRecipe && selectedProduct) {
-      const bruto = parseFloat(verduraBrutoKg) || baseKg;
-      const desperdicio = parseFloat(verduraDesperdicioKg) || 0;
-      // Validar contra stock actual
-      const stockNombreCheck = VERDURA_STOCK_MAP[selectedProduct.id];
-      if (stockNombreCheck && bruto > 0) {
-        const { data: stockCheck } = await supabase.from('stock')
-          .select('cantidad').eq('nombre', stockNombreCheck).maybeSingle();
-        const stockActual = stockCheck ? Number(stockCheck.cantidad) : 0;
-        // Si van a descontar más del doble del stock disponible, pedir confirmación
-        if (bruto > Math.max(50, stockActual * 2) && stockActual > 0) {
-          setVerduraConfirmData({ bruto, stockActual, nombre: stockNombreCheck });
-          return; // No continuar — esperar confirmación del usuario
-        }
-      }
-      await deductStockForVerdura(selectedProduct.id, bruto, desperdicio);
-      setVerduraBrutoKg('');
-      setVerduraDesperdicioKg('');
-    }
-
-    // Fraccionado de salsas en potes
-    if (isFraccion && fraccionPote && fraccionCantidad) {
-      const potes = (selectedProduct as any)?.potes ?? [];
-      const ps = potes.find((p: any) => p.id === fraccionPote);
-      if (ps) {
-        const cant = parseInt(fraccionCantidad);
-        const kg = parseFloat((cant * ps.capacidadKg).toFixed(3));
-        await deductStockForFraccion((selectedProduct as any).stockNombre, (selectedProduct as any).stockOrigen ?? 'stock', kg, cant, ps.label, operador);
-        await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `🫙 Fraccionado · ${operador}`, body: `${cant} potes ${ps.label} de ${(selectedProduct as any).stockNombre} (${kg}kg)`, tag: 'fraccion-salsa', url: '/admin' }) });
-      }
-    }
-
-    // Limpiar Supabase y notificar al admin
-    await clearCocinaProduccion(prod.id, prod.recipeName, baseKg, operador);
-    const remaining = activeProductions.filter(p => p.id !== prod.id);
-    setActiveProductions(remaining);
-    setFinishingProd(null);
-
-    // Si no quedan producciones activas → resumen de turno a admins
-    if (remaining.length === 0) {
-      const { data: stockProdData } = await supabase
-        .from('stock_produccion')
-        .select('producto, cantidad, unidad, categoria')
-        .order('categoria')
-        .order('ultima_prod', { ascending: false });
-      
-      // Agrupar por categoría para el resumen
-      const stockResumen = (stockProdData ?? []).map((s: any) => ({
-        producto: s.producto,
-        cantidad: s.cantidad,
-        unidad: s.unidad,
-      }));
-      
-      await sendResumenTurno(
-        [{ recipeName: prod.recipeName, operador, cantidad: prod.targetUnits, unidad: prod.unit }],
-        stockResumen as { producto: string; cantidad: number; unidad: string }[]
-      );
-    }
-
-    setFinishingProd(null);
-    setMenjunjeCorte('');
-    setMenjunjeKg('');
-    setMilanesaKgSalieron('');
-    setMilanesaUnidades('');
-    setPanUnidades('');
-    setShowPanModal(false);
-    setFraccionPote('');
-    setFraccionCantidad('');
-    setShowFraccionModal(false);
-    setShowSalsaModal(false);
-    setSalsaKgProducidos('');
-    setShowEmpanadoModal(false);
-    setEmpanadoMenjunjeKg('');
-    setEmpanadoSalieronKg('');
-    setEmpanadoCorteStock('');
-    setSelectedMenjunjeStock('');
-    onClose();
   };
 
   const elapsedTime = finishingProd ? currentTime - finishingProd.startTime : 0;
@@ -636,7 +440,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
               {/* Producciones activas */}
               {activeProductions.length > 0 ? activeProductions.map(prod => {
                 const elapsed = currentTime - prod.startTime;
-                const recipe = recipesDB.find((r: any) => r.name === prod.recipeName);
+                const recipe = recipesDB.find((r: any) => r.id === prod.recipeId) ?? recipesDB.find((r: any) => r.name === prod.recipeName);
                 const isFin = finishingProd?.id === prod.id;
                 return (
                   <div key={prod.id} className={`bg-slate-900 rounded-2xl border overflow-hidden transition-all ${isFin ? 'border-amber-500' : 'border-slate-800'}`}>
@@ -713,6 +517,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                         })()}
                         {isSalsaRecipe && finishingProd && (
                           <KitchenFinalizarSalsa
+                            recipe={activeRecipe}
                             prod={{...finishingProd, recipeId: activeRecipeId ?? ''}}
                             operador={operador}
                             onFinalizado={() => { setShowSalsaModal(false); finalizarProduccion(); }}
@@ -729,6 +534,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                         )}
                         {isPanRecipe && showPanModal && finishingProd && (
                           <KitchenFinalizarPan
+                            recipe={activeRecipe}
                             prod={{...finishingProd, recipeId: activeRecipeId}}
                             operador={operador}
                             onFinalizado={() => { setShowPanModal(false); setPanUnidades(''); finalizarProduccion(); }}

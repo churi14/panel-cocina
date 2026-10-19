@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
-import { clearCocinaProduccion } from './kitchenHelpers';
+import { clearCocinaProduccion, adjustStock, egresoStock, addProduccion, notifyError } from './kitchenHelpers';
 
 type Prod = {
   id: number;
@@ -79,43 +79,29 @@ export default function KitchenFinalizarEmpanado({ prod, operador, empanadoTipo,
     const prodNombre = `Milanesa de ${tipo} Empanada`;
 
     // Descontar menjunje
-    const { data: menjData } = await supabase.from('stock_produccion')
-      .select('id, cantidad').eq('producto', menjNombre).maybeSingle();
-    if (menjData) {
-      await supabase.from('stock_produccion')
-        .update({ cantidad: parseFloat((Number(menjData.cantidad) - menjNum).toFixed(3)) })
-        .eq('id', menjData.id);
-    }
+    const { data: menjRows } = await supabase.from('stock_produccion')
+      .select('id').eq('producto', menjNombre).limit(1);
+    if (menjRows?.[0] && (await adjustStock('stock_produccion', menjRows[0].id, -menjNum)) === null)
+      notifyError(`No se pudo descontar ${menjNombre}`);
 
     // Descontar pan rallado y huevo
     const panRalladoKg = parseFloat((menjNum * 0.15).toFixed(3));
     const huevos = Math.ceil(menjNum);
     for (const [nom, qty, u] of [['PAN RALLADO', panRalladoKg, 'kg'], ['HUEVO', huevos, 'u']] as [string, number, string][]) {
-      const { data: sd } = await supabase.from('stock').select('id, cantidad').eq('nombre', nom).maybeSingle();
-      if (sd) {
-        await supabase.from('stock').update({
-          cantidad: parseFloat((Number(sd.cantidad) - qty).toFixed(3)),
-          fecha_actualizacion: new Date().toISOString().slice(0, 10),
-        }).eq('id', sd.id);
-        await supabase.from('stock_movements').insert({
-          nombre: nom, categoria: 'SECOS', tipo: 'egreso',
-          cantidad: qty, unidad: u,
-          motivo: `Empanado ${tipo}`, operador, fecha: new Date().toISOString(),
-        });
-      }
+      const { data: sd } = await supabase.from('stock').select('id, nombre, categoria').eq('nombre', nom).limit(1);
+      if (sd?.[0] && (await egresoStock(sd[0], qty, u, `Empanado ${tipo}`, operador)) === null)
+        notifyError(`No se pudo descontar ${nom}`);
     }
 
     // Agregar milanesa empanada al stock
     if (salioNum > 0) {
-      const { data: epd } = await supabase.from('stock_produccion')
-        .select('id, cantidad').ilike('producto', `${prodNombre}%`).maybeSingle();
-      if (epd) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: parseFloat((Number(epd.cantidad) + salioNum).toFixed(3)), ultima_prod: new Date().toISOString() })
-          .eq('id', epd.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: prodNombre, categoria: 'milanesa', cantidad: salioNum, unidad: 'kg', ultima_prod: new Date().toISOString() });
+      const { data: epdRows } = await supabase.from('stock_produccion')
+        .select('id').ilike('producto', `${prodNombre}%`).limit(1);
+      if (epdRows?.[0]) {
+        if ((await adjustStock('stock_produccion', epdRows[0].id, salioNum)) === null) notifyError(`No se pudo sumar ${prodNombre}`);
+        else await supabase.from('stock_produccion').update({ ultima_prod: new Date().toISOString() }).eq('id', epdRows[0].id);
+      } else if (!(await addProduccion(prodNombre, salioNum, 'milanesa', 'kg'))) {
+        notifyError(`No se pudo sumar ${prodNombre} al stock producido`);
       }
     }
 

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
-import { clearCocinaProduccion, deductStockForMilanesa } from './kitchenHelpers';
+import { clearCocinaProduccion, deductStockForMilanesa, addProduccion, notifyError } from './kitchenHelpers';
 
 type Prod = {
   id: number;
@@ -72,7 +72,7 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
     const ingredientes = [
       { nombre: 'HUEVO',   cantidad: Math.ceil(carneNum * 4.2),               unidad: 'u'  },
       { nombre: 'AJO',     cantidad: parseFloat((carneNum * 0.0125).toFixed(3)), unidad: 'kg' },
-      { nombre: 'LIMÓN',   cantidad: parseFloat((carneNum * 0.0175).toFixed(3)), unidad: 'u'  },
+      { nombre: 'LIMÓN',   cantidad: parseFloat((carneNum * 0.0175).toFixed(3)), unidad: 'kg' },
       { nombre: 'SAL',     cantidad: parseFloat((carneNum * 0.0195).toFixed(3)), unidad: 'kg' },
       { nombre: 'PEREJIL', cantidad: parseFloat((carneNum * 0.015).toFixed(3)),  unidad: 'kg' },
     ];
@@ -85,16 +85,8 @@ export default function KitchenFinalizarMenjunje({ prod, operador, menjunjeTipo,
     // Registrar menjunje en stock_produccion
     const nombreMenjunje = `Menjunje Milanesa ${menjunjeTipo}`;
     if (menjNum > 0) {
-      const { data: existe } = await supabase.from('stock_produccion')
-        .select('id, cantidad').eq('producto', nombreMenjunje).maybeSingle();
-      if (existe) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: parseFloat((Number(existe.cantidad) + menjNum).toFixed(3)), ultima_prod: new Date().toISOString() })
-          .eq('id', existe.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: nombreMenjunje, categoria: 'milanesa', cantidad: menjNum, unidad: 'kg', ultima_prod: new Date().toISOString() });
-      }
+      if (!(await addProduccion(nombreMenjunje, menjNum, 'milanesa', 'kg')))
+        notifyError(`No se pudo sumar ${nombreMenjunje} al stock producido`);
     }
 
     // Evento

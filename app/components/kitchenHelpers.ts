@@ -13,26 +13,173 @@ export function formatQty(grams: number): string {
   return `${grams % 1 === 0 ? grams.toFixed(0) : grams.toFixed(1)} gr`;
 }
 
+// ── Ajuste de stock (atómico vía RPC, con fallback) ──────────────────────────
+
+export function notifyError(contexto: string, err?: unknown) {
+  console.error(`[cocina] ${contexto}`, err);
+  if (typeof window !== 'undefined') {
+    window.alert(`⚠️ ${contexto}. Avisale al admin para revisar el stock.`);
+  }
+}
+
+type StockTabla = 'stock' | 'stock_produccion';
+
+/** Suma `delta` (puede ser negativo) a una fila. Nunca baja de 0. Devuelve la cantidad nueva o null si falló. */
+export async function adjustStock(tabla: StockTabla, id: string | number, delta: number): Promise<number | null> {
+  const { data, error } = await supabase.rpc('adjust_stock', { p_tabla: tabla, p_id: String(id), p_delta: delta });
+  if (!error && data !== null && data !== undefined) return Number(data);
+  // Fallback si la función SQL (sql/20261019_adjust_stock.sql) todavía no existe
+  const { data: row, error: e1 } = await supabase.from(tabla).select('cantidad').eq('id', id).maybeSingle();
+  if (e1 || !row) { console.error('adjustStock leer', e1); return null; }
+  const nueva = Math.max(0, parseFloat((Number(row.cantidad) + delta).toFixed(3)));
+  const { error: e2 } = await supabase.from(tabla).update({ cantidad: nueva }).eq('id', id);
+  if (e2) { console.error('adjustStock escribir', e2); return null; }
+  return nueva;
+}
+
+const hoy = () => new Date().toISOString().slice(0, 10);
+
+/** Descuenta de `stock` (materias primas) una fila ya conocida y deja el movimiento. */
+export async function egresoStock(
+  row: { id: string | number; nombre: string; categoria?: string | null },
+  cantidad: number, unidad: string, motivo: string, operador: string
+): Promise<number | null> {
+  const nueva = await adjustStock('stock', row.id, -cantidad);
+  if (nueva === null) return null;
+  await supabase.from('stock').update({ fecha_actualizacion: hoy() }).eq('id', row.id);
+  await supabase.from('stock_movements').insert({
+    nombre: row.nombre, categoria: row.categoria ?? 'SECOS', tipo: 'egreso',
+    cantidad: parseFloat(cantidad.toFixed(3)), unidad, motivo, operador,
+    fecha: new Date().toISOString(),
+  });
+  return nueva;
+}
+
+/** Suma `cantidad` a un producto de stock_produccion; lo crea si no existe. */
+export async function addProduccion(
+  producto: string, cantidad: number, categoria: string, unidad: string
+): Promise<boolean> {
+  const { data } = await supabase.from('stock_produccion')
+    .select('id').eq('producto', producto).limit(1);
+  const row = data?.[0];
+  if (row) {
+    const n = await adjustStock('stock_produccion', row.id, cantidad);
+    if (n === null) return false;
+    await supabase.from('stock_produccion').update({ ultima_prod: new Date().toISOString() }).eq('id', row.id);
+    return true;
+  }
+  const { error } = await supabase.from('stock_produccion')
+    .insert({ producto, categoria, cantidad, unidad, ultima_prod: new Date().toISOString() });
+  return !error;
+}
+
+// ── Descuento automático de ingredientes según la receta ─────────────────────
+
+const norm = (s: string) =>
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+type StockRow = { id: string | number; nombre: string; unidad: string | null; categoria: string | null };
+
+function matchStock(ingName: string, rows: StockRow[]): StockRow | null {
+  const n = norm(ingName);
+  if (!n) return null;
+  const exact = rows.find(r => norm(r.nombre) === n);
+  if (exact) return exact;
+  const toks = n.split(' ');
+  const cands = rows
+    .filter(r => { const rt = norm(r.nombre).split(' '); return toks.every(t => rt.includes(t)); })
+    .sort((a, b) => norm(a.nombre).split(' ').length - norm(b.nombre).split(' ').length);
+  return cands[0] ?? null;
+}
+
+const MASA: Record<string, number> = { g: 1, gr: 1, kg: 1000 };
+const VOL:  Record<string, number> = { ml: 1, lt: 1000, l: 1000 };
+
+/** Convierte `qty` de la unidad `from` a la unidad `to` del stock. null si no se puede. */
+function convertir(qty: number, from: string, to: string | null): number | null {
+  const f = from.toLowerCase(), t = (to ?? 'kg').toLowerCase();
+  if (f === t) return qty;
+  if (MASA[f] && MASA[t]) return qty * MASA[f] / MASA[t];
+  if (VOL[f] && VOL[t])   return qty * VOL[f] / VOL[t];
+  if (MASA[f] && VOL[t])  return qty * MASA[f] / VOL[t]; // 1 g ≈ 1 ml
+  if (VOL[f] && MASA[t])  return qty * VOL[f] / MASA[t];
+  return null;
+}
+
+type RecipeLike = {
+  id: string; name: string; baseYield: number; recipeType?: string;
+  ingredients: { name: string; qty: number; unit: string; isBase?: boolean }[];
+};
+
+/**
+ * Descuenta de `stock` los ingredientes de la receta, escalados a lo producido.
+ *  - percent: baseKg es el ingrediente base (100%).
+ *  - batch:   escala por targetUnits / baseYield.
+ * Lo que no se encuentra en stock (o no convierte de unidad) queda en produccion_eventos
+ * como 'alerta_stock' para que el admin lo revise; no frena el cierre.
+ */
+export async function deductStockForRecipe(
+  recipe: RecipeLike, baseKg: number, targetUnits: number, operador: string
+): Promise<{ ok: boolean; sinDescontar: string[] }> {
+  const sinDescontar: string[] = [];
+  const items: { name: string; qty: number; unit: string }[] = [];
+  if (recipe.recipeType === 'percent') {
+    if (!(baseKg > 0)) return { ok: true, sinDescontar };
+    const baseGr = baseKg * 1000;
+    for (const ing of recipe.ingredients)
+      items.push({ name: ing.name, qty: ing.isBase ? baseGr : (ing.qty / 100) * baseGr, unit: 'g' });
+  } else {
+    if (!(recipe.baseYield > 0) || !(targetUnits > 0)) return { ok: true, sinDescontar };
+    const mult = targetUnits / recipe.baseYield;
+    for (const ing of recipe.ingredients) items.push({ name: ing.name, qty: ing.qty * mult, unit: ing.unit });
+  }
+
+  const { data: rows, error } = await supabase.from('stock').select('id, nombre, unidad, categoria');
+  if (error || !rows) { notifyError('No se pudo leer el stock para descontar ingredientes', error); return { ok: false, sinDescontar }; }
+
+  let ok = true;
+  for (const it of items) {
+    if (!(it.qty > 0)) continue;
+    const row = matchStock(it.name, rows as StockRow[]);
+    if (!row) { sinDescontar.push(`${it.name} (no está en stock)`); continue; }
+    const cant = convertir(it.qty, it.unit, row.unidad);
+    if (cant === null) { sinDescontar.push(`${it.name} (unidad ${it.unit} ≠ ${row.unidad})`); continue; }
+    const nueva = await egresoStock(row, cant, row.unidad ?? 'kg', `Producción ${recipe.name}`, operador);
+    if (nueva === null) { ok = false; sinDescontar.push(`${it.name} (error al descontar)`); continue; }
+    await checkAndNotifyStock(row.nombre, nueva, row.unidad ?? 'kg', { id: row.id, cantidad: nueva } as any);
+  }
+  if (sinDescontar.length) {
+    await supabase.from('produccion_eventos').insert({
+      tipo: 'alerta_stock', kind: 'cocina', corte: recipe.name, operador,
+      detalle: `Sin descontar: ${sinDescontar.join('; ')}`, fecha: new Date().toISOString(),
+    });
+  }
+  if (!ok) notifyError(`Algunos ingredientes de ${recipe.name} no se pudieron descontar`);
+  return { ok, sinDescontar };
+}
+
 // ── Persistencia cocina ───────────────────────────────────────────────────────
 
 export async function saveCocinaProduccion(
   id: number, recipeName: string, targetUnits: number,
   unit: string, baseQtyKg: number, startTime: number,
   operadorCocina: string, recipeId?: string
-) {
+): Promise<boolean> {
   try {
-    await supabase.from('cocina_produccion_activa').insert({
+    const { error } = await supabase.from('cocina_produccion_activa').insert({
       id, recipe_name: recipeName, recipe_id: recipeId ?? null,
       target_units: targetUnits, unit, base_qty_kg: baseQtyKg,
       start_time: startTime, status: 'running',
       operador: operadorCocina, updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
     await supabase.from('produccion_eventos').insert({
       tipo: 'inicio_cocina', kind: 'cocina', corte: recipeName,
       operador: operadorCocina, peso_kg: baseQtyKg,
       detalle: `Inicio cocina — ${recipeName}`, fecha: new Date().toISOString(),
     });
-  } catch (e) { console.error('Error guardando producción cocina:', e); }
+    return true;
+  } catch (e) { console.error('Error guardando producción cocina:', e); return false; }
 }
 
 export async function clearCocinaProduccion(
@@ -55,30 +202,25 @@ export async function deductStockForMilanesa(
   cantidadKg: number,
   ingredientes: { nombre: string; cantidad: number; unidad: string }[]
 ) {
+  const productoMila = `Milanesa - ${corteNombre}`;
+  let ok = true;
   try {
-    const productoMila = `Milanesa - ${corteNombre}`;
-    const { data: milaData } = await supabase
-      .from('stock_produccion').select('id, cantidad')
-      .eq('producto', productoMila).maybeSingle();
-    if (milaData) {
-      const newQty = parseFloat((Number(milaData.cantidad) - cantidadKg).toFixed(3));
-      await supabase.from('stock_produccion').update({ cantidad: newQty }).eq('id', milaData.id);
-      await checkAndNotifyProduccionByName(productoMila, newQty, 'kg', supabase);
+    const { data: milaRows } = await supabase
+      .from('stock_produccion').select('id').eq('producto', productoMila).limit(1);
+    if (milaRows?.[0]) {
+      const newQty = await adjustStock('stock_produccion', milaRows[0].id, -cantidadKg);
+      if (newQty === null) ok = false;
+      else await checkAndNotifyProduccionByName(productoMila, newQty, 'kg', supabase);
     }
+    const { data: rows } = await supabase.from('stock').select('id, nombre, unidad, categoria');
     for (const ing of ingredientes) {
-      const { data: sd } = await supabase.from('stock').select('id, cantidad').ilike('nombre', ing.nombre).maybeSingle();
-      if (sd) {
-        const newQty = parseFloat((Number(sd.cantidad) - ing.cantidad).toFixed(3));
-        await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', sd.id);
-        await supabase.from('stock_movements').insert({
-          nombre: ing.nombre, categoria: 'SECOS', tipo: 'egreso',
-          cantidad: ing.cantidad, unidad: ing.unidad,
-          motivo: `Menjunje Milanesa — ${productoMila}`,
-          operador: 'Cocina', fecha: new Date().toISOString(),
-        });
-      }
+      const row = matchStock(ing.nombre, (rows ?? []) as StockRow[]);
+      if (!row) continue;
+      const nueva = await egresoStock(row, ing.cantidad, ing.unidad, `Menjunje Milanesa — ${productoMila}`, 'Cocina');
+      if (nueva === null) ok = false;
     }
-  } catch (e) { console.error('Error descontando stock menjunje:', e); }
+  } catch (e) { console.error('Error descontando stock menjunje:', e); ok = false; }
+  if (!ok) notifyError('No se pudo descontar todo el stock del menjunje');
 }
 
 // ── Fraccionado de salsas ─────────────────────────────────────────────────────
@@ -88,38 +230,35 @@ export async function deductStockForFraccion(
   kgUsado: number, potesProducidos: number, tipoPote: string, operador: string
 ) {
   if (kgUsado <= 0 || potesProducidos <= 0) return;
-  const tabla = stockOrigen === 'stock' ? 'stock' : 'stock_produccion';
-  const campoNombre = stockOrigen === 'stock' ? 'nombre' : 'producto';
-  const { data } = await supabase.from(tabla).select('id, cantidad').eq(campoNombre, stockNombre).maybeSingle();
-  if (data) {
-    const newQty = parseFloat((Number(data.cantidad) - kgUsado).toFixed(3));
-    await supabase.from(tabla).update({
-      cantidad: newQty,
-      ...(stockOrigen === 'stock'
-        ? { fecha_actualizacion: new Date().toISOString().slice(0, 10) }
-        : { ultima_prod: new Date().toISOString() })
-    }).eq('id', data.id);
-    if (stockOrigen === 'stock') {
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'SECOS', tipo: 'egreso',
-        cantidad: parseFloat(kgUsado.toFixed(3)), unidad: 'kg',
-        motivo: `Fraccionado ${stockNombre} — ${potesProducidos}u ${tipoPote}`,
-        operador, fecha: new Date().toISOString(),
-      });
+  try {
+    const tabla = stockOrigen === 'stock' ? 'stock' : 'stock_produccion';
+    const campoNombre = stockOrigen === 'stock' ? 'nombre' : 'producto';
+    const { data: origen } = await supabase.from(tabla).select('id').eq(campoNombre, stockNombre).limit(1);
+    if (origen?.[0]) {
+      const newQty = await adjustStock(tabla, origen[0].id, -kgUsado);
+      if (newQty === null) { notifyError(`No se pudo descontar ${stockNombre}`); }
+      else if (stockOrigen === 'stock') {
+        await supabase.from('stock').update({ fecha_actualizacion: hoy() }).eq('id', origen[0].id);
+        await checkAndNotifyStock(stockNombre, newQty, 'kg', { id: origen[0].id, cantidad: newQty } as any);
+        await supabase.from('stock_movements').insert({
+          nombre: stockNombre, categoria: 'SECOS', tipo: 'egreso',
+          cantidad: parseFloat(kgUsado.toFixed(3)), unidad: 'kg',
+          motivo: `Fraccionado ${stockNombre} — ${potesProducidos}u ${tipoPote}`,
+          operador, fecha: new Date().toISOString(),
+        });
+      } else {
+        await supabase.from('stock_produccion').update({ ultima_prod: new Date().toISOString() }).eq('id', origen[0].id);
+      }
     }
-  }
-  const { data: pd } = await supabase.from('stock_produccion').select('id, cantidad').ilike('producto', `%${stockNombre}%`).maybeSingle();
-  if (pd) {
-    await supabase.from('stock_produccion').update({ cantidad: Number(pd.cantidad) + potesProducidos, ultima_prod: new Date().toISOString() }).eq('id', pd.id);
-  } else {
-    await supabase.from('stock_produccion').insert({ producto: `POTES ${stockNombre}`, categoria: 'dip', cantidad: potesProducidos, unidad: 'u', ultima_prod: new Date().toISOString() });
-  }
-  await supabase.from('produccion_eventos').insert({
-    tipo: 'fin_cocina', kind: 'salsa', corte: stockNombre, peso_kg: kgUsado,
-    operador, detalle: `${potesProducidos} potes ${tipoPote} · ${kgUsado.toFixed(3)}kg`,
-    fecha: new Date().toISOString(),
-  });
+    // Potes: fila propia "POTES <salsa>" (nunca la salsa a granel, que está en kg)
+    if (!(await addProduccion(`POTES ${stockNombre}`, potesProducidos, 'dip', 'u')))
+      notifyError(`No se pudieron sumar los potes de ${stockNombre}`);
+    await supabase.from('produccion_eventos').insert({
+      tipo: 'fin_cocina', kind: 'salsa', corte: stockNombre, peso_kg: kgUsado,
+      operador, detalle: `${potesProducidos} potes ${tipoPote} · ${kgUsado.toFixed(3)}kg`,
+      fecha: new Date().toISOString(),
+    });
+  } catch (e) { notifyError('Error en el fraccionado', e); }
 }
 
 // ── Mapas de stock por receta ─────────────────────────────────────────────────
@@ -180,8 +319,6 @@ export function sugerirDecimal(valor: number, limiteMax: number): number | null 
   return null;
 }
 
-
-
 const FIAMBRE_UNIDAD_MAP: Record<string, string> = {
   'fiambre_cheddar_feta': 'u',
 };
@@ -191,35 +328,19 @@ export async function deductStockForFiambre(recipeId: string, pesoKg: number, op
   const prodNombre  = FIAMBRE_PROD_MAP[recipeId];
   const unidad      = FIAMBRE_UNIDAD_MAP[recipeId] ?? 'kg';
   if (!stockNombre || pesoKg <= 0) return;
+  let ok = true;
   try {
-    const { data } = await supabase.from('stock')
-      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
-    if (data) {
-      const newQty = parseFloat((Number(data.cantidad) - pesoKg).toFixed(3));
-      await supabase.from('stock')
-        .update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) })
-        .eq('id', data.id);
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'FIAMBRE', tipo: 'egreso',
-        cantidad: pesoKg, unidad,
-        motivo: `Producción ${prodNombre}`, operador, fecha: new Date().toISOString(),
-      });
+    const { data } = await supabase.from('stock').select('id, nombre, categoria').eq('nombre', stockNombre).limit(1);
+    if (data?.[0]) {
+      const nueva = await egresoStock({ ...data[0], categoria: 'FIAMBRE' }, pesoKg, unidad, `Producción ${prodNombre}`, operador);
+      if (nueva === null) ok = false;
+      else await checkAndNotifyStock(stockNombre, nueva, 'kg', { id: data[0].id, cantidad: nueva } as any);
     }
-    if (pesoKg > 0 && prodNombre) {
-      const { data: pd } = await supabase.from('stock_produccion')
-        .select('id, cantidad').eq('producto', prodNombre).maybeSingle();
-      if (pd) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: parseFloat((Number(pd.cantidad) + pesoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
-          .eq('id', pd.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: prodNombre, categoria: 'fiambre', cantidad: pesoKg, unidad, ultima_prod: new Date().toISOString() });
-      }
-    }
-  } catch (e) { console.error('Error deductStockForFiambre:', e); }
+    if (prodNombre && !(await addProduccion(prodNombre, pesoKg, 'fiambre', unidad))) ok = false;
+  } catch (e) { console.error('Error deductStockForFiambre:', e); ok = false; }
+  if (!ok) notifyError(`No se pudo registrar el stock de ${prodNombre}`);
 }
+
 // ── Descuento de stock para verduras ─────────────────────────────────────────
 
 export async function deductStockForVerdura(recipeId: string, brutoPesoKg: number, desperdicioKg: number) {
@@ -227,38 +348,23 @@ export async function deductStockForVerdura(recipeId: string, brutoPesoKg: numbe
   const prodNombre  = VERDURA_PROD_MAP[recipeId];
   if (!stockNombre || brutoPesoKg <= 0) return;
   const netoKg = Math.max(0, brutoPesoKg - desperdicioKg);
+  let ok = true;
   try {
-    const { data } = await supabase.from('stock')
-      .select('id, cantidad').eq('nombre', stockNombre).maybeSingle();
-    if (data) {
-      const newQty = parseFloat((Number(data.cantidad) - brutoPesoKg).toFixed(3));
-      await supabase.from('stock')
-        .update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) })
-        .eq('id', data.id);
-      await checkAndNotifyStock(stockNombre, newQty, 'kg', data as any);
-      await supabase.from('stock_movements').insert({
-        nombre: stockNombre, categoria: 'verduras', tipo: 'egreso',
-        cantidad: parseFloat(brutoPesoKg.toFixed(3)), unidad: 'kg',
-        motivo: `Producción ${prodNombre}`, operador: 'Cocina', fecha: new Date().toISOString(),
-      });
-      await supabase.from('produccion_eventos').insert({
-        tipo: 'fin_cocina', kind: 'cocina', corte: prodNombre,
-        peso_kg: brutoPesoKg, waste_kg: desperdicioKg, operador: 'Cocina',
-        detalle: `Bruto: ${brutoPesoKg}kg | Desperdicio: ${desperdicioKg}kg | Neto: ${netoKg}kg`,
-        fecha: new Date().toISOString(),
-      });
-    }
-    if (netoKg > 0) {
-      const { data: pd } = await supabase.from('stock_produccion')
-        .select('id, cantidad').eq('producto', prodNombre).maybeSingle();
-      if (pd) {
-        await supabase.from('stock_produccion')
-          .update({ cantidad: parseFloat((Number(pd.cantidad) + netoKg).toFixed(3)), ultima_prod: new Date().toISOString() })
-          .eq('id', pd.id);
-      } else {
-        await supabase.from('stock_produccion')
-          .insert({ producto: prodNombre, categoria: 'verduras', cantidad: parseFloat(netoKg.toFixed(3)), unidad: 'kg', ultima_prod: new Date().toISOString() });
+    const { data } = await supabase.from('stock').select('id, nombre').eq('nombre', stockNombre).limit(1);
+    if (data?.[0]) {
+      const nueva = await egresoStock({ ...data[0], categoria: 'verduras' }, brutoPesoKg, 'kg', `Producción ${prodNombre}`, 'Cocina');
+      if (nueva === null) ok = false;
+      else {
+        await checkAndNotifyStock(stockNombre, nueva, 'kg', { id: data[0].id, cantidad: nueva } as any);
+        await supabase.from('produccion_eventos').insert({
+          tipo: 'fin_cocina', kind: 'cocina', corte: prodNombre,
+          peso_kg: brutoPesoKg, waste_kg: desperdicioKg, operador: 'Cocina',
+          detalle: `Bruto: ${brutoPesoKg}kg | Desperdicio: ${desperdicioKg}kg | Neto: ${netoKg}kg`,
+          fecha: new Date().toISOString(),
+        });
       }
     }
-  } catch (e) { console.error('Error deductStockForVerdura:', e); }
+    if (netoKg > 0 && !(await addProduccion(prodNombre, parseFloat(netoKg.toFixed(3)), 'verduras', 'kg'))) ok = false;
+  } catch (e) { console.error('Error deductStockForVerdura:', e); ok = false; }
+  if (!ok) notifyError(`No se pudo registrar el stock de ${prodNombre}`);
 }

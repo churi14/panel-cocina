@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
-import { clearCocinaProduccion } from './kitchenHelpers';
+import { clearCocinaProduccion, addProduccion, deductStockForRecipe, notifyError } from './kitchenHelpers';
 
 type Prod = {
   id: number;
@@ -18,19 +18,12 @@ type Props = {
   operador: string;
   onFinalizado: () => void;
   onCancelar: () => void;
+  recipe?: any; // receta completa, para descontar ingredientes automáticamente
 };
 
 async function addSalsaToStock(prodNombre: string, kg: number, operador: string) {
-  const { data: pd } = await supabase.from('stock_produccion')
-    .select('id, cantidad').ilike('producto', prodNombre).maybeSingle();
-  if (pd) {
-    await supabase.from('stock_produccion')
-      .update({ cantidad: parseFloat((Number(pd.cantidad) + kg).toFixed(3)), ultima_prod: new Date().toISOString() })
-      .eq('id', pd.id);
-  } else {
-    await supabase.from('stock_produccion')
-      .insert({ producto: prodNombre, categoria: 'salsa', cantidad: kg, unidad: 'kg', ultima_prod: new Date().toISOString() });
-  }
+  if (!(await addProduccion(prodNombre, kg, 'salsa', 'kg')))
+    notifyError(`No se pudo sumar ${prodNombre} al stock producido`);
   await supabase.from('produccion_eventos').insert({
     tipo: 'fin_cocina', kind: 'salsa', corte: prodNombre,
     peso_kg: kg, operador,
@@ -39,7 +32,7 @@ async function addSalsaToStock(prodNombre: string, kg: number, operador: string)
   });
 }
 
-export default function KitchenFinalizarSalsa({ prod, operador, onFinalizado, onCancelar }: Props) {
+export default function KitchenFinalizarSalsa({ prod, operador, onFinalizado, onCancelar, recipe }: Props) {
   const [kgSalieron, setKgSalieron] = useState('');
   const [guardando, setGuardando]   = useState(false);
   const guardandoRef = useRef(false);
@@ -68,6 +61,7 @@ export default function KitchenFinalizarSalsa({ prod, operador, onFinalizado, on
     guardandoRef.current = true;
     setGuardando(true);
 
+    if (recipe) await deductStockForRecipe(recipe, prod.baseKg ?? 0, prod.targetUnits, operador);
     await addSalsaToStock(prod.recipeName, kg, operador);
     await clearCocinaProduccion(prod.id, prod.recipeName, baseKg, operador);
 
