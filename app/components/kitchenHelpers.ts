@@ -60,7 +60,7 @@ export async function addProduccion(
   producto: string, cantidad: number, categoria: string, unidad: string
 ): Promise<boolean> {
   // ilike sin comodines: en la base conviven "SALSA CLUB" y "Salsa Club"
-  const exacto = producto.replace(/[\%_]/g, c => '\' + c);
+  const exacto = producto.replace(/[\\%_]/g, c => '\\' + c);
   const { data } = await supabase.from('stock_produccion')
     .select('id').ilike('producto', exacto).limit(1);
   const row = data?.[0];
