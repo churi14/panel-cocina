@@ -31,6 +31,8 @@ export default function KitchenFinalizarPan({ prod, operador, onFinalizado, onCa
   // Normalizar nombre del producto — unificar variantes al nombre canónico en DB
   const PAN_ALIAS: Record<string, string> = {
     'PAN DE MILANESA':  'Pan Sanguchero',
+    'Pan Mila':         'Pan Sanguchero',
+    'PAN MILA':         'Pan Sanguchero',
     'Pan de Milanesa':  'Pan Sanguchero',
     'PAN DE LOMITO':    'Pan de Lomito',
     'PAN SANGUCHERO':   'Pan Sanguchero',

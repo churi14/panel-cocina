@@ -158,18 +158,6 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
         { name: 'Aceite',            qty: 900,   unit: 'g' },
       ]
     },
-    {
-      id: 'pan_sanguchero', name: 'Pan Sanguchero', category: 'Panificados',
-      baseYield: 0, unit: 'u', recipeType: 'percent',
-      ingredients: [
-        { name: 'Harina 0000',        qty: 100,             unit: '%', isBase: true },
-        { name: 'Levadura en polvo',  qty: 0.93,            unit: '%' },
-        { name: 'Azúcar',             qty: 1.87,            unit: '%' },
-        { name: 'Mejormiga',          qty: 0.93,            unit: '%' },
-        { name: 'Sal',                qty: 1.87,            unit: '%' },
-        { name: 'Agua',               qty: 56,              unit: '%' },
-      ]
-    },
     // ── SALSAS DE PACK — Fraccionar en potes ────────────────────────────────
     // stockOrigen: 'stock' = materias primas | 'stock_produccion' = producido en cocina
     {
@@ -428,7 +416,7 @@ function Dashboard({ onIrAAdmin }: { onIrAAdmin?: () => void }) {
       ]},
 
     // ── PANADERÍA ─────────────────────────────────────────────────────────────
-    { id: 'pan_mila', name: 'Pan Mila', category: 'Panificados', baseYield: 30, unit: 'uds',
+    { id: 'pan_sanguchero', name: 'Pan Sanguchero', category: 'Panificados', baseYield: 30, unit: 'u',
       ingredients: [
         { name: 'Harina 000',        qty: 1570,  unit: 'g' },
         { name: 'Harina 0000',       qty: 1570,  unit: 'g' },
