@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, RefreshCw, TrendingDown, AlertTriangle, Edit2, Check, Plus, Minus } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useOperadores } from '../hooks/useOperadores';
+import { parseNumero } from './stockNames';
 
 type StockItem = {
   id: number; nombre: string; categoria: string;
@@ -73,7 +74,7 @@ function EditModal({ item, onClose, onSaved }: {
   const [saving, setSaving]     = useState(false);
 
   const step = item.unidad === 'kg' || item.unidad === 'lt' ? 0.5 : 1;
-  const valorNum = parseFloat(valor.replace(',', '.')) || 0;
+  const valorNum = parseNumero(valor) || 0;
   const nuevaCantidad = modo === 'agregar'
     ? parseFloat((item.cantidad + valorNum).toFixed(3))
     : valorNum;

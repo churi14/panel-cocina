@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { parseNumero } from '../components/stockNames';
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 type Props = {
@@ -326,7 +327,7 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                   <button
                     disabled={savingStock || editStockVal === ''}
                     onClick={async () => {
-                      const nuevo = parseFloat(editStockVal.replace(',', '.'));
+                      const nuevo = parseNumero(editStockVal);
                       if (isNaN(nuevo) || savingRef.current) return;
                       savingRef.current = true; setSavingStock(true);
                       const diff = nuevo - parseFloat(selectedProdItem.cantidad);

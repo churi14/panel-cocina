@@ -25,13 +25,19 @@ export function notifyError(contexto: string, err?: unknown) {
 type StockTabla = 'stock' | 'stock_produccion';
 
 /** Suma `delta` (puede ser negativo) a una fila. Nunca baja de 0. Devuelve la cantidad nueva o null si falló. */
-export async function adjustStock(tabla: StockTabla, id: string | number, delta: number): Promise<number | null> {
-  const { data, error } = await supabase.rpc('adjust_stock', { p_tabla: tabla, p_id: String(id), p_delta: delta });
+export async function adjustStock(
+  tabla: StockTabla, id: string | number, delta: number, opts?: { piso?: boolean }
+): Promise<number | null> {
+  const piso = opts?.piso !== false;
+  const { data, error } = await supabase.rpc('adjust_stock',
+    piso ? { p_tabla: tabla, p_id: String(id), p_delta: delta }
+         : { p_tabla: tabla, p_id: String(id), p_delta: delta, p_floor: false });
   if (!error && data !== null && data !== undefined) return Number(data);
   // Fallback si la función SQL (sql/20261019_adjust_stock.sql) todavía no existe
   const { data: row, error: e1 } = await supabase.from(tabla).select('cantidad').eq('id', id).maybeSingle();
   if (e1 || !row) { console.error('adjustStock leer', e1); return null; }
-  const nueva = Math.max(0, parseFloat((Number(row.cantidad) + delta).toFixed(3)));
+  const calculada = parseFloat((Number(row.cantidad) + delta).toFixed(3));
+  const nueva = piso ? Math.max(0, calculada) : calculada;
   const { error: e2 } = await supabase.from(tabla).update({ cantidad: nueva }).eq('id', id);
   if (e2) { console.error('adjustStock escribir', e2); return null; }
   return nueva;
@@ -42,17 +48,43 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 /** Descuenta de `stock` (materias primas) una fila ya conocida y deja el movimiento. */
 export async function egresoStock(
   row: { id: string | number; nombre: string; categoria?: string | null },
-  cantidad: number, unidad: string, motivo: string, operador: string
+  cantidad: number, unidad: string, motivo: string, operador: string,
+  opts?: { piso?: boolean; fecha?: string }
 ): Promise<number | null> {
-  const nueva = await adjustStock('stock', row.id, -cantidad);
+  const nueva = await adjustStock('stock', row.id, -cantidad, { piso: opts?.piso });
   if (nueva === null) return null;
   await supabase.from('stock').update({ fecha_actualizacion: hoy() }).eq('id', row.id);
   await supabase.from('stock_movements').insert({
     nombre: row.nombre, categoria: row.categoria ?? 'SECOS', tipo: 'egreso',
     cantidad: parseFloat(cantidad.toFixed(3)), unidad, motivo, operador,
-    fecha: new Date().toISOString(),
+    fecha: opts?.fecha ?? new Date().toISOString(),
   });
   return nueva;
+}
+
+/**
+ * Descuenta kg de un producto de stock_produccion (carne limpia, blends, grasa, etc.) y deja
+ * el movimiento. `existe:false` = no hay fila con ese nombre (no se descuenta nada).
+ */
+export async function egresoProduccion(
+  producto: string, cantidad: number, categoria: string, unidad: string,
+  motivo: string, operador: string, fecha?: string
+): Promise<{ existe: boolean; ok: boolean; nueva: number | null }> {
+  if (!(cantidad > 0)) return { existe: true, ok: true, nueva: null };
+  const exacto = producto.replace(/[\\%_]/g, c => '\\' + c);
+  const { data } = await supabase.from('stock_produccion')
+    .select('id').ilike('producto', exacto).limit(1);
+  const row = data?.[0];
+  if (!row) return { existe: false, ok: false, nueva: null };
+  const nueva = await adjustStock('stock_produccion', row.id, -cantidad);
+  if (nueva === null) return { existe: true, ok: false, nueva: null };
+  await supabase.from('stock_produccion').update({ ultima_prod: new Date().toISOString() }).eq('id', row.id);
+  await supabase.from('stock_movements').insert({
+    nombre: producto, categoria, tipo: 'egreso',
+    cantidad: parseFloat(cantidad.toFixed(3)), unidad, motivo, operador,
+    fecha: fecha ?? new Date().toISOString(),
+  });
+  return { existe: true, ok: true, nueva };
 }
 
 /** Suma `cantidad` a un producto de stock_produccion; lo crea si no existe. */
@@ -199,26 +231,28 @@ export async function clearCocinaProduccion(
 
 // ── Descuento de stock para menjunje milanesa ─────────────────────────────────
 
+/**
+ * `carneLimpia` es el nombre de la fila de carne limpia elegida (ej: "Nalga_L").
+ * Descuenta esa carne y los ingredientes del menjunje.
+ */
 export async function deductStockForMilanesa(
-  corteNombre: string,
+  carneLimpia: string,
   cantidadKg: number,
   ingredientes: { nombre: string; cantidad: number; unidad: string }[]
 ) {
-  const productoMila = `Milanesa - ${corteNombre}`;
   let ok = true;
   try {
-    const { data: milaRows } = await supabase
-      .from('stock_produccion').select('id').eq('producto', productoMila).limit(1);
-    if (milaRows?.[0]) {
-      const newQty = await adjustStock('stock_produccion', milaRows[0].id, -cantidadKg);
-      if (newQty === null) ok = false;
-      else await checkAndNotifyProduccionByName(productoMila, newQty, 'kg', supabase);
-    }
+    const r = await egresoProduccion(carneLimpia, cantidadKg, 'carnes_limpias', 'kg',
+      `Menjunje Milanesa — ${carneLimpia}`, 'Cocina');
+    if (!r.existe) { notifyError(`No se encontró "${carneLimpia}" en el stock de carne limpia`); }
+    else if (!r.ok) ok = false;
+    else if (r.nueva !== null) await checkAndNotifyProduccionByName(carneLimpia, r.nueva, 'kg', supabase);
     const { data: rows } = await supabase.from('stock').select('id, nombre, unidad, categoria');
     for (const ing of ingredientes) {
       const row = matchStock(ing.nombre, (rows ?? []) as StockRow[]);
       if (!row) continue;
-      const nueva = await egresoStock(row, ing.cantidad, ing.unidad, `Menjunje Milanesa — ${productoMila}`, 'Cocina');
+      const cant = convertir(ing.cantidad, ing.unidad, row.unidad);
+      const nueva = await egresoStock(row, cant ?? ing.cantidad, row.unidad ?? ing.unidad, `Menjunje Milanesa — ${carneLimpia}`, 'Cocina');
       if (nueva === null) ok = false;
     }
   } catch (e) { console.error('Error descontando stock menjunje:', e); ok = false; }

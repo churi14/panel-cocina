@@ -102,19 +102,15 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
     setSelectedMenjunjeStock('');
     // Si es menjunje, fetch stocks disponibles
     if (r.id.startsWith('menjunje_')) {
-      // Buscar carne limpia disponible (no burger)
+      // Carne limpia disponible (filas "<Corte>_L"); el menjunje descuenta de la fila elegida
       const { data } = await supabase.from('stock_produccion')
         .select('producto, cantidad')
-        .ilike('producto', '% Limpia')
+        .eq('categoria', 'carnes_limpias')
         .gt('cantidad', 0)
         .order('producto');
-      const merged: {producto: string; cantidad: number}[] = [];
-      for (const item of (data ?? [])) {
-        const norm = item.producto.toLowerCase().includes('nalga') ? 'Nalga Limpia' : item.producto;
-        const ex = merged.find(m => m.producto === norm);
-        if (ex) ex.cantidad += item.cantidad;
-        else merged.push({...item, producto: norm});
-      }
+      const merged = (data ?? [])
+        .filter((r: any) => /_L$/.test(r.producto))
+        .map((r: any) => ({ producto: r.producto as string, cantidad: Number(r.cantidad) }));
       setMenjunjeStocks(merged);
     }
     setView('recipe');
@@ -751,7 +747,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                       : <Square className="text-slate-300" size={20} />}
                                   </td>
                                   <td colSpan={2} className="py-3 pr-4">
-                                    <p className="text-xs font-black text-slate-400 uppercase mb-2">Elegí el stock de carne cruda</p>
+                                    <p className="text-xs font-black text-slate-400 uppercase mb-2">Elegí la carne limpia a usar</p>
                                     {menjunjeStocks.length > 0 ? (
                                       <div className="space-y-1">
                                         {menjunjeStocks.map(s => (
@@ -772,7 +768,7 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
                                       </div>
                                     ) : (
                                       <p className="text-xs text-rose-500 font-bold bg-rose-50 rounded-lg px-3 py-2 border border-rose-200">
-                                        ⚠️ Sin stock de milanesa. Producí primero en Carnicería.
+                                        ⚠️ Sin carne limpia. Hacé primero una limpieza en Carnicería.
                                       </p>
                                     )}
                                   </td>

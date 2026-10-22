@@ -5,6 +5,8 @@ import { X, Truck, Check, ChevronLeft, Search, RefreshCw } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useOperadores } from '../hooks/useOperadores';
 import HelpButton from './HelpButton';
+import { adjustStock } from './kitchenHelpers';
+import { parseNumero } from './stockNames';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
 
@@ -122,13 +124,20 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
     // Para aderezos, validar que hayan ingresado algo
     if (isAderezo && totalKgAderezo <= 0) return;
     if (!isAderezo && !cantidad) return;
-    const cantidadFinal = isAderezo ? totalKgAderezo : parseFloat(cantidad.replace(',', '.'));
+    const cantidadFinal = isAderezo ? totalKgAderezo : parseNumero(cantidad);
+    if (!(cantidadFinal > 0)) return;
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
-    const newQty = selectedProduct.cantidad + cantidadFinal;
+    // Suma atómica: si otra persona cargó al mismo tiempo, no se pisan
+    const nuevaCant = await adjustStock('stock', selectedProduct.id, cantidadFinal, { piso: false });
+    if (nuevaCant === null) {
+      alert('⚠️ No se pudo guardar la carga. Probá de nuevo.');
+      savingRef.current = false;
+      setSaving(false);
+      return;
+    }
     const update: any = {
-      cantidad: newQty,
       fecha_actualizacion: new Date().toISOString().slice(0, 10),
     };
     if (hasVenc && fechaVenc) update.fecha_vencimiento = fechaVenc;
@@ -145,7 +154,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
       motivo: lote ? `Remito/Lote: ${lote}` : 'Ingreso de mercadería',
       lote,
       operador,
-      peso_factura: pesoFactura ? parseFloat(pesoFactura.replace(',', '.')) : null,
+      peso_factura: pesoFactura ? parseNumero(pesoFactura) : null,
       comentario: comentario || null,
       fecha: new Date().toISOString(),
     });
@@ -493,7 +502,7 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
                     <p className="text-xs font-black text-green-600 uppercase mb-1">Nuevo stock</p>
                     <p className="text-3xl font-black text-green-700">
-                      {(selectedProduct.cantidad + parseFloat(cantidad.replace(',', '.'))).toFixed(2)} {unidad}
+                      {(selectedProduct.cantidad + parseNumero(cantidad)).toFixed(2)} {unidad}
                     </p>
                   </div>
                 )}

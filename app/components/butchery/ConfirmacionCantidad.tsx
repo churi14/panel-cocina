@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { parseNumero } from '../stockNames';
 
 type Props = {
   titulo: string;
@@ -23,7 +24,7 @@ export default function ConfirmacionCantidad({
 }: Props) {
   // Extraer número sugerido del texto si existe
   const matchNum = sugerencia?.match(/([\d.,]+)\s*kg/);
-  const valorSugerido = matchNum ? parseFloat(matchNum[1].replace(',', '.')) : undefined;
+  const valorSugerido = matchNum ? parseNumero(matchNum[1]) : undefined;
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 p-4 animate-in fade-in duration-150">

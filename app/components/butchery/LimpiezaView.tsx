@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
 import HelpButton from '../HelpButton';
+import { parseNumero } from '../stockNames';
 
 type Destino = 'carne_limpia';
 
@@ -28,9 +29,9 @@ export default function LimpiezaView({ production, onFinish, onBack }: Props) {
 
   const isNalgaConTapa = (production.type as string) === 'nalga_con_tapa';
 
-  const grasa       = parseFloat(grasaKg.replace(',', '.'))       || 0;
-  const carne       = parseFloat(carneLinpiaKg.replace(',', '.')) || 0;
-  const tapa        = isNalgaConTapa ? (parseFloat(tapaKg.replace(',', '.')) || 0) : 0;
+  const grasa       = parseNumero(grasaKg)       || 0;
+  const carne       = parseNumero(carneLinpiaKg) || 0;
+  const tapa        = isNalgaConTapa ? (parseNumero(tapaKg) || 0) : 0;
   const desperdicio = Math.max(0, parseFloat((production.weightKg - grasa - carne - tapa).toFixed(3)));
   const canFinish   = carne > 0 && (!isNalgaConTapa || tapa > 0);
 

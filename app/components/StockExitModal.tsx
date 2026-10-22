@@ -6,6 +6,8 @@ import { supabase } from '../supabase';
 import { useOperadores } from '../hooks/useOperadores';
 import { PushEvents, isStockBajo, isStockAgotado } from './pushEvents';
 import HelpButton from './HelpButton';
+import { adjustStock } from './kitchenHelpers';
+import { parseNumero } from './stockNames';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
 
@@ -74,8 +76,8 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
 
   const handleConfirm = async () => {
     if (!selectedProduct || !cantidad) return;
-    const qty = parseFloat(cantidad.replace(',', '.'));
-    if (qty <= 0) return;
+    const qty = parseNumero(cantidad);
+    if (!(qty > 0)) return;
     if (qty > selectedProduct.cantidad) {
       setError(`No podés descontar más de lo que hay (${selectedProduct.cantidad} ${selectedProduct.unidad})`);
       return;
@@ -83,7 +85,14 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
-    const newQty = Math.max(0, selectedProduct.cantidad - qty);
+    const newQtyDb = await adjustStock('stock', selectedProduct.id, -qty);
+    if (newQtyDb === null) {
+      setError('No se pudo guardar la salida. Probá de nuevo.');
+      savingRef.current = false;
+      setSaving(false);
+      return;
+    }
+    const newQty = newQtyDb;
 
     // Push notifications de stock
     if (isStockAgotado(newQty)) {
@@ -93,7 +102,6 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
     }
 
     await supabase.from('stock').update({
-      cantidad: newQty,
       fecha_actualizacion: new Date().toISOString().slice(0, 10),
     }).eq('id', selectedProduct.id);
 
@@ -118,7 +126,7 @@ export default function StockExitModal({ onClose }: { onClose: () => void }) {
     p.nombre.toLowerCase().includes(search.toLowerCase())
   );
 
-  const qty = parseFloat(cantidad.replace(',', '.'));
+  const qty = parseNumero(cantidad);
   const newStock = selectedProduct ? Math.max(0, selectedProduct.cantidad - (qty || 0)) : 0;
 
   return (

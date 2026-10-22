@@ -9,6 +9,7 @@ import { ButcheryProduction } from '../../types';
 import { getCut, formatWeight, formatGrams, ALL_STOCKS } from './cuts';
 import { FinishStep2Overlay } from './Overlays';
 import HelpButton from '../HelpButton';
+import { parseNumero, nombreLimpio } from '../stockNames';
 
 export function Step2View({ production, totalInBatch, currentIndex, kindLabel, onFinish, onBack }: {
   production: ButcheryProduction;
@@ -55,7 +56,7 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
       if (kindLabel === 'burger') {
         query = query.ilike('producto', `Carne Limpia Burger - ${typeName}%`);
       } else {
-        query = query.eq('producto', `${typeName} Limpia`);
+        query = query.ilike('producto', nombreLimpio(typeName));
       }
 
       const { data } = await query;
@@ -67,9 +68,9 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
     fetchCarnesLimpias();
   }, [kindLabel, production.typeName]);
 
-  const qty              = parseFloat(quantity.replace(',', '.'))          || 0;
-  const pesoFinal        = parseFloat(pesoFinalKg.replace(',', '.'))       || 0;
-  const pesoporUnidadKg  = (parseFloat(pesoporUnidadGr.replace(',', '.')) || 0) / 1000;
+  const qty              = parseNumero(quantity)          || 0;
+  const pesoFinal        = parseNumero(pesoFinalKg)       || 0;
+  const pesoporUnidadKg  = (parseNumero(pesoporUnidadGr) || 0) / 1000;
 
   const wasteAuto =
     unit === 'kg' && qty > 0
@@ -80,16 +81,16 @@ export function Step2View({ production, totalInBatch, currentIndex, kindLabel, o
 
   const waste =
     unit === 'unid' && wasteMode === 'desperdicio'
-      ? (parseFloat(wasteKg.replace(',', '.')) || 0)
+      ? (parseNumero(wasteKg) || 0)
       : (wasteAuto !== null ? wasteAuto : 0);
 
-  const grasa      = parseFloat(grasaKg.replace(',', '.')) || 0;
+  const grasa      = parseNumero(grasaKg) || 0;
   const netWeight  = Math.max(0, production.weightKg - waste);
   const avgGrams   = unit === 'unid' && qty > 0 ? (netWeight / qty) * 1000 : 0;
   const grasaPct   = grasa > 0 ? ((grasa / production.weightKg) * 100).toFixed(1) : null;
 
   // Validaciones de peso
-  const grPorUnidad = parseFloat(pesoporUnidadGr.replace(',', '.')) || 0;
+  const grPorUnidad = parseNumero(pesoporUnidadGr) || 0;
   const warnGrMuyBajo  = grPorUnidad > 0 && grPorUnidad < 5;   // probablemente pusieron kg en vez de gr
   const warnGrMuyAlto  = grPorUnidad > 800;                     // probablemente un error
   const grSugerido     = grPorUnidad > 0 && grPorUnidad < 1    // pusieron kg → convertir a gr

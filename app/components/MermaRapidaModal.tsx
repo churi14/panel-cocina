@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Check, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useOperadores } from '../hooks/useOperadores';
+import { adjustStock } from './kitchenHelpers';
+import { parseNumero } from './stockNames';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string };
 
@@ -61,14 +63,15 @@ export default function MermaRapidaModal({ onClose, operadorNombre }: { onClose:
     : todosLosProductos;
 
   const handleGuardar = async () => {
-    if (!producto || !razon || !cantidad || parseFloat(cantidad) <= 0) return;
+    const cantNum = parseNumero(cantidad);
+    if (!producto || !razon || !cantidad || !(cantNum > 0)) return;
     setSaving(true);
     const motivo = `merma — ${razon.label}${nota ? ' · ' + nota : ''}`;
     await supabase.from('stock_movements').insert({
       nombre:    producto.nombre,
       categoria: 'merma',
       tipo:      'egreso',
-      cantidad:  parseFloat(cantidad),
+      cantidad:  cantNum,
       unidad:    producto.unidad,
       motivo,
       operador:  operador || 'Sistema',
@@ -78,12 +81,12 @@ export default function MermaRapidaModal({ onClose, operadorNombre }: { onClose:
     if (producto.fuente === 'stock') {
       const item = stockItems.find(s => s.nombre === producto.nombre);
       if (item) {
-        await supabase.from('stock').update({ cantidad: Math.max(0, item.cantidad - parseFloat(cantidad)) }).eq('id', item.id);
+        await adjustStock('stock', item.id, -cantNum);
       }
     } else {
       const item = stockProd.find(s => s.nombre === producto.nombre);
       if (item) {
-        await supabase.from('stock_produccion').update({ cantidad: Math.max(0, item.cantidad - parseFloat(cantidad)) }).eq('id', item.id);
+        await adjustStock('stock_produccion', item.id, -cantNum);
       }
     }
     setSaving(false);

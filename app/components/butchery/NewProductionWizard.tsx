@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Play, Check } from 'lucide-react';
 import { CUTS, PRODUCTION_KINDS, ProductionKind, ProductionKindConfig, getCutsByKind, getCutLabel, getCut, formatWeight } from './cuts';
 import { StartConfirmOverlay } from './Overlays';
 import { supabase } from '../../supabase';
+import { parseNumero } from '../stockNames';
 
 type WeightEntry = { type: string; weight: string; carneLinpiaName?: string; mode: 'kg' | 'g' };
 
@@ -118,7 +119,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     setWeights(prev => prev.map((w, i) => {
       if (i !== idx) return w;
       const newMode = w.mode === 'kg' ? 'g' : 'kg';
-      const parsed = parseFloat(w.weight.replace(',', '.'));
+      const parsed = parseNumero(w.weight);
       let newWeight = w.weight;
       if (parsed > 0) {
         newWeight = newMode === 'g'
@@ -129,14 +130,14 @@ export function NewProductionWizard({ onStart, onCancel }: {
     }));
 
   const allValid = weights.length > 0 &&
-    weights.every(w => w.weight && parseFloat(w.weight.replace(',', '.')) > 0);
+    weights.every(w => w.weight && parseNumero(w.weight) > 0);
 
   const handleConfirm = () => {
     if (!selectedKind) return;
     onStart(
       weights.map(w => ({
         type: w.type,
-        weight: parseFloat(w.weight.replace(',', '.')) * (w.mode === 'g' ? 0.001 : 1),
+        weight: parseNumero(w.weight) * (w.mode === 'g' ? 0.001 : 1),
         carneLinpiaName: (w as any).carneLinpiaName ?? (selectedCarneLinpia || undefined),
       })),
       selectedKind,
@@ -399,7 +400,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
     <div className="flex flex-col h-full overflow-hidden">
       {showConfirm && (
         <StartConfirmOverlay
-          entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','').replace('_L','') : getCutLabel(w.type), weightKg: parseFloat(w.weight.replace(',', '.')) }))}
+          entries={weights.map(w => ({ label: w.carneLinpiaName ? w.carneLinpiaName.replace('Carne Limpia Burger - ','').replace(' Limpia','').replace('_L','') : getCutLabel(w.type), weightKg: parseNumero(w.weight) }))}
           onConfirm={handleConfirm}
           onCancel={() => setShowConfirm(false)}
           isBlend={selectedKind === 'limpieza' && limpiezaIsBlend}
@@ -426,7 +427,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
         <div className="space-y-2 max-w-2xl mx-auto w-full">
           {weights.map((entry, idx) => {
             const cut = getCut(entry.type);
-            const parsed = parseFloat(entry.weight.replace(',', '.'));
+            const parsed = parseNumero(entry.weight);
             const isValid = entry.weight !== '' && parsed > 0;
             return (
               <div key={idx} className={`bg-white rounded-2xl border-2 px-3 py-2 transition-all flex items-center gap-3
@@ -455,7 +456,7 @@ export function NewProductionWizard({ onStart, onCancel }: {
                       onChange={e => {
                         const val = e.target.value;
                         if (entry.mode === 'kg') {
-                          const num = parseFloat(val.replace(',', '.'));
+                          const num = parseNumero(val);
                           if (num > 500 && !val.includes('.') && !val.includes(',')) {
                             setWeightByIdx(idx, (num / 1000).toFixed(3));
                           } else {

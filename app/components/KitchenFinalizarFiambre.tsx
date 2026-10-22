@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { deductStockForFiambre, clearCocinaProduccion } from './kitchenHelpers';
+import { parseNumero } from './stockNames';
 
 interface Prod {
   id: number;
@@ -28,7 +29,7 @@ export default function KitchenFinalizarFiambre({ prod, operador, onFinalizado, 
   const [guardando, setGuardando] = useState(false);
   const guardandoRef = useRef(false);
 
-  const kgNum = parseFloat(kgProcesados.replace(',', '.')) || 0;
+  const kgNum = parseNumero(kgProcesados) || 0;
 
   // Validaciones
   const warnGramos   = kgNum > 100;                          // probablemente puso gramos

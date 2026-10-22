@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Snowflake, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useOperadores } from '../hooks/useOperadores';
+import { parseNumero } from './stockNames';
 
 const CATEGORIAS = [
   { id: 'carne',      label: 'Carne',       emoji: '🥩', unidad: 'kg',  color: 'text-red-600',   bg: 'bg-red-50',   border: 'border-red-200' },
@@ -73,7 +74,7 @@ export default function CamaraFrioModal({ onClose, operadorNombre }: { onClose: 
   const retirados = items.filter(i => i.estado === 'retirado').slice(0, 20);
 
   const handleIngresar = async () => {
-    const cant = parseFloat(ingCantidad.replace(',', '.'));
+    const cant = parseNumero(ingCantidad);
     if (!cant || !ingProducto.trim()) return;
     setSaving(true);
     const cat = CATEGORIAS.find(c => c.id === ingCategoria);
@@ -94,7 +95,7 @@ export default function CamaraFrioModal({ onClose, operadorNombre }: { onClose: 
 
   const handleRetirar = async () => {
     if (!retirando) return;
-    const cant = parseFloat(retCantidad.replace(',', '.'));
+    const cant = parseNumero(retCantidad);
     if (!cant || cant > retirando.cantidad) return;
     setSaving(true);
     const disponibleDesde = new Date(Date.now() + 24 * 3600 * 1000).toISOString();

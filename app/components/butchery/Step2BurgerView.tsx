@@ -5,6 +5,7 @@ import { CheckCircle2, Scale, Flame, Trash2, Package, ChevronLeft, Clock, AlertT
 import { ButcheryProduction } from '../../types';
 import { formatWeight, formatGrams } from './cuts';
 import HelpButton from '../HelpButton';
+import { parseNumero } from '../stockNames';
 
 const GRASA_TARGET_PCT = 34; // % objetivo de grasa sobre carne neta
 const GRASA_TOLERANCE_G = 100; // tolerancia ±100 gramos para considerar OK
@@ -106,9 +107,9 @@ export function Step2BurgerView({ productions, step2StartTime, onFinish, onBack 
 
   // ── Cálculos principales ──────────────────────────────────────────────────
   const totalBrutoKg    = productions.reduce((s, p) => s + p.weightKg, 0);
-  const carneNetaKg     = parseFloat(carneNeta.replace(',', '.'))  || 0;
+  const carneNetaKg     = parseNumero(carneNeta)  || 0;
   // En modo blend, la grasa no se separa acá (ya se hizo en limpieza)
-  const grasaSepKg      = isFromBlend ? 0 : (parseFloat(grasaSep.replace(',', '.')) || 0);
+  const grasaSepKg      = isFromBlend ? 0 : (parseNumero(grasaSep) || 0);
 
   // Validaciones de carne neta
   const warnCarneGramos  = carneNetaKg > totalBrutoKg * 10; // probablemente gramos

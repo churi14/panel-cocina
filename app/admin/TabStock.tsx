@@ -6,6 +6,7 @@ import { Movement, formatFecha } from './types';
 import { supabase } from '../supabase';
 import StockEntryModal from '../components/StockEntryModal';
 import FacturaModal from './FacturaModal';
+import { parseNumero } from '../components/stockNames';
 
 // ── Formatos doypack/paquete por producto ─────────────────────────────────────
 const FORMATOS_DOYPACK: Record<string, { label: string; kg: number }[]> = {
@@ -544,11 +545,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
             const tieneAlerta = selectedProdItem.alerta_umbral > 0;
 
             const descuentos = parseFloat(cargaQty) > 0
-              ? calcularDescuentos(selectedProdItem.producto, parseFloat(cargaQty.replace(',','.')))
+              ? calcularDescuentos(selectedProdItem.producto, parseNumero(cargaQty))
               : [];
 
             const handleCargarStock = async () => {
-              const qty = parseFloat(cargaQty.replace(',', '.'));
+              const qty = parseNumero(cargaQty);
               if (!qty || qty <= 0) return;
               setSavingCarga(true);
               const newQty = parseFloat((Number(selectedProdItem.cantidad) + qty).toFixed(3));
@@ -646,14 +647,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         {selectedProdItem.unidad === 'kg' ? ' Si tenés 8 kg, escribí 8 (no 8000).' : ''}
                       </p>
                       {(() => {
-                        const val = parseFloat(String(prodStockValor).replace(',','.')) || 0;
+                        const val = parseNumero(prodStockValor) || 0;
                         const actual = parseFloat(selectedProdItem.cantidad) || 0;
                         const isKg = selectedProdItem.unidad === 'kg';
                         const warnGramos = isKg && val > 500 && !overrideProdWarn;
                         const sugerirKg = (isKg && val > 500) ? parseFloat((val / 1000).toFixed(3)) : null;
                         const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0 && !overrideProdWarn;
                         const guardarProdFn = async () => {
-                          const nuevoValor = parseFloat(String(prodStockValor).replace(',', '.'));
+                          const nuevoValor = parseNumero(prodStockValor);
                           if (isNaN(nuevoValor) || savingProdStockRef.current) return;
                           savingProdStockRef.current = true;
                           setSavingProdStock(true);
@@ -772,7 +773,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           </div>
                           {cargaQty && parseFloat(cargaQty) > 0 && (
                             <p className="text-xs text-slate-500 mt-1.5">
-                              Stock actual: <span className="text-white font-bold">{selectedProdItem.cantidad}</span> → nuevo: <span className={`font-black ${cfg.color}`}>{parseFloat((Number(selectedProdItem.cantidad) + parseFloat(cargaQty.replace(',','.'))).toFixed(3))} {selectedProdItem.unidad}</span>
+                              Stock actual: <span className="text-white font-bold">{selectedProdItem.cantidad}</span> → nuevo: <span className={`font-black ${cfg.color}`}>{parseFloat((Number(selectedProdItem.cantidad) + parseNumero(cargaQty)).toFixed(3))} {selectedProdItem.unidad}</span>
                             </p>
                           )}
                         </div>
@@ -1006,7 +1007,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
             const handleEditMovement = async () => {
               if (!editingMovement) return;
               setSavingMovement(true);
-              const newQty = parseFloat(String(editMovQty).replace(',', '.'));
+              const newQty = parseNumero(editMovQty);
               const diff = newQty - editingMovement.cantidad;
               // Update movement record
               await supabase.from('stock_movements').update({
@@ -1199,7 +1200,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           <button
                             onClick={async () => {
                               if (!responsableUnidad.trim() || savingUnidad) return;
-                              const cantNum = parseFloat(nuevaCantidadUnidad.replace(',', '.'));
+                              const cantNum = parseNumero(nuevaCantidadUnidad);
                               if (isNaN(cantNum)) return;
                               setSavingUnidad(true);
                               // Actualizar en stock
@@ -1245,14 +1246,14 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                           {selectedStockItem.unidad === 'kg' ? ' Si tenés 8 kg, escribí 8 (no 8000).' : ''}
                         </p>
                         {(() => {
-                          const val = parseFloat(String(matStockValor).replace(',','.')) || 0;
+                          const val = parseNumero(matStockValor) || 0;
                           const actual = parseFloat(selectedStockItem.cantidad) || 0;
                           const isKg = selectedStockItem.unidad === 'kg';
                           const warnGramos = isKg && val > 1000 && !overrideWarn;
                           const sugerirKg = (isKg && val > 1000) ? parseFloat((val / 1000).toFixed(3)) : null;
                           const warnMucho = !warnGramos && isKg && val > actual * 10 && actual > 0 && !overrideWarn;
                           const guardarFn = async () => {
-                            const nuevoValor = parseFloat(String(matStockValor).replace(',', '.'));
+                            const nuevoValor = parseNumero(matStockValor);
                             if (isNaN(nuevoValor) || savingMatStockRef.current) return;
                             savingMatStockRef.current = true;
                             setSavingMatStock(true);

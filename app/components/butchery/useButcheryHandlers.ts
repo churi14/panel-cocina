@@ -3,6 +3,8 @@ import { getCutLabel, CUTS, ProductionKind, getCarneLinpiaName } from './cuts';
 import { supabase } from '../../supabase';
 import { PushEvents, checkAndNotifyStock } from '../pushEvents';
 import { addToStockProduccion } from './stockProduccion';
+import { egresoStock, egresoProduccion, notifyError } from '../kitchenHelpers';
+import { CORTE_CRUDO, nombreLimpio } from '../stockNames';
 import { saveProduccion, saveProduccionesMany, markProduccionDone } from './produccionPersistence';
 import { BurgerBlendResult } from './Step2BurgerView';
 
@@ -16,45 +18,26 @@ export async function logProduccionEvento(tipo: string, kind: string, corte: str
   } catch (e) { console.error('Error logging evento:', e); }
 }
 
-const CORTE_STOCK_MAP: Record<string, string> = {
-  'Lomo':            'LOMO',
-  'Roast Beef':      'ROAST BEEF',
-  'Tapa de Asado':   'TAPA DE ASADO',
-  'Tapa de Nalga':   'TAPA DE NALGA',
-  'Nalga':           'NALGA',
-  'Bife de Chorizo': 'BIFE DE CHORIZO',
-  'Bife Angosto':    'BIFE ANGOSTO',
-  'Vacío':           'VACIO',
-  'Picaña':          'PICAÑA',
-  'Ojo de Bife':     'OJO DE BIFE',
-  'Grasa de Pella':  'GRASA DE PELLA',
-  'Pollo':           'POLLO',
-  'Cuadril':         'CUADRIL',
-  'Cuadrada':        'CUADRADA',
-  'Not Burger':      'NOT',
-  'Aguja':           'AGUJA',
-};
+const CORTE_STOCK_MAP = CORTE_CRUDO;
 
 export async function deductStockByName(nombreCorte: string, kgToDeduct: number, kind?: string, fechaInicio?: string, operadorNombre?: string) {
   if (!kgToDeduct || kgToDeduct <= 0) return { ok: true, stockActual: 0, nombre: nombreCorte };
   const nombre = CORTE_STOCK_MAP[nombreCorte];
   if (!nombre) return { ok: true, stockActual: 0, nombre: nombreCorte };
-  const { data } = await supabase.from('stock')
-    .select('id, cantidad, stock_critico, stock_medio')
-    .eq('nombre', nombre).eq('categoria', 'CARNES').single();
-  if (!data) return { ok: true, stockActual: 0, nombre };
-  // Permitir stock negativo — se cubrirá con la próxima factura
-  const newQty = parseFloat((data.cantidad - kgToDeduct).toFixed(3));
-  await supabase.from('stock').update({ cantidad: newQty, fecha_actualizacion: new Date().toISOString().slice(0, 10) }).eq('id', data.id);
-  // Usar fechaInicio para que el egreso aparezca en el momento en que el operador
-  // puso la carne, no cuando finalizó la producción.
-  await supabase.from('stock_movements').insert({
-    stock_id: data.id, nombre, categoria: 'CARNES', tipo: 'egreso',
-    cantidad: kgToDeduct, unidad: 'kg',
-    motivo: `Inicio limpieza${kind && kind !== 'limpieza' ? ' - ' + kind : ''} — ${nombreCorte} · ${kgToDeduct} kg`,
-    operador: operadorNombre ?? 'Sistema',
-    fecha: fechaInicio ?? new Date().toISOString(),
-  });
+  const { data: rows } = await supabase.from('stock')
+    .select('id, nombre, categoria, cantidad, stock_critico, stock_medio')
+    .eq('nombre', nombre).eq('categoria', 'CARNES').limit(1);
+  const data = rows?.[0];
+  if (!data) {
+    notifyError(`No existe "${nombre}" en el stock de carnes: no se descontó ${kgToDeduct} kg`);
+    return { ok: true, stockActual: 0, nombre };
+  }
+  // Permitir stock negativo — la carne cruda se carga a mano después y se cubre con la próxima factura.
+  // Usar fechaInicio para que el egreso aparezca en el momento en que el operador puso la carne.
+  const newQty = await egresoStock(data, kgToDeduct, 'kg',
+    `Inicio limpieza${kind && kind !== 'limpieza' ? ' - ' + kind : ''} — ${nombreCorte} · ${kgToDeduct} kg`,
+    operadorNombre ?? 'Sistema', { piso: false, fecha: fechaInicio });
+  if (newQty === null) { notifyError(`No se pudo descontar ${nombre}`); return { ok: false, stockActual: data.cantidad, nombre }; }
   await checkAndNotifyStock(nombre, newQty, 'kg', data);
   return { ok: data.cantidad >= kgToDeduct, stockActual: data.cantidad, nombre };
 }
@@ -168,21 +151,12 @@ export function createButcheryHandlers(s: Setters) {
       : kindLabel === 'milanesa' ? `${parseFloat((prod.weightKg - wasteKg).toFixed(3))} kg`
       : '';
 
-    const { data: carneLinpia } = await supabase.from('stock_produccion')
-      .select('id, cantidad').eq('producto', carneLinpiaName).maybeSingle();
-    if (carneLinpia) {
-      const newCant = parseFloat((Number(carneLinpia.cantidad) - prod.weightKg).toFixed(3));
-      await supabase.from('stock_produccion')
-        .update({ cantidad: newCant, ultima_prod: new Date().toISOString() })
-        .eq('id', carneLinpia.id);
-      await supabase.from('stock_movements').insert({
-        nombre: carneLinpiaName, categoria: 'carnes_limpias', tipo: 'egreso',
-        cantidad: prod.weightKg, unidad: 'kg',
-        motivo: `Paso 2 ${kindLabel} → ${productoDestino}${cantidadDestinoTxt ? ` (${cantidadDestinoTxt})` : ''} — ${operador}`,
-        operador: operador || 'Sistema',
-        fecha: prod.step2StartTime ? new Date(prod.step2StartTime).toISOString() : new Date().toISOString(),
-      });
-    }
+    const desc = await egresoProduccion(carneLinpiaName, prod.weightKg, 'carnes_limpias', 'kg',
+      `Paso 2 ${kindLabel} → ${productoDestino}${cantidadDestinoTxt ? ` (${cantidadDestinoTxt})` : ''} — ${operador}`,
+      operador || 'Sistema', prod.step2StartTime ? new Date(prod.step2StartTime).toISOString() : undefined);
+    // Pollo no pasa por limpieza: no tiene fila de carne limpia, no es un error
+    if (!desc.existe && corteDisplay !== 'Pollo') notifyError(`No existe "${carneLinpiaName}" en el stock de carne limpia: no se descontó`);
+    else if (desc.existe && !desc.ok) notifyError(`No se pudo descontar ${carneLinpiaName}`);
     await logProduccionEvento('fin_paso2', kindLabel, corteDisplay, prod.weightKg,
       `Finalizo paso 2 - ${quantity} ${unit} de ${corteDisplay} - ${operador}`, operador, wasteKg);
     await PushEvents.finProduccion(kindLabel, corteDisplay, quantity, unit, operador);
@@ -212,9 +186,20 @@ export function createButcheryHandlers(s: Setters) {
 
   const handleFinishBurgerBlend = async (result: BurgerBlendResult) => {
     const now = Date.now(); const batchKind = step2Queue[0]?.kind ?? 'burger';
+    // Burger siempre se hace con blend: se descuenta la carne limpia elegida (prod.cut = nombre
+    // exacto de la fila en stock_produccion) y la grasa de pella que salió del stock.
     for (const prod of step2Queue) {
-      const fechaInicioBlend = prod.startTime ? new Date(prod.startTime).toISOString() : undefined;
-      await deductStockByName(prod.typeName, prod.weightKg, batchKind, fechaInicioBlend, operador);
+      const r = await egresoProduccion(prod.cut, prod.weightKg, 'carnes_limpias', 'kg',
+        `Burger ← ${prod.cut} (${prod.weightKg} kg) — ${operador}`, operador || 'Sistema',
+        prod.step2StartTime ? new Date(prod.step2StartTime).toISOString() : undefined);
+      if (!r.existe) notifyError(`No existe "${prod.cut}" en el stock: no se descontó del burger`);
+      else if (!r.ok) notifyError(`No se pudo descontar ${prod.cut}`);
+    }
+    if (result.grasaExtraKg > 0) {
+      const g = await egresoProduccion('Grasa de Pella', result.grasaExtraKg, 'carnes_limpias', 'kg',
+        `Burger — grasa de pella del stock — ${operador}`, operador || 'Sistema');
+      if (!g.existe) notifyError('No existe "Grasa de Pella" en el stock: no se descontó la grasa del burger');
+      else if (!g.ok) notifyError('No se pudo descontar la Grasa de Pella');
     }
     step2Queue.forEach((prod, i) => {
       const baseKg = result.carneNetaKg ?? (result.totalBlendKg - result.grasaKg);
@@ -262,8 +247,10 @@ export function createButcheryHandlers(s: Setters) {
     destino: 'burger' | 'carne_limpia';
   }) => {
     const isNalgaConTapa = (prod.type as string) === 'nalga_con_tapa';
-    const corteNorm = isNalgaConTapa ? 'Nalga' : (prod.typeName ?? '').replace(/_L$/, '').trim();
-    const stockNombre = isNalgaConTapa ? 'NALGA CON TAPA' : corteNorm;
+    const isSinFetear = (prod.type as string) === 'nalga_sin_fetear';
+    const corteNorm = (isNalgaConTapa || isSinFetear) ? 'Nalga' : (prod.typeName ?? '').replace(/_L$/, '').trim();
+    // Crudo: cada variante de nalga tiene su propia fila en `stock`
+    const stockNombre = isNalgaConTapa ? 'Nalga con Tapa' : isSinFetear ? 'Nalga sin fetear' : corteNorm;
 
     // 1. Descontar carne cruda del stock materias primas
     // Usar startTime del prod para que el egreso quede en el momento de inicio
@@ -271,7 +258,7 @@ export function createButcheryHandlers(s: Setters) {
     await deductStockByName(stockNombre, prod.weightKg, 'limpieza', fechaInicioLimpieza, operador);
 
     // 2. Agregar carne limpia principal (Nalga_L)
-    const productoCarne = `${corteNorm}_L`;
+    const productoCarne = nombreLimpio(corteNorm);
     if (params.carneLinpiaKg > 0) {
       await addToStockProduccion({ producto: productoCarne, categoria: 'carnes_limpias', cantidad: params.carneLinpiaKg, unidad: 'kg', operador, motivo: `Limpieza ${corteNorm} → ${productoCarne}` });
     }

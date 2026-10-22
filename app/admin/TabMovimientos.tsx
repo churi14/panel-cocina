@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Movement, formatFecha } from './types';
+import { parseNumero } from '../components/stockNames';
 
 type Props = {
   movements: Movement[];
@@ -73,7 +74,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   const handleSaveEdit = async () => {
     if (!editingM) return;
     setSaving(true);
-    const newQty = parseFloat(editCantidad.replace(',', '.'));
+    const newQty = parseNumero(editCantidad);
     const diff = newQty - editingM.cantidad;
 
     // Update the movement record

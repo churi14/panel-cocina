@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, ArrowLeft, Zap, ClipboardList, Minus, Plus } from 'lucide-react';
 import { ButcheryProduction } from '../../types';
+import { parseNumero } from '../stockNames';
 
 type CorteDatos = {
   production: ButcheryProduction;
@@ -33,7 +34,7 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
   const blendNombre = `Blend ${productions.map(p => (p.typeName ?? '').replace(/_L$/, '').trim()).join(' + ')}`;
 
   // ── Cálculos modo rápido ──────────────────────────────────────────────────
-  const totalCarneRapido = parseFloat(totalRapido.replace(',', '.')) || 0;
+  const totalCarneRapido = parseNumero(totalRapido) || 0;
   const grasaPctFrac = grasaPctRapido / 100;
   // grasa = X% de la carne limpia
   const grasaAgregar = totalCarneRapido > 0
@@ -47,10 +48,10 @@ export default function BlendLimpiezaView({ productions, onFinish, onBack }: Pro
   // ── Cálculos modo normal ──────────────────────────────────────────────────
   const parsedNormal = cortes.map(c => ({
     production: c.production,
-    grasa: parseFloat(c.grasaKg.replace(',', '.')) || 0,
-    carne: parseFloat(c.carneLinpiaKg.replace(',', '.')) || 0,
+    grasa: parseNumero(c.grasaKg) || 0,
+    carne: parseNumero(c.carneLinpiaKg) || 0,
     desperdicio: Math.max(0, parseFloat(
-      (c.production.weightKg - (parseFloat(c.grasaKg.replace(',', '.')) || 0) - (parseFloat(c.carneLinpiaKg.replace(',', '.')) || 0)).toFixed(3)
+      (c.production.weightKg - (parseNumero(c.grasaKg) || 0) - (parseNumero(c.carneLinpiaKg) || 0)).toFixed(3)
     )),
   }));
   const totalCarneNormal = parsedNormal.reduce((s, c) => s + c.carne, 0);
