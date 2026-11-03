@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "La Cocina · Admin",
   description: "Panel de Administración",
   manifest: "/manifest-admin.json",
+  icons: { apple: "/icons/icon-admin-192.png" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -11,15 +12,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#3a57e8",
+};
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <head>
-        <link rel="manifest" href="/manifest-admin.json" />
-        <link rel="apple-touch-icon" href="/icons/icon-admin-192.png" />
-        <meta name="theme-color" content="#2563eb" />
-      </head>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

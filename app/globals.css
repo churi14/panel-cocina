@@ -10,56 +10,191 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN — estilo Hope UI (iqonic): azul #3a57e8, fondo #F5F6FA, tarjetas blancas
+   con sombra suave y radio .5rem, tipografía Inter.
+   Los tabs siguen usando clases slate; en modo claro se re-mapean abajo.
+   El shell (sidebar / topbar) usa las clases .hp-* que leen estas variables.
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-admin-theme] {
+  --hp-primary: #3a57e8;
+  --hp-primary-rgb: 58, 87, 232;
+  --hp-sidebar-w: 16.2rem;
+}
+[data-admin-theme="light"] {
+  --hp-bg: #F5F6FA;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #F8F9FC;
+  --hp-border: #eeeeee;
+  --hp-heading: #232D42;
+  --hp-text: #8A92A6;
+  --hp-shadow: 0 10px 30px 0 rgba(17, 38, 146, 0.05);
+  --hp-shadow-bar: 0 0 30px 0 rgba(17, 38, 146, 0.05);
+}
+[data-admin-theme="dark"] {
+  --hp-bg: #020617;
+  --hp-surface: #0f172a;
+  --hp-surface-2: #1e293b;
+  --hp-border: #1e293b;
+  --hp-heading: #ffffff;
+  --hp-text: #94a3b8;
+  --hp-shadow: none;
+  --hp-shadow-bar: none;
+}
+
+/* ── Shell: sidebar ─────────────────────────────────────────────────────── */
+.hp-sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 40;
+  width: var(--hp-sidebar-w); max-width: 85vw;
+  display: flex; flex-direction: column;
+  background: var(--hp-surface); box-shadow: var(--hp-shadow-bar);
+  border-right: 1px solid var(--hp-border);
+  transition: transform .3s ease;
+}
+@media (max-width: 1023px) {
+  .hp-sidebar { transform: translateX(-100%); }
+  .hp-sidebar.open { transform: translateX(0); }
+}
+.hp-sidebar-head { display: flex; align-items: center; gap: .75rem; padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--hp-border); }
+.hp-brand { font-weight: 800; font-size: 1.05rem; color: var(--hp-heading); line-height: 1.1; }
+.hp-brand small { display: block; font-weight: 500; font-size: .7rem; color: var(--hp-text); margin-top: .15rem; }
+.hp-nav { flex: 1; overflow-y: auto; padding: .75rem 1rem 1rem; }
+.hp-nav-label {
+  padding: 1rem .75rem .4rem; font-size: .68rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--hp-text);
+}
+.hp-nav-link {
+  display: flex; align-items: center; gap: .75rem; width: 100%;
+  padding: .6rem .85rem; margin-bottom: .15rem; border-radius: .375rem;
+  font-size: .875rem; font-weight: 600; color: var(--hp-text);
+  background: transparent; text-align: left; transition: all .2s ease;
+}
+.hp-nav-link:hover:not(.active) { background: rgba(var(--hp-primary-rgb), .09); color: var(--hp-primary); }
+.hp-nav-link.active {
+  background: var(--hp-primary); color: #fff;
+  box-shadow: 0 10px 20px -10px rgba(var(--hp-primary-rgb), .7);
+}
+.hp-sidebar-foot { padding: .75rem 1rem 1rem; border-top: 1px solid var(--hp-border); display: grid; gap: .25rem; }
+.hp-overlay { position: fixed; inset: 0; z-index: 30; background: rgba(15, 23, 42, .45); }
+
+/* ── Shell: topbar + contenido ───────────────────────────────────────────── */
+.hp-topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .75rem 1.25rem; background: var(--hp-surface);
+  box-shadow: var(--hp-shadow-bar); border-bottom: 1px solid var(--hp-border);
+}
+@media (min-width: 1024px) { .hp-topbar { padding: .85rem 2rem; } }
+.hp-title { font-size: 1.15rem; font-weight: 800; color: var(--hp-heading); }
+.hp-subtitle { font-size: .72rem; color: var(--hp-text); margin-top: .1rem; }
+.hp-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  padding: .5rem; border-radius: .5rem; color: var(--hp-text);
+  transition: all .2s ease; position: relative;
+}
+.hp-icon-btn:hover { background: rgba(var(--hp-primary-rgb), .09); color: var(--hp-primary); }
+.hp-btn-soft {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .8rem;
+  border-radius: .5rem; font-size: .75rem; font-weight: 700;
+  background: rgba(var(--hp-primary-rgb), .1); color: var(--hp-primary); transition: all .2s ease;
+}
+.hp-btn-soft:hover { background: var(--hp-primary); color: #fff; }
+.hp-avatar {
+  width: 2rem; height: 2rem; border-radius: 9999px; background: var(--hp-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800;
+}
+.hp-main { min-height: 100vh; background: var(--hp-bg); color: var(--hp-heading); }
+@media (min-width: 1024px) { .hp-main { margin-left: var(--hp-sidebar-w); } }
+.hp-pilltabs {
+  display: inline-flex; gap: .25rem; padding: .25rem; margin-bottom: 1.5rem;
+  background: var(--hp-surface); border-radius: .5rem; box-shadow: var(--hp-shadow);
+}
+.hp-pilltab { padding: .45rem 1rem; border-radius: .375rem; font-size: .85rem; font-weight: 700; color: var(--hp-text); transition: all .2s ease; }
+.hp-pilltab:hover:not(.active) { color: var(--hp-primary); }
+.hp-pilltab.active { background: var(--hp-primary); color: #fff; }
+
 /* ═══════════════════════════════════════
-   ADMIN LIGHT MODE
+   ADMIN MODO CLARO (Hope UI) — re-mapea las clases slate de los tabs
    ═══════════════════════════════════════ */
 [data-admin-theme="light"] {
-  /* Fondo principal */
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
+  background-color: #F5F6FA !important;
+  color: #232D42 !important;
 }
 
 /* Superficies */
-[data-admin-theme="light"] .bg-slate-950 { background-color: #f1f5f9 !important; }
-[data-admin-theme="light"] .bg-slate-900 { background-color: #ffffff !important; }
-[data-admin-theme="light"] .bg-slate-800 { background-color: #f8fafc !important; }
-[data-admin-theme="light"] .bg-slate-700 { background-color: #e2e8f0 !important; }
-[data-admin-theme="light"] .bg-slate-800\/40 { background-color: rgba(241,245,249,0.8) !important; }
-[data-admin-theme="light"] .bg-slate-800\/60 { background-color: rgba(241,245,249,0.9) !important; }
+[data-admin-theme="light"] .bg-slate-950 { background-color: #F5F6FA !important; }
+[data-admin-theme="light"] .bg-slate-900 { background-color: #ffffff !important; box-shadow: 0 10px 30px 0 rgba(17, 38, 146, 0.05); }
+[data-admin-theme="light"] .bg-slate-800 { background-color: #F8F9FC !important; }
+[data-admin-theme="light"] .bg-slate-700 { background-color: #ECEEF5 !important; }
+[data-admin-theme="light"] .bg-slate-800\/40 { background-color: rgba(245,246,250,0.9) !important; }
+[data-admin-theme="light"] .bg-slate-800\/60 { background-color: rgba(245,246,250,0.95) !important; }
 [data-admin-theme="light"] .bg-slate-900\/80 { background-color: rgba(255,255,255,0.95) !important; }
 
 /* Bordes */
-[data-admin-theme="light"] .border-slate-800 { border-color: #e2e8f0 !important; }
-[data-admin-theme="light"] .border-slate-700 { border-color: #cbd5e1 !important; }
-[data-admin-theme="light"] .border-slate-600 { border-color: #94a3b8 !important; }
+[data-admin-theme="light"] .border-slate-800 { border-color: #eeeeee !important; }
+[data-admin-theme="light"] .border-slate-700 { border-color: #e4e6ee !important; }
+[data-admin-theme="light"] .border-slate-600 { border-color: #cfd3df !important; }
 
 /* Textos */
-[data-admin-theme="light"] .text-white       { color: #0f172a !important; }
-[data-admin-theme="light"] .text-slate-100   { color: #1e293b !important; }
-[data-admin-theme="light"] .text-slate-200   { color: #334155 !important; }
-[data-admin-theme="light"] .text-slate-300   { color: #475569 !important; }
-[data-admin-theme="light"] .text-slate-400   { color: #64748b !important; }
-[data-admin-theme="light"] .text-slate-500   { color: #94a3b8 !important; }
+[data-admin-theme="light"] .text-white       { color: #232D42 !important; }
+[data-admin-theme="light"] .text-slate-100   { color: #232D42 !important; }
+[data-admin-theme="light"] .text-slate-200   { color: #3b455c !important; }
+[data-admin-theme="light"] .text-slate-300   { color: #566079 !important; }
+[data-admin-theme="light"] .text-slate-400   { color: #8A92A6 !important; }
+[data-admin-theme="light"] .text-slate-500   { color: #9aa1b4 !important; }
+
+/* Color primario Hope en lugar del azul genérico */
+[data-admin-theme="light"] .bg-blue-600 { background-color: #3a57e8 !important; }
+[data-admin-theme="light"] .bg-blue-500 { background-color: #3a57e8 !important; }
+[data-admin-theme="light"] .hover\:bg-blue-500:hover { background-color: #2f48c9 !important; }
+[data-admin-theme="light"] .text-blue-400 { color: #3a57e8 !important; }
+[data-admin-theme="light"] .border-blue-500 { border-color: #3a57e8 !important; }
 
 /* Inputs */
 [data-admin-theme="light"] input,
 [data-admin-theme="light"] select,
 [data-admin-theme="light"] textarea {
   background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+  color: #232D42 !important;
+  border-color: #dfe2ea !important;
+}
+[data-admin-theme="light"] input:focus,
+[data-admin-theme="light"] select:focus,
+[data-admin-theme="light"] textarea:focus {
+  border-color: #3a57e8 !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(58, 87, 232, 0.12);
 }
 
 /* Botones de navegación activos */
-[data-admin-theme="light"] .border-white { border-color: #0f172a !important; }
+[data-admin-theme="light"] .border-white { border-color: #3a57e8 !important; }
 
 /* Hover states */
-[data-admin-theme="light"] .hover\:bg-slate-800:hover { background-color: #e2e8f0 !important; }
-[data-admin-theme="light"] .hover\:bg-slate-700:hover { background-color: #cbd5e1 !important; }
+[data-admin-theme="light"] .hover\:bg-slate-800:hover { background-color: #eceefa !important; }
+[data-admin-theme="light"] .hover\:bg-slate-700:hover { background-color: #e1e5f5 !important; }
 
 /* Tablas */
-[data-admin-theme="light"] tbody tr:hover { background-color: #f8fafc !important; }
-[data-admin-theme="light"] thead { background-color: #f1f5f9 !important; }
+[data-admin-theme="light"] tbody tr:hover { background-color: #F8F9FC !important; }
+[data-admin-theme="light"] thead { background-color: #F5F6FA !important; }
 
 /* Modales */
-[data-admin-theme="light"] .fixed.inset-0.bg-black\/70 { background-color: rgba(15,23,42,0.5) !important; }
+[data-admin-theme="light"] .fixed.inset-0.bg-black\/70 { background-color: rgba(35,45,66,0.5) !important; }
+
+/* Texto blanco sobre botones de color: no se oscurece en modo claro */
+[data-admin-theme="light"] :is(.bg-blue-600, .bg-blue-500, .bg-green-600, .bg-green-500, .bg-red-600, .bg-red-500, .bg-emerald-600, .bg-emerald-500, .bg-rose-600, .bg-purple-600, .bg-orange-500, .bg-amber-600, .bg-indigo-600).text-white,
+[data-admin-theme="light"] :is(.bg-blue-600, .bg-blue-500, .bg-green-600, .bg-green-500, .bg-red-600, .bg-red-500, .bg-emerald-600, .bg-emerald-500, .bg-rose-600, .bg-purple-600, .bg-orange-500, .bg-amber-600, .bg-indigo-600) .text-white {
+  color: #ffffff !important;
+}
+
+/* Separadores entre filas/ítems */
+[data-admin-theme="light"] .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+[data-admin-theme="light"] .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]),
+[data-admin-theme="light"] .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]),
+[data-admin-theme="light"] .divide-slate-700 > :not([hidden]) ~ :not([hidden]) { border-color: #eeeeee !important; }
+[data-admin-theme="light"] .border-slate-700\/50,
+[data-admin-theme="light"] .border-slate-800\/80,
+[data-admin-theme="light"] .border-slate-500\/30 { border-color: #eeeeee !important; }
+[data-admin-theme="light"] .bg-black\/80,
+[data-admin-theme="light"] .bg-black\/75,
+[data-admin-theme="light"] .bg-black\/60 { background-color: rgba(35,45,66,0.5) !important; }

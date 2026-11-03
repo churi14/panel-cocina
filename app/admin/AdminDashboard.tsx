@@ -5,7 +5,8 @@ import { supabase } from '../supabase';
 import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp,
-  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet, BookOpen
+  RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet, BookOpen,
+  Menu, X, Clock, ArrowLeftRight
 } from 'lucide-react';
 import { Movement, Notification } from './types';
 import TabDashboard   from './TabDashboard';
@@ -32,12 +33,13 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [movements, setMovements]               = useState<Movement[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [notifications, setNotifications]       = useState<Notification[]>([]);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('admin-theme') as 'dark' | 'light') || 'dark';
-    }
-    return 'dark';
-  });
+  const [theme, setTheme] = useState<'dark' | 'light'>('light');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('admin-theme');
+      if (saved === 'dark' || saved === 'light') setTheme(saved);
+    } catch { /* sin localStorage: queda el tema claro */ }
+  }, []);
 
   const toggleTheme = () => {
     setTheme(t => {
@@ -60,6 +62,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   const [cierresPendientes, setCierresPendientes] = useState<{ fecha: string; ventas_count: number }[]>([]);
   const [cierreDismissed, setCierreDismissed]   = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const fetchMovements = async () => {
     setLoading(true);
@@ -184,81 +187,118 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const TABS = [
-    { id: 'dashboard',  label: 'Dashboard',   icon: <Activity  size={16} /> },
-    { id: 'movements',  label: 'Movimientos', icon: <Package   size={16} /> },
-    { id: 'stock',      label: 'Stock',       icon: <Package    size={16} /> },
-    { id: 'factura',    label: 'Facturas',    icon: <FileText   size={16} /> },
-    { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={16} /> },
-    { id: 'equipo',     label: 'Operadores',   icon: <Users size={16} /> },
-    { id: 'tareas',     label: 'Tareas',       icon: <CheckCircle2 size={16} /> },
-    { id: 'auditoria',  label: 'Auditoría',    icon: <AlertTriangle size={16} /> },
-    { id: 'fichador',      label: 'Fichador',      icon: <Users size={16} /> },
-    { id: 'desperdicios',   label: 'Desperdicios',   icon: <Trash2    size={16} /> },
-    { id: 'procedimientos', label: 'Procedimientos', icon: <BookOpen  size={16} /> },
-  ] as const;
+  type TabId = typeof activeTab;
+  const NAV: { label: string; items: { id: TabId; label: string; icon: React.ReactNode }[] }[] = [
+    { label: 'Principal', items: [
+      { id: 'dashboard',  label: 'Dashboard',   icon: <Activity size={18} /> },
+      { id: 'movements',  label: 'Movimientos', icon: <ArrowLeftRight size={18} /> },
+      { id: 'stock',      label: 'Stock',       icon: <Package size={18} /> },
+      { id: 'factura',    label: 'Facturas',    icon: <FileText size={18} /> },
+      { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={18} /> },
+    ] },
+    { label: 'Equipo', items: [
+      { id: 'equipo',     label: 'Operadores',  icon: <Users size={18} /> },
+      { id: 'tareas',     label: 'Tareas',      icon: <CheckCircle2 size={18} /> },
+      { id: 'fichador',   label: 'Fichador',    icon: <Clock size={18} /> },
+      { id: 'auditoria',  label: 'Auditoría',   icon: <AlertTriangle size={18} /> },
+    ] },
+    { label: 'Cocina', items: [
+      { id: 'desperdicios',   label: 'Desperdicios',   icon: <Trash2 size={18} /> },
+      { id: 'procedimientos', label: 'Procedimientos', icon: <BookOpen size={18} /> },
+    ] },
+  ];
+  const activeLabel = NAV.flatMap(g => g.items).find(i => i.id === activeTab)?.label ?? 'Admin';
+  const goTab = (id: TabId) => { setActiveTab(id); setMenuOpen(false); };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col" data-admin-theme={theme}>
+    <div className="min-h-screen" data-admin-theme={theme}>
+
+      {/* OVERLAY móvil */}
+      {menuOpen && <div className="hp-overlay lg:hidden" onClick={() => setMenuOpen(false)} />}
+
+      {/* SIDEBAR */}
+      <aside className={`hp-sidebar ${menuOpen ? 'open' : ''}`}>
+        <div className="hp-sidebar-head">
+          <img src="/icons/icon-admin-192.png" alt="La Cocina" className="w-10 h-10 rounded-xl object-cover" />
+          <div className="hp-brand">La Cocina<small>Panel de administración</small></div>
+          <button className="hp-icon-btn ml-auto lg:hidden" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú">
+            <X size={18} />
+          </button>
+        </div>
+        <nav id="admin-tour-nav" className="hp-nav">
+          {NAV.map(group => (
+            <div key={group.label}>
+              <p className="hp-nav-label">{group.label}</p>
+              {group.items.map(tab => (
+                <button key={tab.id} id={`admin-tour-tab-${tab.id}`} onClick={() => goTab(tab.id)}
+                  className={`hp-nav-link ${activeTab === tab.id ? 'active' : ''}`}>
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="hp-sidebar-foot">
+          {/* En celular los controles de la barra superior se pasan acá */}
+          <div className="md:hidden flex flex-wrap items-center gap-2 pb-2">
+            <button onClick={toggleTheme} className="hp-icon-btn" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <PushButton />
+            <TestModeButton />
+            <button onClick={() => { setShowExport(true); setMenuOpen(false); }} className="hp-btn-soft">
+              <FileSpreadsheet size={16} /> Excel
+            </button>
+          </div>
+          <button onClick={onIrACocina} className="hp-nav-link"><ChefHat size={18} /> Ir a Cocina</button>
+          <button onClick={onLock} className="hp-nav-link"><LogOut size={18} /> Salir</button>
+        </div>
+      </aside>
+
+      <div className="hp-main flex flex-col">
 
       {/* TOP BAR */}
-      <header id="admin-tour-header" className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <img src="/icons/icon-admin-192.png" alt="La Cocina" className="w-9 h-9 rounded-xl object-cover" />
-          <h1 className="font-black text-lg">La Cocina <span className="text-slate-400 font-normal text-sm">Admin</span></h1>
+      <header id="admin-tour-header" className="hp-topbar">
+        <div className="flex items-center gap-3 min-w-0">
+          <button className="hp-icon-btn lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Abrir menú">
+            <Menu size={22} />
+          </button>
+          <div className="min-w-0">
+            <h1 className="hp-title truncate">{activeLabel}</h1>
+            <p className="hp-subtitle hidden sm:block">La Cocina · Dark Kitchen Ushuaia</p>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1 md:gap-2">
           {notifications.length > 0 && (
-            <div className="relative">
-              <Bell size={20} className="text-slate-400" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full text-[10px] font-black flex items-center justify-center">
+            <div className="hp-icon-btn" title={`${notifications.length} novedades`}>
+              <Bell size={20} />
+              <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 rounded-full text-[10px] font-black flex items-center justify-center"
+                style={{ background: 'var(--hp-primary)', color: '#fff' }}>
                 {notifications.length > 9 ? '9+' : notifications.length}
               </span>
             </div>
           )}
-          <button onClick={toggleTheme}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
-            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
-            {theme === 'dark' ? <Sun size={18} className="text-slate-400" /> : <Moon size={18} className="text-slate-400" />}
-          </button>
-          <PushButton />
-          <TestModeButton />
-          <button
-            onClick={() => setShowExport(true)}
-            title="Exportar a Excel"
-            className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/40 rounded-xl text-emerald-400 transition-colors text-xs font-black">
-            <FileSpreadsheet size={16} /> <span className="hidden md:inline">Excel</span>
-          </button>
-          <button onClick={fetchMovements} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
-            <RefreshCw size={18} className={`text-slate-400 ${loading ? 'animate-spin' : ''}`} />
+          <div className="hidden md:flex items-center gap-2">
+            <button onClick={toggleTheme} className="hp-icon-btn" title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <PushButton />
+            <TestModeButton />
+            <button onClick={() => setShowExport(true)} title="Exportar a Excel" className="hp-btn-soft">
+              <FileSpreadsheet size={16} /> Excel
+            </button>
+          </div>
+          <button onClick={fetchMovements} className="hp-icon-btn" title="Actualizar">
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
           {perfil && (
-            <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl">
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black text-white">
-                {perfil.nombre.slice(0,1).toUpperCase()}
-              </div>
-              <span className="text-slate-300 text-sm font-bold">{perfil.nombre}</span>
+            <div className="hidden md:flex items-center gap-2 pl-2 ml-1" style={{ borderLeft: '1px solid var(--hp-border)' }}>
+              <div className="hp-avatar">{perfil.nombre.slice(0, 1).toUpperCase()}</div>
+              <span className="text-sm font-bold" style={{ color: 'var(--hp-heading)' }}>{perfil.nombre}</span>
             </div>
           )}
-          <button onClick={onIrACocina} className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
-            <ChefHat size={16} /> <span className="hidden md:inline">Cocina</span>
-          </button>
-          <button onClick={onLock} className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold text-slate-300 transition-colors">
-            <LogOut size={16} /> <span className="hidden md:inline">Salir</span>
-          </button>
         </div>
       </header>
-
-      {/* NAV */}
-      <nav className="bg-slate-900 border-b border-slate-800 flex items-center gap-1 overflow-x-auto scrollbar-hide px-2 md:px-8">
-        {TABS.map(tab => (
-          <button key={tab.id} id={`admin-tour-tab-${tab.id}`} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-3 md:px-5 py-3 text-xs md:text-sm font-bold border-b-2 transition-all whitespace-nowrap shrink-0
-              ${activeTab === tab.id ? 'border-white text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
-            {tab.icon} {tab.label}
-          </button>
-        ))}
-      </nav>
 
       {/* BANNER CIERRE FUDO PENDIENTE */}
       {!cierreDismissed && cierresPendientes.length > 0 && (
@@ -285,15 +325,13 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'stock'      && (
           <div>
             {/* Sub-tabs de Stock */}
-            <div className="flex gap-1 mb-6 bg-slate-900 rounded-2xl p-1 w-fit">
-              <button
-                onClick={() => setStockSubTab('produccion')}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${stockSubTab === 'produccion' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+            <div className="hp-pilltabs">
+              <button onClick={() => setStockSubTab('produccion')}
+                className={`hp-pilltab ${stockSubTab === 'produccion' ? 'active' : ''}`}>
                 🍳 Producción
               </button>
-              <button
-                onClick={() => setStockSubTab('materias')}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${stockSubTab === 'materias' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              <button onClick={() => setStockSubTab('materias')}
+                className={`hp-pilltab ${stockSubTab === 'materias' ? 'active' : ''}`}>
                 📦 Materias primas
               </button>
             </div>
@@ -314,6 +352,8 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'desperdicios'   && <TabDesperdicios />}
         {activeTab === 'procedimientos' && <TabProcedimientos />}
       </main>
+
+      </div>
 
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}
       <AdminTour />
