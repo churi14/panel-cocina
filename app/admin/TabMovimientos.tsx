@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
+import { Filter, X, Check, RefreshCw, Trash2, AlertTriangle, ClipboardList, Factory, Pencil } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Movement, formatFecha } from './types';
 import { parseNumero } from '../components/stockNames';
@@ -130,19 +130,24 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
   return (
     <div className="max-w-6xl mx-auto space-y-6">
 
-      {/* Sub-tabs */}
-      <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 gap-1 w-fit flex-wrap">
+      {/* Sub-tabs: tarjetas seleccionables, centradas */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto" role="tablist">
         {([
-          { id: 'todos',        label: '📋 Movimientos' },
-          { id: 'producciones', label: `🔪 Producciones${sesiones.length > 0 ? ` (${sesiones.length})` : ''}` },
-          { id: 'correcciones', label: `✏️ Correcciones${correcciones.length > 0 ? ` (${correcciones.length})` : ''}` },
-        ] as const).map(t => (
-          <button key={t.id} onClick={() => setVistaTab(t.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-black transition-all
-              ${vistaTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
-            {t.label}
-          </button>
-        ))}
+          { id: 'todos',        label: 'Movimientos',  value: movements.length,    icon: <ClipboardList size={20} />, color: 'text-blue-400',  bg: 'bg-blue-500/10' },
+          { id: 'producciones', label: 'Producciones', value: sesiones.length,     icon: <Factory size={20} />,       color: 'text-green-400', bg: 'bg-green-500/10' },
+          { id: 'correcciones', label: 'Correcciones', value: correcciones.length, icon: <Pencil size={20} />,        color: 'text-amber-400', bg: 'bg-amber-500/10' },
+        ] as { id: 'todos' | 'producciones' | 'correcciones'; label: string; value: number; icon: React.ReactNode; color: string; bg: string }[]).map(t => {
+          const activa = vistaTab === t.id;
+          return (
+            <button key={t.id} role="tab" aria-selected={activa} onClick={() => setVistaTab(t.id)}
+              className={`text-left bg-slate-900 border rounded-2xl p-5 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+                ${activa ? 'border-blue-500 ring-2 ring-blue-500/30 shadow-lg' : 'border-slate-800'}`}>
+              <div className={`w-10 h-10 ${t.bg} rounded-xl flex items-center justify-center mb-3 ${t.color}`}>{t.icon}</div>
+              <p className="text-3xl font-black text-white mb-1">{t.value}</p>
+              <p className={`text-xs font-medium ${activa ? 'text-blue-400 font-black' : 'text-slate-400'}`}>{t.label}</p>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── VISTA CORRECCIONES ── */}
@@ -364,7 +369,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-black
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-black whitespace-nowrap
                       ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                       {m.tipo === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'}
                     </span>
@@ -535,7 +540,7 @@ export default function TabMovimientos({ movements, filterType, setFilterType, f
                       <tr key={i} className="hover:bg-slate-800/40">
                         <td className="px-4 py-2.5 text-slate-500 font-mono text-xs whitespace-nowrap">{formatFecha(m.fecha)}</td>
                         <td className="px-4 py-2.5">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-black
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-black whitespace-nowrap
                             ${m.tipo === 'ingreso' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                             {m.tipo === 'ingreso' ? '↑ INGRESO' : '↓ EGRESO'}
                           </span>
