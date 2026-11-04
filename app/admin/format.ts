@@ -24,3 +24,9 @@ export function formatCantidad(valor: number, unidad: string): { num: string; un
   }
   return { num: formatNumero(n, Number.isInteger(n) ? 0 : 1), unit: unidad };
 }
+
+/** Plata en pesos argentinos: $ 1.234,56 (sin decimales si es 100 o más). */
+export function formatPlata(n: number): string {
+  const v = Number(n) || 0;
+  return `$ ${formatNumero(v, Math.abs(v) >= 100 ? 0 : 2)}`;
+}

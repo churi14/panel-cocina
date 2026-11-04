@@ -110,12 +110,12 @@ export async function addProduccion(
 
 // ── Descuento automático de ingredientes según la receta ─────────────────────
 
-const norm = (s: string) =>
+export const norm = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-type StockRow = { id: string | number; nombre: string; unidad: string | null; categoria: string | null };
+export type StockRow = { id: string | number; nombre: string; unidad: string | null; categoria: string | null };
 
-function matchStock(ingName: string, rows: StockRow[]): StockRow | null {
+export function matchStock(ingName: string, rows: StockRow[]): StockRow | null {
   const n = norm(ingName);
   if (!n) return null;
   const exact = rows.find(r => norm(r.nombre) === n);
@@ -131,7 +131,7 @@ const MASA: Record<string, number> = { g: 1, gr: 1, kg: 1000 };
 const VOL:  Record<string, number> = { ml: 1, lt: 1000, l: 1000 };
 
 /** Convierte `qty` de la unidad `from` a la unidad `to` del stock. null si no se puede. */
-function convertir(qty: number, from: string, to: string | null): number | null {
+export function convertir(qty: number, from: string, to: string | null): number | null {
   const f = from.toLowerCase(), t = (to ?? 'kg').toLowerCase();
   if (f === t) return qty;
   if (MASA[f] && MASA[t]) return qty * MASA[f] / MASA[t];
