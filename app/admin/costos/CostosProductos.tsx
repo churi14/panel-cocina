@@ -149,7 +149,7 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
                               <td className="py-2 pr-2">
                                 <p className="font-bold text-white">{l.ingrediente}</p>
                                 <p className="text-[11px] text-slate-500">
-                                  {l.info.fuente === 'receta' ? `auto · ${l.info.detalle ?? 'receta'}` : l.info.fuente === 'crudo' ? `auto · ${l.info.detalle}` : l.info.fuente === 'manual' ? 'cargado' : 'falta precio'}
+                                  {(l.info.faltantes?.length ?? 0) > 0 ? `falta cargar: ${l.info.faltantes!.join(', ')}` : l.info.fuente === 'receta' ? `auto · ${l.info.detalle ?? 'receta'}` : l.info.fuente === 'crudo' ? `auto · ${l.info.detalle}` : l.info.fuente === 'manual' ? 'cargado' : 'falta precio'}
                                 </p>
                               </td>
                               <td className="py-2 text-right text-slate-300 whitespace-nowrap">{fmtQty(l.cantidad, l.unidad)}</td>

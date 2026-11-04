@@ -16,6 +16,7 @@ export type CostoInfo = {
   fuente: FuenteCosto;
   incompleto: boolean;       // falta algún dato para que el número sea confiable
   detalle?: string;
+  faltantes?: string[];      // insumos sin precio que impiden calcular (para avisar qué cargar)
 };
 export type RecetaFudoRow = { producto_fudo: string; ingrediente: string; cantidad: number; unidad: string; tabla_origen: string };
 export type LineaProducto = {
@@ -38,7 +39,7 @@ export function crearResolver(stockRows: StockRow[], precios: Precios) {
   const crudoPorProducido = new Map(
     Object.entries(FIAMBRE_PROD_MAP).map(([id, prodNombre]) => [norm(prodNombre), FIAMBRE_STOCK_MAP[id]]));
 
-  const falta = (unidad: string, detalle?: string): CostoInfo => ({ precio: null, unidad, fuente: 'falta', incompleto: true, detalle });
+  const falta = (unidad: string, detalle?: string, faltantes?: string[]): CostoInfo => ({ precio: null, unidad, fuente: 'falta', incompleto: true, detalle, faltantes });
 
   const resolver = (nombre: string, depth = 0): CostoInfo => {
     const k = norm(nombre);
@@ -61,17 +62,25 @@ export function crearResolver(stockRows: StockRow[], precios: Precios) {
       salida = rec.baseYield; unidad = unidadBase(rec.unit);
     }
     let total = 0; let faltan = 0;
+    const sinPrecio: string[] = [];
     for (const it of items) {
       const info = resolver(it.name, depth + 1);
       const q = info.precio !== null ? convertir(it.qty, it.unit, info.unidad) : null;
-      if (info.precio === null || q === null) { faltan++; continue; }
-      if (info.incompleto) faltan++;
+      if (info.precio === null || q === null) {
+        faltan++;
+        // si el insumo es otro elaborado, se avisa lo que le falta a él; si no, el insumo mismo
+        sinPrecio.push(...(info.faltantes?.length ? info.faltantes : [it.name]));
+        continue;
+      }
+      if (info.incompleto) { faltan++; sinPrecio.push(...(info.faltantes ?? [])); }
       total += info.precio * q;
     }
-    if (!(salida > 0) || total === 0) return falta(unidad, faltan ? `faltan ${faltan} insumos de la receta` : undefined);
+    const faltantes = [...new Set(sinPrecio)];
+    const aviso = faltantes.length ? `falta cargar: ${faltantes.join(', ')}` : undefined;
+    if (!(salida > 0) || total === 0) return falta(unidad, aviso, faltantes);
     return {
-      precio: total / salida, unidad, fuente: 'receta', incompleto: faltan > 0,
-      detalle: faltan > 0 ? `faltan ${faltan} insumo${faltan > 1 ? 's' : ''} en la receta` : 'calculado con la receta de cocina',
+      precio: total / salida, unidad, fuente: 'receta', incompleto: faltan > 0, faltantes,
+      detalle: aviso ?? 'calculado con la receta de cocina',
     };
   };
 
@@ -81,6 +90,8 @@ export function crearResolver(stockRows: StockRow[], precios: Precios) {
     // 1) precio cargado a mano (por el nombre o por el insumo de stock que coincide)
     const m = precios[k] ?? (row ? precios[norm(row.nombre)] : undefined);
     if (m) return { precio: m.precio, unidad: m.unidad, fuente: 'manual', incompleto: false };
+    // el agua de las recetas no tiene costo (si alguien carga un precio, manda ese)
+    if (/^agua( |$)/.test(k)) return { precio: 0, unidad: 'kg', fuente: 'crudo', incompleto: false, detalle: 'agua: sin costo' };
     if (depth > 4) return falta(row?.unidad ?? 'kg');
     // 2) elaborado con receta de cocina
     const rec = recetaPorNombre.get(k);

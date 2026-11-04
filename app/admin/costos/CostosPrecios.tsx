@@ -123,9 +123,20 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
                         <span className="text-xs text-slate-500">$/{f.unidad}</span>
                       </span>
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap">
+                    <td className="px-5 py-3 max-w-xs">
                       {f.manual !== null ? <span className="text-xs font-black text-blue-400">cargado</span>
-                        : f.info.fuente === 'receta' ? <span className={`text-xs font-black ${f.info.incompleto ? 'text-amber-400' : 'text-green-400'}`}>auto · {f.info.incompleto ? f.info.detalle : `${formatPlata(f.info.precio ?? 0)} por ${f.info.unidad}`}</span>
+                        : (f.info.faltantes?.length ?? 0) > 0 ? (
+                          <span className="text-xs font-black text-amber-400">
+                            falta cargar:{' '}
+                            {f.info.faltantes!.map((n, i) => (
+                              <button key={n} onClick={() => { setQ(n); setFiltro('sin'); }}
+                                className="underline decoration-dotted underline-offset-2 hover:text-amber-300 mr-1" title="Ver este insumo">
+                                {n}{i < f.info.faltantes!.length - 1 ? ',' : ''}
+                              </button>
+                            ))}
+                          </span>
+                        )
+                        : f.info.fuente === 'receta' ? <span className="text-xs font-black text-green-400">auto · {formatPlata(f.info.precio ?? 0)} por {f.info.unidad}</span>
                         : f.info.fuente === 'crudo' ? <span className="text-xs font-black text-green-400">auto · {f.info.detalle}</span>
                         : <span className="text-xs font-black text-amber-400">falta precio</span>}
                     </td>
