@@ -7,7 +7,7 @@ import { matchStock, convertir, norm } from '../../components/kitchenHelpers';
 import { parseNumero } from '../../components/stockNames';
 import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
-import { PrecioInput, fmtQty, type DatosCostos } from './shared';
+import { PrecioConPieza, fmtQty, type DatosCostos } from './shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calculador por receta de cocina: elegís una receta y cuánto querés producir.
@@ -209,7 +209,7 @@ export default function CostosReceta({ datos }: { datos: DatosCostos }) {
                         <td className="px-4 py-3 text-right text-slate-300 whitespace-nowrap">{fmtQty(f.qty, f.unit)}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           <span className="inline-flex items-center gap-1.5">
-                            <PrecioInput valor={f.precio} onCommit={v => guardar(f.clave, f.nombre, v, f.unidadPrecio)} />
+                            <PrecioConPieza valor={f.precio} unidad={f.unidadPrecio} nombre={f.nombre} onCommit={v => guardar(f.clave, f.nombre, v, f.unidadPrecio)} />
                             <span className="text-xs text-slate-500">$/{f.unidadPrecio}</span>
                           </span>
                         </td>

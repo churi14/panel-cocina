@@ -4,16 +4,15 @@ import { ChevronDown, Search, AlertTriangle } from 'lucide-react';
 import { parseNumero } from '../../components/stockNames';
 import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
-import { PrecioInput, fmtQty, type DatosCostos } from './shared';
+import { PrecioInput, PrecioConPieza, fmtQty, type DatosCostos } from './shared';
 import {
   CLAVE_VENTA, categoriaProducto, costoProducto, crearResolver, destinoPrecio, norm,
   type RecetaFudoRow, type ResultadoProducto,
 } from './engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Costos por producto: para cada producto de Fudo (con la receta ya cargada en recetas_fudo)
+// Costos por producto: para cada producto que se vende (con su receta ya cargada)
 // calcula cuánto cuesta hacerlo. El precio de venta se carga a mano por ahora;
-// más adelante se trae de Fudo en modo solo lectura.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const bonito = (n: string) => n.replace(/\.$/, '').replace(/\b\p{L}/gu, c => c.toUpperCase());
@@ -45,7 +44,7 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
 
   if (!cargado) return <p className="text-center text-slate-500 font-bold py-16">Cargando recetas…</p>;
   if (productos.length === 0) {
-    return <p className="text-center text-slate-500 font-bold py-16">No hay recetas de Fudo cargadas (tabla recetas_fudo).</p>;
+    return <p className="text-center text-slate-500 font-bold py-16">Todavía no hay recetas de productos cargadas.</p>;
   }
 
   return (
@@ -155,7 +154,8 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
                               <td className="py-2 text-right text-slate-300 whitespace-nowrap">{fmtQty(l.cantidad, l.unidad)}</td>
                               <td className="py-2 text-right whitespace-nowrap">
                                 <span className="inline-flex items-center gap-1.5">
-                                  <PrecioInput valor={manual} ancho="w-24"
+                                  <PrecioConPieza valor={manual} ancho="w-24" nombre={l.ingrediente}
+                                    unidad={l.info.fuente === 'falta' ? d.unidad : l.info.unidad}
                                     placeholder={manual === null && l.info.precio !== null ? formatNumero(l.info.precio, 2) : '0'}
                                     onCommit={v => guardar(d.clave, l.ingrediente, v, d.unidad)} />
                                   <span className="text-[11px] text-slate-500">$/{l.info.fuente === 'falta' ? d.unidad : l.info.unidad}</span>

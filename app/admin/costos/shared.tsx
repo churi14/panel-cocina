@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import type { StockRow } from '../../components/kitchenHelpers';
 import { parseNumero } from '../../components/stockNames';
-import { formatNumero, formatCantidad } from '../format';
+import { formatNumero, formatCantidad, formatPlata } from '../format';
 import type { Precios, RecetaFudoRow } from './engine';
 
 export type Modo = 'cargando' | 'nube' | 'local';
@@ -95,4 +95,83 @@ export function fmtQty(qty: number, unit: string): string {
   if (unit === 'g' || unit === 'gr') { const f = formatCantidad(qty / 1000, 'kg'); return `${f.num} ${f.unit}`; }
   if (unit === 'kg' || unit === 'lt') { const f = formatCantidad(qty, unit); return `${f.num} ${f.unit}`; }
   return `${formatNumero(qty, Number.isInteger(qty) ? 0 : 2)} ${unit}`;
+}
+
+/**
+ * Precio de un insumo + botón "pieza": para cuando se compra una pieza entera (un jamón, una barra)
+ * y se conoce cuánto costó y cuánto pesa. Calcula el precio por kilo y, si se indica el peso de una
+ * feta o porción, cuánto cuesta cada una.
+ */
+export function PrecioConPieza({ valor, unidad, onCommit, ancho = 'w-28', placeholder = '0', nombre }: {
+  valor: number | null; unidad: string; onCommit: (v: number | null) => void;
+  ancho?: string; placeholder?: string; nombre?: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [precioPieza, setPrecioPieza] = useState('');
+  const [pesoPieza, setPesoPieza] = useState('');
+  const [pesoPorcion, setPesoPorcion] = useState('');
+  const esPeso = unidad === 'kg' || unidad === 'lt';
+  const uPeso = unidad === 'lt' ? 'litros' : 'kg';
+
+  useEffect(() => {
+    if (!abierto) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAbierto(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [abierto]);
+
+  const pp = parseNumero(precioPieza), kg = parseNumero(pesoPieza), g = parseNumero(pesoPorcion);
+  const porKg = pp > 0 && kg > 0 ? pp / kg : null;
+  const porPorcion = porKg !== null && g > 0 ? porKg * (g / 1000) : null;
+  const solo = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => setter(e.target.value.replace(/[^0-9.,]/g, ''));
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <PrecioInput valor={valor} onCommit={onCommit} ancho={ancho} placeholder={placeholder} />
+      {esPeso && (
+        <button type="button" onClick={() => setAbierto(true)} title="Calcular desde el precio de una pieza entera"
+          className="hp-glass px-2 py-1 text-[11px] font-black">pieza</button>
+      )}
+      {abierto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 text-left" onClick={() => setAbierto(false)}>
+          <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 whitespace-normal">
+            <div>
+              <h3 className="font-black text-white">Precio por pieza{nombre ? ` · ${nombre}` : ''}</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Cargá lo que costó la pieza entera y cuánto pesa: el sistema calcula el precio por {unidad}.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Precio de la pieza ($)</span>
+                <input autoFocus type="text" inputMode="decimal" value={precioPieza} onChange={solo(setPrecioPieza)} placeholder="20000"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-blue-500" />
+              </label>
+              <label className="block">
+                <span className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Pesa ({uPeso})</span>
+                <input type="text" inputMode="decimal" value={pesoPieza} onChange={solo(setPesoPieza)} placeholder="4"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-lg font-black text-center outline-none focus:border-blue-500" />
+              </label>
+            </div>
+            <label className="block">
+              <span className="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Peso de una feta o porción en gramos (opcional)</span>
+              <input type="text" inputMode="decimal" value={pesoPorcion} onChange={solo(setPesoPorcion)} placeholder="20"
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold text-center outline-none focus:border-blue-500" />
+            </label>
+            <div className="rounded-xl bg-slate-800 px-4 py-3 text-sm space-y-1">
+              <p className="flex justify-between"><span className="text-slate-400">Precio por {unidad}</span><span className="font-black text-white">{porKg !== null ? formatPlata(porKg) : '—'}</span></p>
+              {g > 0 && <p className="flex justify-between"><span className="text-slate-400">Cada porción de {formatNumero(g, 0)} g</span><span className="font-black text-green-400">{porPorcion !== null ? formatPlata(porPorcion) : '—'}</span></p>}
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setAbierto(false)} className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl text-sm">Cancelar</button>
+              <button type="button" disabled={porKg === null}
+                onClick={() => { if (porKg !== null) { onCommit(Math.round(porKg * 100) / 100); setAbierto(false); setPrecioPieza(''); setPesoPieza(''); setPesoPorcion(''); } }}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-sm disabled:opacity-40">
+                Usar {porKg !== null ? formatPlata(porKg) : 'este precio'} por {unidad}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </span>
+  );
 }

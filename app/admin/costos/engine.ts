@@ -2,8 +2,8 @@
 // Motor de costos — puro (sin React ni base de datos).
 //  · cada insumo tiene un precio por unidad (kg, lt o u)
 //  · un insumo "elaborado" (pan, salsas) se calcula solo a partir de su receta de cocina
-//  · un producto (lomito, burger…) suma el costo de todos los insumos de su receta de Fudo
-// Nada de esto escribe en Fudo: las recetas se leen de nuestra tabla recetas_fudo.
+//  · un producto (lomito, burger…) suma el costo de todos los insumos de su receta
+// (las recetas de productos están en la tabla recetas_fudo, solo por cómo se cargaron).
 // ─────────────────────────────────────────────────────────────────────────────
 import { INITIAL_RECIPES } from '../../data/recipes';
 import { matchStock, convertir, norm, FIAMBRE_PROD_MAP, FIAMBRE_STOCK_MAP, type StockRow } from '../../components/kitchenHelpers';
@@ -126,7 +126,7 @@ export function costoProducto(rows: RecetaFudoRow[], resolver: Resolver): Result
   return { lineas, total: lineas.reduce((s, l) => s + (l.costo ?? 0), 0), incompleto: faltan > 0, faltan };
 }
 
-/** Clasifica un producto de Fudo por su nombre, para filtrar la lista. */
+/** Clasifica un producto por su nombre, para filtrar la lista. */
 export function categoriaProducto(nombre: string): 'Lomitos' | 'Burgers' | 'Milanesas' | 'Sánguches' | 'Promos' {
   const n = nombre.toLowerCase();
   if (/promo/.test(n)) return 'Promos';

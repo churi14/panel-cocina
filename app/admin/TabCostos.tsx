@@ -8,8 +8,8 @@ import CostosPrecios from './costos/CostosPrecios';
 import CostosReceta from './costos/CostosReceta';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Costos: por producto (recetas de Fudo), precios de insumos y calculador por receta.
-// Todo se calcula acá; no se escribe nada en Fudo.
+// Costos: recetas de cocina, costo de cada producto que se vende y precios de insumos.
+// Todo se calcula acá con nuestras propias recetas.
 // Precios en la tabla `costos_insumos` (sql/20261104_costos_insumos.sql).
 // ─────────────────────────────────────────────────────────────────────────────
 

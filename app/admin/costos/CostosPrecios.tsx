@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
-import { PrecioInput, type DatosCostos } from './shared';
+import { PrecioConPieza, type DatosCostos } from './shared';
 import { RECETAS_CALCULABLES, crearResolver, destinoPrecio, norm, type CostoInfo } from './engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
   const filas = useMemo<Fila[]>(() => {
     const resolver = crearResolver(stockRows, precios);
     const mapa = new Map<string, { nombre: string; unidadUso: string; tabla: string; productos: Set<string> }>();
-    // 1) ingredientes de los productos de Fudo
+    // 1) ingredientes de los productos que se venden
     recetasFudo.forEach(r => {
       const k = norm(r.ingrediente);
       const e = mapa.get(k) ?? { nombre: r.ingrediente, unidadUso: r.unidad, tabla: r.tabla_origen, productos: new Set<string>() };
@@ -117,7 +117,7 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
                     <td className="px-4 py-3 text-right text-slate-400 whitespace-nowrap">{f.usos ? `${f.usos} producto${f.usos > 1 ? 's' : ''}` : 'receta de cocina'}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5">
-                        <PrecioInput valor={f.manual}
+                        <PrecioConPieza valor={f.manual} unidad={f.unidad} nombre={f.nombre}
                           placeholder={f.manual === null && f.info.precio !== null ? formatNumero(f.info.precio, 2) : '0'}
                           onCommit={v => guardar(f.clave, f.nombre, v, f.unidad)} />
                         <span className="text-xs text-slate-500">$/{f.unidad}</span>
