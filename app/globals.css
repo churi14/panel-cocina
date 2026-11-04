@@ -231,8 +231,16 @@
   transition: translate var(--hp-dur) var(--hp-ease), width var(--hp-dur) var(--hp-ease), background var(--hp-dur) ease;
 }
 /* Modo "block": ocupa todo el ancho, opciones iguales */
-.hp-switch.block { display: grid; width: 100%; }
+.hp-switch.block {
+  display: grid; width: 100%;
+  grid-template-columns: repeat(var(--n), minmax(max-content, 1fr));
+  overflow-x: auto; scrollbar-width: none;
+}
+.hp-switch.block::-webkit-scrollbar { display: none; }
 .hp-switch.block label { padding: .75rem 1rem; font-size: .875rem; }
+@media (max-width: 640px) {
+  .hp-switch.block label { padding: .7rem .4rem; font-size: .75rem; letter-spacing: 0; }
+}
 /* Modo "fit": opciones de ancho natural; si no entran, la barra se desplaza sin mostrar scrollbar */
 .hp-switch.fit {
   display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none;
