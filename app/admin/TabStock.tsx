@@ -917,7 +917,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                             </div>
                           )}
 
-                          {/* corrección: usar el botón "Corregir stock" del header */}
+                          {/* corrección: usar la pestaña "Corregir" */}
                         </div>
                       );
                     })()}
@@ -1121,11 +1121,6 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         <p className={`text-2xl font-black ${stockActual < 0 ? 'text-red-400' : 'text-white'}`}>{formatCantidad(stockActual, unidadStock).num}</p>
                         <p className="text-xs text-slate-500">{formatCantidad(stockActual, unidadStock).unit} en stock</p>
                       </div>
-                      <button
-                        onClick={() => { setModalTab('corregir'); setOvQty(false); setMatStockValor(String(selectedStockItem.cantidad)); setOverrideWarn(false); setEditandoUnidad(false); }}
-                        className="px-3 py-1.5 text-xs font-black bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-all">
-                        ✏️ Corregir stock
-                      </button>
                       <div className="relative">
                         <button onClick={() => setMasAbierto(v => !v)} aria-label="Más opciones" title="Más opciones"
                           className="px-2.5 py-1.5 text-sm font-black bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl transition-all">⋯</button>
