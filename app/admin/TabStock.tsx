@@ -278,7 +278,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   { id: 'verduras',     label: '🥬 Verduras' },
                 ]}
                 value={stockSubTab}
-                onChange={setStockSubTab} />
+                onChange={id => { setStockSubTab(id); setStockCat('all'); }} />
               <button
                 onClick={() => setShowFactura(true)}
                 className="hp-glass hp-tone-indigo flex items-center gap-2 px-4 py-2.5 font-black text-sm whitespace-nowrap">
@@ -302,13 +302,11 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       onChange={e => setStockSearch(e.target.value)}
                       className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-300 outline-none focus:border-slate-500" />
                   </div>
-                  <div className={`flex gap-2 flex-wrap ${new Set(stockView.map(s => s.categoria)).size < 2 ? 'hidden' : ''}`}>
-                    {['all', ...new Set(stockView.map(s => s.categoria))].map(cat => (
-                      <button key={cat} onClick={() => setStockCat(cat)}
-                        className={`hp-glass px-3 py-1.5 text-xs font-bold ${stockCat === cat ? 'is-active' : ''}`}>
-                        {cat === 'all' ? 'TODOS' : cat}
-                      </button>
-                    ))}
+                  <div className={`min-w-0 max-w-full ${new Set(stockView.map(s => s.categoria)).size < 2 ? 'hidden' : ''}`}>
+                    <HopeSwitch fit name="stock-cat"
+                      options={['all', ...new Set(stockView.map(s => s.categoria as string))].map(cat => ({ id: cat, label: cat === 'all' ? 'TODOS' : cat }))}
+                      value={stockCat}
+                      onChange={setStockCat} />
                   </div>
                 </div>
 
@@ -1308,37 +1306,33 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     </div>
 
                     {/* TABS INGRESO / EGRESO */}
+                    <HopeSwitch block name="stock-mov"
+                      options={[
+                        { id: 'ingreso', label: '📦 Ingreso / Factura', tone: 'green' },
+                        { id: 'egreso',  label: '📤 Egreso / Uso',      tone: 'red' },
+                      ]}
+                      value={modalTab}
+                      onChange={id => {
+                        if (id === 'ingreso') { setModalTab('ingreso'); setModoLatas(false); setLatasCount(''); setLatasPeso(''); }
+                        else setModalTab('egreso');
+                      }} />
                     <div className="rounded-2xl overflow-hidden border border-slate-700">
-                      {/* Tab selector */}
-                      <div className="flex">
-                        <button onClick={() => { setModalTab('ingreso'); setModoLatas(false); setLatasCount(''); setLatasPeso(''); }}
-                          className={`flex-1 py-3 text-sm font-black transition-all flex items-center justify-center gap-2
-                            ${modalTab === 'ingreso' ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
-                          📦 Ingreso / Factura
-                        </button>
-                        <button onClick={() => setModalTab('egreso')}
-                          className={`flex-1 py-3 text-sm font-black transition-all flex items-center justify-center gap-2
-                            ${modalTab === 'egreso' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
-                          📤 Egreso / Uso
-                        </button>
-                      </div>
-
                       <div className="p-4 space-y-3">
                         {/* ── INGRESO ── */}
                         {modalTab === 'ingreso' && (<>
                           {/* Toggle modo latas */}
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-black text-slate-400 uppercase">Modo de carga</span>
-                            <div className="flex bg-slate-800 rounded-lg p-0.5 gap-0.5">
-                              <button onClick={() => { setModoLatas(false); setLatasCount(''); setLatasPeso(''); setAderezoCounts({}); }}
-                                className={`px-3 py-1.5 rounded-md text-xs font-black transition-all ${!modoLatas ? 'bg-white text-slate-900' : 'text-slate-400'}`}>
-                                Peso directo
-                              </button>
-                              <button onClick={() => { setModoLatas(true); setAderezoCounts({}); }}
-                                className={`px-3 py-1.5 rounded-md text-xs font-black transition-all ${modoLatas ? 'bg-white text-slate-900' : 'text-slate-400'}`}>
-                                📦 Por paquetes/unidades
-                              </button>
-                            </div>
+                            <HopeSwitch fit name="stock-modo"
+                              options={[
+                                { id: 'directo',  label: 'Peso directo' },
+                                { id: 'paquetes', label: '📦 Por paquetes/unidades' },
+                              ]}
+                              value={modoLatas ? 'paquetes' : 'directo'}
+                              onChange={id => {
+                                if (id === 'directo') { setModoLatas(false); setLatasCount(''); setLatasPeso(''); setAderezoCounts({}); }
+                                else { setModoLatas(true); setAderezoCounts({}); }
+                              }} />
                           </div>
 
                           {/* MODO PAQUETES */}

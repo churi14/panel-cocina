@@ -1,7 +1,7 @@
 "use client";
 import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 
-export type SwitchOption<T extends string> = { id: T; label: React.ReactNode };
+export type SwitchOption<T extends string> = { id: T; label: React.ReactNode; tone?: 'green' | 'red' };
 
 /**
  * Switch segmentado con indicador deslizante (estilo "flip" de jh3y).
@@ -10,12 +10,14 @@ export type SwitchOption<T extends string> = { id: T; label: React.ReactNode };
  * - `fit`: las opciones toman su ancho natural y, si no entran, la barra se desplaza.
  * Las medidas, el resorte (linear()) y los colores están en globals.css (.hp-switch).
  */
-export default function HopeSwitch<T extends string>({ options, value, onChange, name, fit = false }: {
+export default function HopeSwitch<T extends string>({ options, value, onChange, name, fit = false, block = false }: {
   options: SwitchOption<T>[];
   value: T;
   onChange: (id: T) => void;
   name?: string;
   fit?: boolean;
+  /** Ocupa todo el ancho disponible, con las opciones repartidas en partes iguales. */
+  block?: boolean;
 }) {
   const uid = useId();
   const group = name ?? `sw-${uid}`;
@@ -48,9 +50,11 @@ export default function HopeSwitch<T extends string>({ options, value, onChange,
 
   const style: Record<string, string | number> = { '--n': options.length, '--i': idx };
   if (m) { style['--dx'] = `${m.x - 3}px`; style['--w'] = `${m.w}px`; }
+  const tono = options[idx]?.tone;
+  if (tono) { style['--ind'] = tono === 'green' ? '#16a34a' : '#dc2626'; style['--ind-shadow'] = tono === 'green' ? 'rgba(22,163,74,.7)' : 'rgba(220,38,38,.7)'; }
 
   return (
-    <div ref={ref} className={`hp-switch ${fit ? 'fit' : ''}`} role="radiogroup" style={style as React.CSSProperties}>
+    <div ref={ref} className={`hp-switch ${fit ? 'fit' : ''} ${block ? 'block' : ''}`} role="radiogroup" style={style as React.CSSProperties}>
       <span className="hp-switch-ind" aria-hidden="true" />
       {options.map(o => (
         <React.Fragment key={o.id}>

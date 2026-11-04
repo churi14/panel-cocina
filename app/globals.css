@@ -225,11 +225,14 @@
 .hp-switch-ind {
   position: absolute; top: 3px; bottom: 3px; left: 3px;
   width: var(--w, calc((100% - 6px) / var(--n))); border-radius: 100px;
-  background: var(--hp-primary);
-  box-shadow: 0 8px 16px -8px rgba(var(--hp-primary-rgb), .8);
+  background: var(--ind, var(--hp-primary));
+  box-shadow: 0 8px 16px -8px var(--ind-shadow, rgba(var(--hp-primary-rgb), .8));
   translate: var(--dx, calc(var(--i) * 100%)) 0;
-  transition: translate var(--hp-dur) var(--hp-ease), width var(--hp-dur) var(--hp-ease);
+  transition: translate var(--hp-dur) var(--hp-ease), width var(--hp-dur) var(--hp-ease), background var(--hp-dur) ease;
 }
+/* Modo "block": ocupa todo el ancho, opciones iguales */
+.hp-switch.block { display: grid; width: 100%; }
+.hp-switch.block label { padding: .75rem 1rem; font-size: .875rem; }
 /* Modo "fit": opciones de ancho natural; si no entran, la barra se desplaza sin mostrar scrollbar */
 .hp-switch.fit {
   display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none;
