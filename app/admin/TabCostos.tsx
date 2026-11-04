@@ -17,7 +17,7 @@ type Vista = 'costos' | 'precios' | 'receta';
 
 export default function TabCostos() {
   const datos = useDatosCostos();
-  const [vista, setVista] = useState<Vista>('costos');
+  const [vista, setVista] = useState<Vista>('receta');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -31,9 +31,9 @@ export default function TabCostos() {
         </div>
         <HopeSwitch fit name="costos-vista"
           options={[
+            { id: 'receta',  label: '🧮 Recetas' },
             { id: 'costos',  label: '🍔 Costos' },
             { id: 'precios', label: '💲 Precios de insumos' },
-            { id: 'receta',  label: '🧮 Calculador' },
           ]}
           value={vista} onChange={setVista} />
       </div>
