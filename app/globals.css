@@ -198,3 +198,81 @@
 [data-admin-theme="light"] .bg-black\/80,
 [data-admin-theme="light"] .bg-black\/75,
 [data-admin-theme="light"] .bg-black\/60 { background-color: rgba(35,45,66,0.5) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Switch segmentado animado (basado en "flip" de jh3y) — componente HopeSwitch
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0;
+}
+[data-admin-theme="light"] {
+  --hp-switch-shadow: 0 1px 1px rgba(17,38,146,.08), 0 4px 8px -2px rgba(17,38,146,.09), 0 14px 26px -8px rgba(17,38,146,.14);
+}
+[data-admin-theme="dark"] {
+  --hp-switch-shadow: 0 1px 1px rgba(0,0,0,.4), 0 6px 12px -3px rgba(0,0,0,.45), 0 18px 32px -8px rgba(0,0,0,.55);
+}
+.hp-switch {
+  --hp-dur: .3s;
+  --hp-ease: linear(0 0%, 0.2342 12.49%, 0.4374 24.99%, 0.6093 37.49%, 0.6835 43.74%, 0.7499 49.99%,
+    0.8086 56.25%, 0.8593 62.5%, 0.9023 68.75%, 0.9375 75%, 0.9648 81.25%, 0.9844 87.5%, 0.9961 93.75%, 1 100%);
+  position: relative; display: inline-grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  padding: 3px; border-radius: 100px; letter-spacing: .5px;
+  background: var(--hp-surface); border: 1px solid var(--hp-border);
+  box-shadow: var(--hp-switch-shadow);
+}
+.hp-switch-ind {
+  position: absolute; top: 3px; bottom: 3px; left: 3px;
+  width: calc((100% - 6px) / var(--n)); border-radius: 100px;
+  background: var(--hp-primary);
+  box-shadow: 0 8px 16px -8px rgba(var(--hp-primary-rgb), .8);
+  translate: calc(var(--i) * 100%) 0;
+  transition: translate var(--hp-dur) var(--hp-ease);
+}
+.hp-switch label {
+  position: relative; z-index: 1; display: grid; place-items: center; white-space: nowrap;
+  padding: .55rem 1.35rem; font-size: .8rem; font-weight: 700; cursor: pointer; user-select: none;
+  color: var(--hp-text); opacity: .8;
+  transition: color var(--hp-dur) var(--hp-ease), opacity var(--hp-dur) var(--hp-ease);
+}
+.hp-switch label:hover { color: var(--hp-heading); opacity: 1; }
+.hp-switch input:checked + label { color: #fff; opacity: 1; }
+.hp-switch input:focus-visible + label { outline: 2px solid var(--hp-primary); outline-offset: 2px; border-radius: 100px; }
+@media (prefers-reduced-motion: reduce) {
+  .hp-switch-ind, .hp-switch label { transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Botones "glass" (vidrio esmerilado)
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-admin-theme="dark"] {
+  --gl-bg: rgba(255,255,255,.08); --gl-bg-h: rgba(255,255,255,.16);
+  --gl-bd: rgba(255,255,255,.15); --gl-bd-h: rgba(255,255,255,.35);
+  --gl-fg: #e0e6ed; --gl-sh: 0 4px 16px rgba(0,0,0,.2); --gl-sh-h: 0 12px 32px rgba(0,0,0,.35);
+  --gl-active-fg: #ffffff; --gl-green: #4ade80; --gl-indigo: #a5b4fc;
+}
+[data-admin-theme="light"] {
+  --gl-bg: rgba(255,255,255,.75); --gl-bg-h: #ffffff;
+  --gl-bd: rgba(35,45,66,.12); --gl-bd-h: rgba(58,87,232,.45);
+  --gl-fg: #3b455c; --gl-sh: 0 4px 16px rgba(17,38,146,.07); --gl-sh-h: 0 12px 32px rgba(17,38,146,.16);
+  --gl-active-fg: #3a57e8; --gl-green: #15803d; --gl-indigo: #4338ca;
+}
+.hp-glass {
+  background: var(--gl-bg);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border: 1px solid var(--gl-bd); border-radius: 10px;
+  color: var(--gl-fg); box-shadow: var(--gl-sh);
+  transition: all .4s cubic-bezier(.4, 0, .2, 1);
+}
+.hp-glass:hover {
+  background: var(--gl-bg-h); border-color: var(--gl-bd-h);
+  transform: translateY(-3px); box-shadow: var(--gl-sh-h);
+}
+.hp-glass:active { transform: translateY(-1px); }
+.hp-glass.is-active {
+  background: rgba(var(--hp-primary-rgb), .2); border-color: var(--hp-primary); color: var(--gl-active-fg);
+}
+.hp-glass.hp-tone-green  { border-color: rgba(34,197,94,.45);  color: var(--gl-green); }
+.hp-glass.hp-tone-indigo { border-color: rgba(129,140,248,.5); color: var(--gl-indigo); }
+@media (prefers-reduced-motion: reduce) { .hp-glass, .hp-glass:hover { transition: none; transform: none; } }

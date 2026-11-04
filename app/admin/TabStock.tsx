@@ -7,6 +7,7 @@ import { supabase } from '../supabase';
 import StockEntryModal from '../components/StockEntryModal';
 import FacturaModal from './FacturaModal';
 import { parseNumero } from '../components/stockNames';
+import HopeSwitch from './HopeSwitch';
 
 // ── Formatos doypack/paquete por producto ─────────────────────────────────────
 const FORMATOS_DOYPACK: Record<string, { label: string; kg: number }[]> = {
@@ -265,22 +266,17 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
             {/* Sub-tabs + botón factura en la misma fila */}
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-2xl p-1.5">
-                {([
+              <HopeSwitch name="stock-materiales"
+                options={[
                   { id: 'materiales',   label: '🥩 Carnes y Materiales' },
                   { id: 'carne_limpia', label: '🔪 Carne Limpia' },
                   { id: 'produccion',   label: '🍔 Producción' },
-                ] as const).map(t => (
-                  <button key={t.id} onClick={() => setStockSubTab(t.id as any)}
-                    className={`px-5 py-2 rounded-xl text-sm font-bold transition-all
-                      ${stockSubTab === t.id ? 'bg-white text-slate-900' : 'text-slate-400 hover:text-white'}`}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+                ]}
+                value={stockSubTab as 'materiales' | 'carne_limpia' | 'produccion'}
+                onChange={id => setStockSubTab(id as any)} />
               <button
                 onClick={() => setShowFactura(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap shadow-lg">
+                className="hp-glass hp-tone-indigo flex items-center gap-2 px-4 py-2.5 font-black text-sm whitespace-nowrap">
                 📄 Cargar factura IA
               </button>
             </div>
@@ -292,7 +288,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
                   <button
                     onClick={() => setShowEntryModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white font-black text-sm rounded-xl transition-all active:scale-95 whitespace-nowrap">
+                    className="hp-glass hp-tone-green flex items-center gap-2 px-4 py-2.5 font-black text-sm whitespace-nowrap">
                     <Package size={16} /> Ingreso manual
                   </button>
                   <div className="relative flex-1 min-w-48">
@@ -304,7 +300,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                   <div className="flex gap-2 flex-wrap">
                     {['all', ...new Set(stock.map(s => s.categoria))].map(cat => (
                       <button key={cat} onClick={() => setStockCat(cat)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${stockCat === cat ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+                        className={`hp-glass px-3 py-1.5 text-xs font-bold ${stockCat === cat ? 'is-active' : ''}`}>
                         {cat === 'all' ? 'TODOS' : cat}
                       </button>
                     ))}

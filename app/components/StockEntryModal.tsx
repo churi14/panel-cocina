@@ -5,7 +5,7 @@ import { X, Truck, Check, ChevronLeft, Search, RefreshCw } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useOperadores } from '../hooks/useOperadores';
 import HelpButton from './HelpButton';
-import { adjustStock } from './kitchenHelpers';
+import { adjustStock, revisarPeso } from './kitchenHelpers';
 import { parseNumero } from './stockNames';
 
 type StockItem = { id: number; nombre: string; categoria: string; cantidad: number; unidad: string; };
@@ -126,6 +126,12 @@ export default function StockEntryModal({ onClose }: { onClose: () => void }) {
     if (!isAderezo && !cantidad) return;
     const cantidadFinal = isAderezo ? totalKgAderezo : parseNumero(cantidad);
     if (!(cantidadFinal > 0)) return;
+    // kg / lt escritos a mano: se revisan (gramos puestos como kilos, coma que falta)
+    if (!isAderezo && (selectedProduct.unidad === 'kg' || selectedProduct.unidad === 'lt')) {
+      const ok = revisarPeso(cantidadFinal, selectedProduct.nombre, selectedProduct.categoria ?? '');
+      if (ok === null) return;
+      if (ok !== cantidadFinal) { setCantidad(String(ok)); return; }
+    }
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);

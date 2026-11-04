@@ -24,6 +24,7 @@ import TabFactura       from './TabFactura';
 import TabDesperdicios    from './TabDesperdicios';
 import TabProcedimientos  from './TabProcedimientos';
 import ExportModal        from './ExportModal';
+import HopeSwitch         from './HopeSwitch';
 import PushButton     from '../components/PushButton';
 import TestModeButton from '../components/TestModeButton';
 import { useAuth }    from '../AuthContext';
@@ -50,7 +51,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
   };
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios' | 'procedimientos'>('dashboard');
-  const [stockSubTab, setStockSubTab] = useState<'produccion' | 'materias'>('produccion');
+  const [stockSubTab, setStockSubTab] = useState<'produccion' | 'materias'>('materias');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
   const [stock, setStock]                       = useState<any[]>([]);
@@ -325,15 +326,13 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'stock'      && (
           <div>
             {/* Sub-tabs de Stock */}
-            <div className="hp-pilltabs">
-              <button onClick={() => setStockSubTab('produccion')}
-                className={`hp-pilltab ${stockSubTab === 'produccion' ? 'active' : ''}`}>
-                🍳 Producción
-              </button>
-              <button onClick={() => setStockSubTab('materias')}
-                className={`hp-pilltab ${stockSubTab === 'materias' ? 'active' : ''}`}>
-                📦 Materias primas
-              </button>
+            <div className="mb-6">
+              <HopeSwitch name="stock-sub"
+                options={[
+                  { id: 'materias',   label: '📦 Materias primas' },
+                  { id: 'produccion', label: '🍳 Producción' },
+                ]}
+                value={stockSubTab} onChange={setStockSubTab} />
             </div>
             {stockSubTab === 'produccion' && (
               <TabProduccion stockProd={stockProd} produccionEventos={produccionEventos} fetchMovements={fetchMovements} cocinaActiva={cocinaActiva} />

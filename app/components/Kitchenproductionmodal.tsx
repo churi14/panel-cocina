@@ -8,9 +8,10 @@ import {
 import type { Recipe, ProductionRecord } from '../types';
 import { supabase } from '../supabase';
 import { sendResumenTurno } from './pushEvents';
+import { parseNumero } from './stockNames';
 import {
   saveCocinaProduccion, clearCocinaProduccion,
-  deductStockForFraccion,
+  deductStockForFraccion, revisarPeso,
   formatQty,
 } from './kitchenHelpers';
 import KitchenFinalizarSalsa    from './KitchenFinalizarSalsa';
@@ -151,7 +152,20 @@ export default function KitchenProductionModal({ onClose, activeProductions, set
   const handleStart = async () => {
     if (!canStart || !selectedProduct) return;
     const now = Date.now();
-    const finalTargetUnits = (isVerdura || isFiambre) ? parseFloat(verduraBrutoKg) : isPercent ? parseFloat(baseQtyKg) : targetUnits;
+    // Pesos en kg escritos a mano: se revisan antes de iniciar (gramos puestos como kilos, coma que falta)
+    const esKg = isVerdura || isFiambre || isPercent || selectedProduct.unit === 'kg';
+    if (esKg) {
+      const crudo = (isVerdura || isFiambre) ? parseNumero(verduraBrutoKg) : isPercent ? parseNumero(baseQtyKg) : targetUnits;
+      const ok = revisarPeso(crudo, selectedProduct.name, selectedProduct.category);
+      if (ok === null) return;
+      if (ok !== crudo) {
+        if (isVerdura || isFiambre) setVerduraBrutoKg(String(ok));
+        else if (isPercent) handleBaseChange(String(ok));
+        else setTargetUnits(ok);
+        return; // se muestra el valor corregido; la persona toca iniciar otra vez
+      }
+    }
+    const finalTargetUnits = (isVerdura || isFiambre) ? parseNumero(verduraBrutoKg) : isPercent ? parseNumero(baseQtyKg) : targetUnits;
     const finalUnit = (isVerdura || isFiambre) ? 'kg' : isPercent ? 'kg base' : selectedProduct.unit;
     const finalBaseKg = (isVerdura || isFiambre) ? parseFloat(verduraBrutoKg)
       : isPercent ? parseFloat(baseQtyKg || '0')

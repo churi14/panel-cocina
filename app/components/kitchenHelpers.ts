@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabase } from '../supabase';
 import { checkAndNotifyStock, checkAndNotifyProduccionByName } from './pushEvents';
+import { validarCantidad, getLimiteProducto, getCategoriaLimite, LIMITES_CONFIRMACION } from './butchery/validaciones';
 export { checkAndNotifyStock, checkAndNotifyProduccionByName };
 
 export function formatQty(grams: number): string {
@@ -190,6 +191,37 @@ export async function deductStockForRecipe(
   }
   if (!ok) notifyError(`Algunos ingredientes de ${recipe.name} no se pudieron descontar`);
   return { ok, sinDescontar };
+}
+
+// ── Revisión de pesos escritos a mano ─────────────────────────────────────────
+
+/**
+ * Revisa un peso en kg antes de usarlo. Los errores típicos son gramos escritos como kilos
+ * (7000 en vez de 7) o una coma que falta (2248 en vez de 22,48). Si el valor es normal lo
+ * devuelve igual. Si no, ofrece el valor corregido: devuelve ese valor, el original (si la
+ * persona confirma que es correcto) o null (si cancela y tiene que corregirlo).
+ */
+export function revisarPeso(valor: number, nombre: string, categoria: string): number | null {
+  const res = validarCantidad(valor, categoria, nombre);
+  if (res.ok) return valor;
+  if (typeof window === 'undefined') return valor;
+
+  const lim = getLimiteProducto(nombre)?.confirmar ?? LIMITES_CONFIRMACION[getCategoriaLimite(categoria)] ?? 20;
+  // Gramos escritos como kilos: 7000 → 7 · 6260 → 6,26
+  let sug: number | null = valor >= 100 ? parseFloat((valor / 1000).toFixed(3)) : null;
+  if (sug !== null && sug > lim * 1.5) sug = sugerirDecimal(valor, lim * 1.5);
+  if (sug === null) sug = sugerirDecimal(valor, lim * 1.5);
+
+  if (sug !== null) {
+    const usarSug = window.confirm(
+      `${valor} kg parece mucho para ${nombre} (lo normal es hasta ${lim} kg).\n\n` +
+      `¿Quisiste decir ${String(sug).replace('.', ',')} kg?\n\n` +
+      `Aceptar = usar ${String(sug).replace('.', ',')} kg\nCancelar = corregir a mano`
+    );
+    return usarSug ? sug : null;
+  }
+  if (res.tipo === 'bloqueo') { window.alert(res.mensaje); return null; }
+  return window.confirm(`${res.mensaje}\n\n${res.detalle}`) ? valor : null;
 }
 
 // ── Persistencia cocina ───────────────────────────────────────────────────────

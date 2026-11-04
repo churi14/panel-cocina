@@ -155,16 +155,14 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
       {/* Filtro por categoría */}
       <div className="flex gap-2 flex-wrap">
         <button onClick={() => setFilterCat(null)}
-          className={`px-3 py-1.5 rounded-full text-xs font-black transition-all
-            ${!filterCat ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+          className={`hp-glass px-3 py-1.5 text-xs font-black ${!filterCat ? 'is-active' : ''}`}>
           TODAS
         </button>
         {allCats.map(cat => {
           const cfg = CAT_CFG[cat] ?? DEFAULT_CFG;
           return (
             <button key={cat} onClick={() => setFilterCat(filterCat === cat ? null : cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-black transition-all
-                ${filterCat === cat ? `${cfg.bg} ${cfg.color} border ${cfg.border}` : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+              className={`hp-glass px-3 py-1.5 text-xs font-black ${filterCat === cat ? 'is-active' : ''}`}>
               {cfg.emoji} {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           );
@@ -207,7 +205,7 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
               <h2 className={`font-black text-sm uppercase ${cfg.color}`}>{cfg.emoji} {cat}</h2>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-slate-500">{catItems.length} items · click para ver historial</span>
-                <button onClick={fetchMovements} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
+                <button onClick={fetchMovements} className="hp-glass px-3 py-1.5 text-xs font-bold flex items-center gap-1">
                   <RefreshCw size={12} /> Actualizar
                 </button>
               </div>
