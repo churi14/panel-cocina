@@ -4,6 +4,7 @@ import { RefreshCw, X } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { parseNumero } from '../components/stockNames';
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+import HopeSwitch from './HopeSwitch';
 import { formatCantidad } from './format';
 
 type Props = {
@@ -148,21 +149,18 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
 
       <>
 
-      {/* Filtro por categoría */}
-      <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setFilterCat(null)}
-          className={`hp-glass px-3 py-1.5 text-xs font-black ${!filterCat ? 'is-active' : ''}`}>
-          TODAS
-        </button>
-        {allCats.map(cat => {
-          const cfg = CAT_CFG[cat] ?? DEFAULT_CFG;
-          return (
-            <button key={cat} onClick={() => setFilterCat(filterCat === cat ? null : cat)}
-              className={`hp-glass px-3 py-1.5 text-xs font-black ${filterCat === cat ? 'is-active' : ''}`}>
-              {cfg.emoji} {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </button>
-          );
-        })}
+      {/* Filtro por categoría: switch con indicador que se desliza */}
+      <div className="max-w-full">
+        <HopeSwitch fit name="prod-cat"
+          options={[
+            { id: '__todas', label: 'TODAS' },
+            ...allCats.map(cat => {
+              const cfg = CAT_CFG[cat] ?? DEFAULT_CFG;
+              return { id: cat, label: `${cfg.emoji} ${cat.charAt(0).toUpperCase() + cat.slice(1)}` };
+            }),
+          ]}
+          value={filterCat ?? '__todas'}
+          onChange={id => setFilterCat(id === '__todas' ? null : id)} />
       </div>
 
       {/* Totales rápidos */}
