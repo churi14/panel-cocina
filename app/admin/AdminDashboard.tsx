@@ -8,7 +8,7 @@ import {
   RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet, BookOpen,
   Menu, X, Clock, ArrowLeftRight
 } from 'lucide-react';
-import { Movement, Notification } from './types';
+import { Movement, Notification, diaLocal } from './types';
 import TabDashboard   from './TabDashboard';
 import TabMovimientos from './TabMovimientos';
 import TabProduccion  from './TabProduccion';
@@ -81,13 +81,13 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     setCocinaActiva(cocinaData ?? []);
     const m = (data ?? []) as Movement[];
     setMovements(m);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = diaLocal(new Date());
     const ops = new Set(m.map(x => x.operador).filter(Boolean));
     setStats({
       ingresos:   m.filter(x => x.tipo === 'ingreso').length,
       egresos:    m.filter(x => x.tipo === 'egreso').length,
       operadores: ops.size,
-      hoy:        m.filter(x => x.fecha?.slice(0, 10) === today).length,
+      hoy:        m.filter(x => x.fecha && diaLocal(x.fecha) === today).length,
     });
     setLoading(false);
     // Verificar cierres pendientes de Fudo

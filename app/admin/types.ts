@@ -144,6 +144,9 @@ export type Notification = {
   user_id?: string;
 };
 
+/** Día calendario local (YYYY-MM-DD) de una fecha ISO. */
+export const diaLocal = (f: string | Date): string => new Date(f).toLocaleDateString('en-CA');
+
 export function formatFecha(fecha: string): string {
   if (!fecha) return '—';
   const d = new Date(fecha);
