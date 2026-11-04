@@ -9,7 +9,9 @@ import FacturaModal from './FacturaModal';
 import { parseNumero } from '../components/stockNames';
 import HopeSwitch from './HopeSwitch';
 import { formatCantidad } from './format';
-import { adjustStock } from '../components/kitchenHelpers';
+import { adjustStock, norm } from '../components/kitchenHelpers';
+import { useEnViaje } from './compras/shared';
+import { fmtFecha } from './compras/shared';
 
 // ── Formatos doypack/paquete por producto ─────────────────────────────────────
 const FORMATOS_DOYPACK: Record<string, { label: string; kg: number }[]> = {
@@ -265,6 +267,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const DEFAULT_CFG = { emoji: '📋', color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30', headerBg: 'bg-slate-500/20' };
   // Categorías dinámicas — lee lo que haya en stockProd
   const prodCats = [...new Set(stockProd.map((s: any) => s.categoria as string))].sort();
+  const enViaje = useEnViaje(); // pedidos que todavía no llegaron
   // Materias primas: "Carnes y Materiales" muestra todo menos verduras; "Verduras" muestra solo verduras
   const esVerdura = (s: any) => /verdura/i.test(s.categoria ?? '');
   const stockView = stock.filter(s => stockSubTab === 'verduras' ? esVerdura(s) : !esVerdura(s));
@@ -357,6 +360,10 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                               <p className={`text-2xl font-black ${negativo ? 'text-red-500' : vencido ? 'text-orange-400' : zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
                                 {fcant(item.cantidad, item.unidad)}
                               </p>
+                              {(() => {
+                                const v = enViaje.get(norm(item.nombre));
+                                return v ? <p className="text-[11px] font-black text-blue-400 mt-1">🚚 +{fcant(v.cantidad, v.unidad)} en viaje · llega {fmtFecha(v.llega)}</p> : null;
+                              })()}
                               {negativo  && <p className="text-xs text-red-500 font-black mt-1">⚠️ STOCK NEGATIVO</p>}
                               {vencido   && <p className="text-xs text-orange-400 font-black mt-1">⚠️ VENCIDO: {item.fecha_vencimiento}</p>}
                               {proxVenc  && !vencido && <p className="text-xs text-amber-400 font-black mt-1">⏰ Vence: {item.fecha_vencimiento}</p>}

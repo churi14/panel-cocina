@@ -6,7 +6,7 @@ import AdminTour from '../components/AdminTour';
 import {
   LogOut, Bell, Package, TrendingUp,
   RefreshCw, Activity, ChefHat, Users, CheckCircle2, Sun, Moon, AlertTriangle, FileText, Trash2, FileSpreadsheet, BookOpen,
-  Menu, X, Clock, ArrowLeftRight, Calculator
+  Menu, X, Clock, ArrowLeftRight, Calculator, Truck
 } from 'lucide-react';
 import { Movement, Notification, diaLocal } from './types';
 import TabDashboard   from './TabDashboard';
@@ -17,6 +17,7 @@ import TabStock       from './TabStock';
 
 import TabVentas      from './TabVentas';
 import TabCostos      from './TabCostos';
+import TabCompras     from './TabCompras';
 import TabEquipo      from './TabEquipo';
 import TabTareas      from './TabTareas';
 import TabAuditoria   from './TabAuditoria';
@@ -51,7 +52,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
     });
   };
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'costos' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios' | 'procedimientos'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'movements' | 'stock' | 'factura' | 'ventas' | 'costos' | 'compras' | 'equipo' | 'tareas' | 'auditoria' | 'fichador' | 'desperdicios' | 'procedimientos'>('dashboard');
   const [stockSubTab, setStockSubTab] = useState<'produccion' | 'materias'>('materias');
   const [filterType, setFilterType]             = useState<'all' | 'ingreso' | 'egreso'>('all');
   const [filterOp, setFilterOp]                 = useState('all');
@@ -195,6 +196,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
       { id: 'dashboard',  label: 'Dashboard',   icon: <Activity size={18} /> },
       { id: 'movements',  label: 'Movimientos', icon: <ArrowLeftRight size={18} /> },
       { id: 'stock',      label: 'Stock',       icon: <Package size={18} /> },
+      { id: 'compras',    label: 'Compras',     icon: <Truck size={18} /> },
       { id: 'factura',    label: 'Facturas',    icon: <FileText size={18} /> },
       { id: 'ventas',     label: 'Ventas',      icon: <TrendingUp size={18} /> },
       { id: 'costos',     label: 'Costos',      icon: <Calculator size={18} /> },
@@ -346,6 +348,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         )}
         {activeTab === 'ventas'     && <TabVentas />}
         {activeTab === 'costos'     && <TabCostos />}
+        {activeTab === 'compras'    && <TabCompras />}
         {activeTab === 'equipo'     && <TabEquipo />}
         {activeTab === 'tareas'     && <TabTareas />}
         {activeTab === 'auditoria'  && <TabAuditoria />}
