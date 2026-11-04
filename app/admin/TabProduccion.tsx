@@ -4,6 +4,7 @@ import { RefreshCw, X } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { parseNumero } from '../components/stockNames';
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+import { formatCantidad } from './format';
 
 type Props = {
   stockProd: any[];
@@ -46,13 +47,8 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
 
   const visibleCats = filterCat ? [filterCat] : allCats;
 
-  const formatQty = (item: any) => {
-    const n = item.cantidad;
-    if (item.unidad === 'kg' || item.unidad === 'lt') {
-      return n.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
-    }
-    return n % 1 === 0 ? Math.round(n).toString() : n.toFixed(1);
-  };
+  const formatQty = (item: any) => formatCantidad(item.cantidad, item.unidad).num;
+  const unitOf = (item: any) => formatCantidad(item.cantidad, item.unidad).unit;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -177,16 +173,15 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
           const total = catItems.reduce((sum: number, s: any) => sum + (s.cantidad || 0), 0);
           const units = [...new Set(catItems.map((s: any) => s.unidad as string))];
           const unit = units.length === 1 ? units[0] : 'u';
+          const f = formatCantidad(total, unit);
           return (
             <div key={cat} onClick={() => setSelectedCat(cat)}
               className={`rounded-2xl border-2 p-4 cursor-pointer transition-all hover:opacity-80 hover:ring-2 hover:ring-offset-1 hover:ring-offset-slate-950 hover:ring-white/20
                 ${cfg.bg} ${cfg.border}`}>
               <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
-              <p className={`text-3xl font-black ${cfg.color}`}>
-                {unit === 'kg' || unit === 'lt'
-                  ? total.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
-                  : Math.round(total)}
-                <span className="text-sm font-bold opacity-60 ml-1">{unit}</span>
+              <p className={`text-3xl font-black ${total < 0 ? 'text-red-400' : cfg.color}`}>
+                {f.num}
+                <span className="text-sm font-bold opacity-60 ml-1">{f.unit}</span>
               </p>
               <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{catItems.length} productos</p>
             </div>
@@ -215,10 +210,10 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                 <div key={item.id} onClick={() => setSelectedProdItem(item)}
                   className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                   <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
-                  <p className={`text-2xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
+                  <p className={`text-2xl font-black ${item.cantidad < 0 ? 'text-red-400' : item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
                     {formatQty(item)}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                  <p className="text-xs text-slate-500 mt-1">{unitOf(item)}</p>
                   {item.cantidad === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
                   {item.ultima_prod && (
                     <p className="text-xs text-slate-600 mt-2">
@@ -461,10 +456,10 @@ export default function TabProduccion({ stockProd, produccionEventos, fetchMovem
                       onClick={() => { setSelectedCat(null); setSelectedProdItem(item); }}
                       className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
                       <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
-                      <p className={`text-3xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
+                      <p className={`text-3xl font-black ${item.cantidad < 0 ? 'text-red-400' : item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
                         {formatQty(item)}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
+                      <p className="text-xs text-slate-500 mt-1">{unitOf(item)}</p>
                       {item.cantidad === 0 && <p className="text-[10px] text-red-500 font-black mt-1">SIN STOCK</p>}
                       {item.ultima_prod && (
                         <p className="text-xs text-slate-600 mt-2">

@@ -324,7 +324,7 @@ export default function AdminDashboard({ onLock, onIrACocina }: { onLock: () => 
         {activeTab === 'movements'  && <TabMovimientos movements={movements} filterType={filterType} setFilterType={setFilterType} filterOp={filterOp} setFilterOp={setFilterOp}  fetchMovements={fetchMovements} produccionEventos={produccionEventos} />}
 
         {activeTab === 'stock'      && (
-          <div>
+          <div className="max-w-6xl mx-auto">
             {/* Sub-tabs de Stock */}
             <div className="mb-6">
               <HopeSwitch name="stock-sub"

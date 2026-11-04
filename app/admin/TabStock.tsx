@@ -8,6 +8,7 @@ import StockEntryModal from '../components/StockEntryModal';
 import FacturaModal from './FacturaModal';
 import { parseNumero } from '../components/stockNames';
 import HopeSwitch from './HopeSwitch';
+import { formatCantidad } from './format';
 
 // ── Formatos doypack/paquete por producto ─────────────────────────────────────
 const FORMATOS_DOYPACK: Record<string, { label: string; kg: number }[]> = {
@@ -136,7 +137,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const { user } = useAuth();
   const [stockCat, setStockCat]           = useState('all');
   const [stockSearch, setStockSearch]     = useState('');
-  const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'produccion' | 'carne_limpia'>('materiales');
+  const [stockSubTab, setStockSubTab]     = useState<'materiales' | 'verduras' | 'carne_limpia'>('materiales');
   const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
   const [facturaQty, setFacturaQty]           = useState('');
   const [facturaProveedor, setFacturaProveedor] = useState('');
@@ -261,6 +262,10 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
   const DEFAULT_CFG = { emoji: '📋', color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30', headerBg: 'bg-slate-500/20' };
   // Categorías dinámicas — lee lo que haya en stockProd
   const prodCats = [...new Set(stockProd.map((s: any) => s.categoria as string))].sort();
+  // Materias primas: "Carnes y Materiales" muestra todo menos verduras; "Verduras" muestra solo verduras
+  const esVerdura = (s: any) => /verdura/i.test(s.categoria ?? '');
+  const stockView = stock.filter(s => stockSubTab === 'verduras' ? esVerdura(s) : !esVerdura(s));
+  const fcant = (v: number, u: string) => { const f = formatCantidad(v, u); return `${f.num} ${f.unit}`; };
   return (
     <div className="max-w-6xl mx-auto space-y-6">
 
@@ -270,10 +275,10 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 options={[
                   { id: 'materiales',   label: '🥩 Carnes y Materiales' },
                   { id: 'carne_limpia', label: '🔪 Carne Limpia' },
-                  { id: 'produccion',   label: '🍔 Producción' },
+                  { id: 'verduras',     label: '🥬 Verduras' },
                 ]}
-                value={stockSubTab as 'materiales' | 'carne_limpia' | 'produccion'}
-                onChange={id => setStockSubTab(id as any)} />
+                value={stockSubTab}
+                onChange={setStockSubTab} />
               <button
                 onClick={() => setShowFactura(true)}
                 className="hp-glass hp-tone-indigo flex items-center gap-2 px-4 py-2.5 font-black text-sm whitespace-nowrap">
@@ -282,7 +287,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
             </div>
 
             {/* ── SUB-TAB MATERIALES ── */}
-            {stockSubTab === 'materiales' && (
+            {(stockSubTab === 'materiales' || stockSubTab === 'verduras') && (
               <>
                 {/* Filtros */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-wrap gap-4 items-center">
@@ -297,8 +302,8 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                       onChange={e => setStockSearch(e.target.value)}
                       className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-300 outline-none focus:border-slate-500" />
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {['all', ...new Set(stock.map(s => s.categoria))].map(cat => (
+                  <div className={`flex gap-2 flex-wrap ${new Set(stockView.map(s => s.categoria)).size < 2 ? 'hidden' : ''}`}>
+                    {['all', ...new Set(stockView.map(s => s.categoria))].map(cat => (
                       <button key={cat} onClick={() => setStockCat(cat)}
                         className={`hp-glass px-3 py-1.5 text-xs font-bold ${stockCat === cat ? 'is-active' : ''}`}>
                         {cat === 'all' ? 'TODOS' : cat}
@@ -308,8 +313,8 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 </div>
 
                 {/* Grid por categoría */}
-                {[...new Set(stock.filter(s => stockCat === 'all' || s.categoria === stockCat).map(s => s.categoria))].map(cat => {
-                  const catItems = stock.filter(s => s.categoria === cat && (stockCat === 'all' || s.categoria === stockCat) && s.nombre.toLowerCase().includes(stockSearch.toLowerCase()));
+                {[...new Set(stockView.filter(s => stockCat === 'all' || s.categoria === stockCat).map(s => s.categoria))].map(cat => {
+                  const catItems = stockView.filter(s => s.categoria === cat && (stockCat === 'all' || s.categoria === stockCat) && s.nombre.toLowerCase().includes(stockSearch.toLowerCase()));
                   if (catItems.length === 0) return null;
                   const CAT_EMOJI: Record<string,string> = { CARNES:'🥩',VERDURA:'🥗',FIAMBRE:'🧀',SECOS:'🧂',BEBIDAS:'🥤',LIMPIEZA:'🧴',BROLAS:'🍫',DESCARTABLES:'📦' };
                   return (
@@ -349,9 +354,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
 
                               <p className="font-bold text-slate-300 text-sm leading-tight mb-2 pr-6">{item.nombre}</p>
                               <p className={`text-2xl font-black ${negativo ? 'text-red-500' : vencido ? 'text-orange-400' : zero ? 'text-red-400' : low ? 'text-amber-400' : 'text-white'}`}>
-                                {item.unidad === 'kg' || item.unidad === 'lt'
-                                  ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
-                                  : Number.isInteger(item.cantidad) ? item.cantidad : item.cantidad.toFixed(1)} {item.unidad}
+                                {fcant(item.cantidad, item.unidad)}
                               </p>
                               {negativo  && <p className="text-xs text-red-500 font-black mt-1">⚠️ STOCK NEGATIVO</p>}
                               {vencido   && <p className="text-xs text-orange-400 font-black mt-1">⚠️ VENCIDO: {item.fecha_vencimiento}</p>}
@@ -386,7 +389,7 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                     <div>
                       <p className={`text-xs font-black uppercase ${cfg.color}`}>Stock total de carne limpia</p>
                       <p className={`text-4xl font-black ${cfg.color}`}>
-                        {total.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')} <span className="text-lg opacity-60">kg</span>
+                        {formatCantidad(total, 'kg').num} <span className="text-lg opacity-60">{formatCantidad(total, 'kg').unit}</span>
                       </p>
                       <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{items.length} cortes</p>
                     </div>
@@ -402,9 +405,9 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                         className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${item.producto.startsWith('Blend') ? 'border-blue-500/40' : cfg.border}`}>
                         <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
                         <p className={`text-3xl font-black ${parseFloat(item.cantidad) === 0 ? 'text-slate-600' : item.producto.startsWith('Blend') ? 'text-blue-400' : cfg.color}`}>
-                          {parseFloat(item.cantidad).toFixed(3).replace(/\.?0+$/, '').replace('.', ',')}
+                          {formatCantidad(parseFloat(item.cantidad), 'kg').num}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">kg</p>
+                        <p className="text-xs text-slate-500 mt-1">{formatCantidad(parseFloat(item.cantidad), 'kg').unit}</p>
                         {parseFloat(item.cantidad) === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
                         {item.ultima_prod && (
                           <p className="text-xs text-slate-600 mt-2">
@@ -449,79 +452,6 @@ export default function TabStock({ stock, stockProd, movements, fetchMovements }
                 </>
               );
             })()}
-
-            {/* ── SUB-TAB PRODUCCIÓN (sin carne limpia) ── */}
-            {stockSubTab === 'produccion' && (
-              <>
-                {/* Totales dinámicos — excluye carnes_limpias */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {prodCats.filter(cat => cat !== 'carnes_limpias').map(cat => {
-                    const cfg = PROD_CFG[cat] ?? DEFAULT_CFG;
-                    const catItems = stockProd.filter((s: any) => s.categoria === cat);
-                    const total = catItems.reduce((sum: number, s: any) => sum + (parseFloat(s.cantidad) || 0), 0);
-                    const units = [...new Set(catItems.map((s: any) => s.unidad))];
-                    const unit = units.length === 1 ? units[0] : 'u';
-                    return (
-                      <div key={cat} onClick={() => document.getElementById(`prodcat-${cat}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                        className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 active:scale-95 transition-all ${cfg.bg} ${cfg.border}`}>
-                        <p className={`text-xs font-black uppercase mb-1 ${cfg.color}`}>{cfg.emoji} {cat}</p>
-                        <p className={`text-3xl font-black ${cfg.color}`}>
-                          {total % 1 === 0 ? total : total.toFixed(2).replace('.', ',')}
-                          <span className="text-sm font-bold opacity-60 ml-1">{unit}</span>
-                        </p>
-                        <p className={`text-xs mt-1 ${cfg.color} opacity-60`}>{catItems.length} productos</p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Detalle por categoría — excluye carnes_limpias */}
-                {prodCats.filter(cat => cat !== 'carnes_limpias').map(cat => {
-                  const cfg = PROD_CFG[cat] ?? DEFAULT_CFG;
-                  const catItems = stockProd.filter((s: any) => s.categoria === cat);
-                  if (catItems.length === 0) return null;
-                  return (
-                    <div key={cat} id={`prodcat-${cat}`} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden scroll-mt-4">
-                      <div className={`px-6 py-3 border-b border-slate-800 flex items-center justify-between ${cfg.headerBg}`}>
-                        <h2 className={`font-black text-sm uppercase ${cfg.color}`}>{cfg.emoji} {cat}</h2>
-                        <span className="text-xs text-slate-500">{catItems.length} items</span>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
-                        {catItems.map((item: any) => (
-                          <div key={item.id} onClick={() => { setSelectedProdItem(item); setAlertaUmbral(String(item.alerta_umbral ?? '')); setAlertaDias(String(item.alerta_dias ?? '')); setCargaQty(''); setCargaMotivo('Producción manual'); setProdTab('historial'); }}
-                            className={`rounded-2xl border-2 p-4 cursor-pointer hover:opacity-80 transition-all bg-slate-800 ${cfg.border}`}>
-                            <p className="font-bold text-slate-300 text-sm leading-tight mb-2">{item.producto}</p>
-                            <p className={`text-3xl font-black ${item.cantidad === 0 ? 'text-slate-600' : cfg.color}`}>
-                              {item.unidad === 'kg' || item.unidad === 'lt'
-                                ? item.cantidad.toFixed(3).replace(/\.?0+$/, '').replace('.', ',')
-                                : item.cantidad}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">{item.unidad}</p>
-                            {item.alerta_umbral > 0 && (
-                              <p className="text-[10px] text-amber-400/70 font-black mt-1">🔔 alerta &lt;{item.alerta_umbral}{item.unidad}</p>
-                            )}
-                            {item.cantidad === 0 && <p className="text-[10px] text-slate-600 font-black mt-1">SIN STOCK</p>}
-                            {item.ultima_prod && (
-                              <p className="text-xs text-slate-600 mt-2">
-                                {new Date(item.ultima_prod).toLocaleDateString('es-AR')} {new Date(item.ultima_prod).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {stockProd.length === 0 && (
-                  <div className="text-center py-16 text-slate-600">
-                    <p className="text-4xl mb-4">🍔</p>
-                    <p className="font-bold text-lg">No hay stock de producción todavía</p>
-                  </div>
-                )}
-              </>
-            )}
-
 
           {/* ── MODAL ALERTAS DE PRODUCCIÓN ── */}
           {selectedProdItem && (() => {
