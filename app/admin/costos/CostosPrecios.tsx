@@ -7,7 +7,7 @@ import { PrecioInput, type DatosCostos } from './shared';
 import { RECETAS_CALCULABLES, crearResolver, destinoPrecio, norm, type CostoInfo } from './engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Precios de insumos: la lista de todo lo que usan los platos, ordenada para ir
+// Precios de insumos: la lista de todo lo que usan los productos, ordenada para ir
 // cargando primero lo que más se usa. Los elaborados (pan, salsas) se calculan solos
 // con su receta; si cargás un precio a mano, ese manda.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -24,12 +24,12 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
 
   const filas = useMemo<Fila[]>(() => {
     const resolver = crearResolver(stockRows, precios);
-    const mapa = new Map<string, { nombre: string; unidadUso: string; tabla: string; platos: Set<string> }>();
-    // 1) ingredientes de los platos de Fudo
+    const mapa = new Map<string, { nombre: string; unidadUso: string; tabla: string; productos: Set<string> }>();
+    // 1) ingredientes de los productos de Fudo
     recetasFudo.forEach(r => {
       const k = norm(r.ingrediente);
-      const e = mapa.get(k) ?? { nombre: r.ingrediente, unidadUso: r.unidad, tabla: r.tabla_origen, platos: new Set<string>() };
-      e.platos.add(r.producto_fudo); mapa.set(k, e);
+      const e = mapa.get(k) ?? { nombre: r.ingrediente, unidadUso: r.unidad, tabla: r.tabla_origen, productos: new Set<string>() };
+      e.productos.add(r.producto_fudo); mapa.set(k, e);
     });
     // 2) insumos de las recetas de cocina que se usan para calcular elaborados
     const elaborados = new Set(RECETAS_CALCULABLES.map(r => norm(r.name)));
@@ -37,14 +37,14 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
     RECETAS_CALCULABLES.filter(r => usados.includes(norm(r.name))).forEach(r => {
       r.ingredients.forEach(i => {
         const k = norm(i.name);
-        if (!mapa.has(k)) mapa.set(k, { nombre: i.name, unidadUso: i.unit === 'g' ? 'kg' : i.unit, tabla: 'stock', platos: new Set<string>() });
+        if (!mapa.has(k)) mapa.set(k, { nombre: i.name, unidadUso: i.unit === 'g' ? 'kg' : i.unit, tabla: 'stock', productos: new Set<string>() });
       });
     });
     return [...mapa.entries()].map(([k, e]) => {
       const d = destinoPrecio(e.nombre, stockRows, e.unidadUso);
       const info = resolver(e.nombre);
       return {
-        nombre: e.nombre, clave: d.clave, unidad: d.unidad, usos: e.platos.size,
+        nombre: e.nombre, clave: d.clave, unidad: d.unidad, usos: e.productos.size,
         tipo: (e.tabla === 'stock_produccion' || elaborados.has(k)) ? 'Elaborado' as const : 'Materia prima' as const,
         manual: precios[d.clave]?.precio ?? precios[k]?.precio ?? null, info,
       };
@@ -73,7 +73,7 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
         <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
           <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-xs text-slate-500 mt-2">Empezá por los de arriba: son los que más platos usan. Lo que dice <strong className="text-green-400">auto</strong> se calcula solo.</p>
+        <p className="text-xs text-slate-500 mt-2">Empezá por los de arriba: son los que más productos usan. Lo que dice <strong className="text-green-400">auto</strong> se calcula solo.</p>
       </div>
 
       {/* Filtros */}
@@ -102,7 +102,7 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
               <thead className="bg-slate-800/50 text-slate-500 text-xs uppercase">
                 <tr>
                   <th className="px-5 py-3 text-left">Insumo</th>
-                  <th className="px-4 py-3 text-right">Platos</th>
+                  <th className="px-4 py-3 text-right">Usado en</th>
                   <th className="px-4 py-3 text-right">Precio</th>
                   <th className="px-5 py-3 text-left">Origen</th>
                 </tr>
@@ -114,7 +114,7 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
                       <p className="font-bold text-white">{f.nombre}</p>
                       <p className="text-[11px] text-slate-500">{f.tipo}</p>
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-400">{f.usos || '—'}</td>
+                    <td className="px-4 py-3 text-right text-slate-400 whitespace-nowrap">{f.usos ? `${f.usos} producto${f.usos > 1 ? 's' : ''}` : 'receta de cocina'}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5">
                         <PrecioInput valor={f.manual}

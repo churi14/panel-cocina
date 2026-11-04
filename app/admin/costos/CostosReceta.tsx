@@ -11,7 +11,7 @@ import { PrecioInput, fmtQty, type DatosCostos } from './shared';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calculador por receta de cocina: elegís una receta y cuánto querés producir.
-// Usa los mismos precios que el costo de platos.
+// Usa los mismos precios que los costos por producto.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const unidadPrecio = (u: string) => (u === 'g' || u === 'gr' ? 'kg' : u === 'ml' ? 'lt' : u);

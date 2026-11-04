@@ -2,7 +2,7 @@
 // Motor de costos — puro (sin React ni base de datos).
 //  · cada insumo tiene un precio por unidad (kg, lt o u)
 //  · un insumo "elaborado" (pan, salsas) se calcula solo a partir de su receta de cocina
-//  · un plato (lomito, burger…) suma el costo de todos los insumos de su receta de Fudo
+//  · un producto (lomito, burger…) suma el costo de todos los insumos de su receta de Fudo
 // Nada de esto escribe en Fudo: las recetas se leen de nuestra tabla recetas_fudo.
 // ─────────────────────────────────────────────────────────────────────────────
 import { INITIAL_RECIPES } from '../../data/recipes';
@@ -18,11 +18,11 @@ export type CostoInfo = {
   detalle?: string;
 };
 export type RecetaFudoRow = { producto_fudo: string; ingrediente: string; cantidad: number; unidad: string; tabla_origen: string };
-export type LineaPlato = {
+export type LineaProducto = {
   ingrediente: string; tabla: string; cantidad: number; unidad: string;
   info: CostoInfo; costo: number | null; problema: string | null;
 };
-export type ResultadoPlato = { lineas: LineaPlato[]; total: number; incompleto: boolean; faltan: number };
+export type ResultadoProducto = { lineas: LineaProducto[]; total: number; incompleto: boolean; faltan: number };
 
 export const CLAVE_VENTA = 'venta::';
 export const unidadBase = (u: string) => (u === 'g' || u === 'gr' ? 'kg' : u === 'ml' ? 'lt' : u === 'uds' ? 'u' : u);
@@ -99,8 +99,8 @@ export function crearResolver(stockRows: StockRow[], precios: Precios) {
 
 export type Resolver = ReturnType<typeof crearResolver>;
 
-export function costoPlato(rows: RecetaFudoRow[], resolver: Resolver): ResultadoPlato {
-  const lineas: LineaPlato[] = rows.map(r => {
+export function costoProducto(rows: RecetaFudoRow[], resolver: Resolver): ResultadoProducto {
+  const lineas: LineaProducto[] = rows.map(r => {
     const cantidad = Number(r.cantidad) || 0;
     const info = resolver(r.ingrediente);
     let costo: number | null = null; let problema: string | null = null;
@@ -115,8 +115,8 @@ export function costoPlato(rows: RecetaFudoRow[], resolver: Resolver): Resultado
   return { lineas, total: lineas.reduce((s, l) => s + (l.costo ?? 0), 0), incompleto: faltan > 0, faltan };
 }
 
-/** Clasifica un plato de Fudo por su nombre, para filtrar la lista. */
-export function categoriaPlato(nombre: string): 'Lomitos' | 'Burgers' | 'Milanesas' | 'Sánguches' | 'Promos' {
+/** Clasifica un producto de Fudo por su nombre, para filtrar la lista. */
+export function categoriaProducto(nombre: string): 'Lomitos' | 'Burgers' | 'Milanesas' | 'Sánguches' | 'Promos' {
   const n = nombre.toLowerCase();
   if (/promo/.test(n)) return 'Promos';
   if (/^1 lomo/.test(n)) return 'Lomitos';

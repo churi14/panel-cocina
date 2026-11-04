@@ -3,21 +3,21 @@ import React, { useState } from 'react';
 import { Calculator, Info } from 'lucide-react';
 import HopeSwitch from './HopeSwitch';
 import { useDatosCostos } from './costos/shared';
-import CostosPlatos from './costos/CostosPlatos';
+import CostosProductos from './costos/CostosProductos';
 import CostosPrecios from './costos/CostosPrecios';
 import CostosReceta from './costos/CostosReceta';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Costos: costo de platos (recetas de Fudo), precios de insumos y calculador por receta.
+// Costos: por producto (recetas de Fudo), precios de insumos y calculador por receta.
 // Todo se calcula acá; no se escribe nada en Fudo.
 // Precios en la tabla `costos_insumos` (sql/20261104_costos_insumos.sql).
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Vista = 'platos' | 'precios' | 'receta';
+type Vista = 'costos' | 'precios' | 'receta';
 
 export default function TabCostos() {
   const datos = useDatosCostos();
-  const [vista, setVista] = useState<Vista>('platos');
+  const [vista, setVista] = useState<Vista>('costos');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -26,14 +26,14 @@ export default function TabCostos() {
           <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center"><Calculator size={22} /></div>
           <div>
             <h2 className="text-xl font-black text-white">Costos</h2>
-            <p className="text-xs text-slate-400">Cuánto cuesta hacer cada plato, según las recetas y los precios de los insumos.</p>
+            <p className="text-xs text-slate-400">Cuánto cuesta hacer cada producto, según su receta y los precios de los insumos.</p>
           </div>
         </div>
         <HopeSwitch fit name="costos-vista"
           options={[
-            { id: 'platos',  label: '🍔 Costo de platos' },
+            { id: 'costos',  label: '🍔 Costos' },
             { id: 'precios', label: '💲 Precios de insumos' },
-            { id: 'receta',  label: '🧮 Calculador de receta' },
+            { id: 'receta',  label: '🧮 Calculador' },
           ]}
           value={vista} onChange={setVista} />
       </div>
@@ -49,7 +49,7 @@ export default function TabCostos() {
         </div>
       )}
 
-      {vista === 'platos'  && <CostosPlatos datos={datos} irAPrecios={() => setVista('precios')} />}
+      {vista === 'costos'  && <CostosProductos datos={datos} irAPrecios={() => setVista('precios')} />}
       {vista === 'precios' && <CostosPrecios datos={datos} />}
       {vista === 'receta'  && <CostosReceta datos={datos} />}
     </div>
