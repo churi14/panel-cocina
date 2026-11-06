@@ -6,7 +6,7 @@ import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
 import { PrecioInput, PrecioConPieza, fmtQty, type DatosCostos } from './shared';
 import {
-  CLAVE_VENTA, categoriaProducto, costoProducto, crearResolver, destinoPrecio, norm,
+  CLAVE_VENTA, categoriaProducto, costoProducto, crearResolver, destinoPrecio, precioCargado, norm,
   type RecetaFudoRow, type ResultadoProducto,
 } from './engine';
 
@@ -26,7 +26,7 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
   const [abierto, setAbierto] = useState<string | null>(null);
 
   const productos = useMemo(() => {
-    const resolver = crearResolver(stockRows, precios);
+    const resolver = crearResolver(stockRows, precios, datos.manoObra.vigente);
     const porProducto = new Map<string, RecetaFudoRow[]>();
     recetasFudo.forEach(r => porProducto.set(r.producto_fudo, [...(porProducto.get(r.producto_fudo) ?? []), r]));
     return [...porProducto.entries()].map(([nombre, rows]) => {
@@ -34,7 +34,7 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
       const venta = precios[CLAVE_VENTA + norm(nombre)]?.precio ?? null;
       return { nombre, categoria: categoriaProducto(nombre), res, venta };
     }).sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [recetasFudo, stockRows, precios]);
+  }, [recetasFudo, stockRows, precios, datos.manoObra.vigente]);
 
   const completos = productos.filter(p => !p.res.incompleto).length;
   const visibles = productos
@@ -142,7 +142,7 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
                       <tbody className="divide-y divide-slate-800/60">
                         {p.res.lineas.map((l, i) => {
                           const d = destinoPrecio(l.ingrediente, stockRows, l.unidad);
-                          const manual = precios[d.clave]?.precio ?? precios[norm(l.ingrediente)]?.precio ?? null;
+                          const manual = precioCargado(precios, d.clave, norm(l.ingrediente))?.precio ?? null;
                           return (
                             <tr key={i}>
                               <td className="py-2 pr-2">

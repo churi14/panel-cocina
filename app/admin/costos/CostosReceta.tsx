@@ -8,6 +8,7 @@ import { parseNumero } from '../../components/stockNames';
 import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
 import { PrecioConPieza, fmtQty, type DatosCostos } from './shared';
+import { precioCargado, esAgua } from './engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calculador por receta de cocina: elegís una receta y cuánto querés producir.
@@ -52,7 +53,7 @@ export default function CostosReceta({ datos }: { datos: DatosCostos }) {
   // ── Cálculo ──
   const calculo = useMemo(() => {
     if (!receta || !(cant > 0)) return null;
-    type Fila = { nombre: string; clave: string; unidadPrecio: string; qty: number; unit: string; precio: number | null; costo: number | null; problema: string | null };
+    type Fila = { nombre: string; clave: string; unidadPrecio: string; qty: number; unit: string; precio: number | null; costo: number | null; problema: string | null; libre: boolean };
     let filas: Fila[] = [];
     let salida = 0;           // cantidad de producto que sale
     let salidaUnidad = 'u';
@@ -71,15 +72,17 @@ export default function CostosReceta({ datos }: { datos: DatosCostos }) {
       const row = matchStock(it.name, stockRows);
       const nombre = row?.nombre ?? it.name;
       const clave = norm(nombre);
-      const uPrecio = precios[clave]?.unidad ?? row?.unidad ?? unidadPrecio(it.unit);
-      const precio = precios[clave]?.precio ?? null;
+      const cargado = precioCargado(precios, clave);
+      const uPrecio = cargado?.unidad ?? row?.unidad ?? unidadPrecio(it.unit);
+      const libre = !cargado && esAgua(nombre);      // el agua no cuesta
+      const precio = libre ? 0 : (cargado?.precio ?? null);
       let costo: number | null = null; let problema: string | null = null;
       if (precio !== null) {
         const q = convertir(it.qty, it.unit, uPrecio);
         if (q === null) problema = `unidad ${it.unit} no compatible con ${uPrecio}`;
         else costo = q * precio;
       }
-      return { nombre, clave, unidadPrecio: uPrecio, qty: it.qty, unit: it.unit, precio, costo, problema };
+      return { nombre, clave, unidadPrecio: uPrecio, qty: it.qty, unit: it.unit, precio, costo, problema, libre };
     });
     const total = filas.reduce((s, f) => s + (f.costo ?? 0), 0);
     const faltan = filas.filter(f => f.precio === null).length;
@@ -214,7 +217,8 @@ export default function CostosReceta({ datos }: { datos: DatosCostos }) {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-right font-black whitespace-nowrap">
-                          {f.costo !== null ? <span className="text-white">{formatPlata(f.costo)}</span>
+                          {f.libre ? <span className="text-xs text-slate-400">sin costo</span>
+                            : f.costo !== null ? <span className="text-white">{formatPlata(f.costo)}</span>
                             : f.problema ? <span className="text-xs text-red-400">{f.problema}</span>
                             : <span className="text-xs text-amber-400">falta precio</span>}
                         </td>

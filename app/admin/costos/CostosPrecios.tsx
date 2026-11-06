@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
 import { PrecioConPieza, type DatosCostos } from './shared';
-import { RECETAS_CALCULABLES, crearResolver, destinoPrecio, norm, type CostoInfo } from './engine';
+import { RECETAS_CALCULABLES, crearResolver, destinoPrecio, precioCargado, norm, type CostoInfo } from './engine';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Precios de insumos: la lista de todo lo que usan los productos, ordenada para ir
@@ -23,7 +23,7 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
   const [q, setQ] = useState('');
 
   const filas = useMemo<Fila[]>(() => {
-    const resolver = crearResolver(stockRows, precios);
+    const resolver = crearResolver(stockRows, precios, datos.manoObra.vigente);
     const mapa = new Map<string, { nombre: string; unidadUso: string; tabla: string; productos: Set<string> }>();
     // 1) ingredientes de los productos que se venden
     recetasFudo.forEach(r => {
@@ -46,10 +46,10 @@ export default function CostosPrecios({ datos }: { datos: DatosCostos }) {
       return {
         nombre: e.nombre, clave: d.clave, unidad: d.unidad, usos: e.productos.size,
         tipo: (e.tabla === 'stock_produccion' || elaborados.has(k)) ? 'Elaborado' as const : 'Materia prima' as const,
-        manual: precios[d.clave]?.precio ?? precios[k]?.precio ?? null, info,
+        manual: precioCargado(precios, d.clave, k)?.precio ?? null, info,
       };
     });
-  }, [recetasFudo, stockRows, precios]);
+  }, [recetasFudo, stockRows, precios, datos.manoObra.vigente]);
 
   const conPrecio = filas.filter(f => f.info.precio !== null && !f.info.incompleto).length;
   const pct = filas.length ? Math.round((conPrecio / filas.length) * 100) : 0;

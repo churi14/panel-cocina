@@ -6,6 +6,7 @@ import { useDatosCostos } from './costos/shared';
 import CostosProductos from './costos/CostosProductos';
 import CostosPrecios from './costos/CostosPrecios';
 import CostosReceta from './costos/CostosReceta';
+import CostosManoObra from './costos/CostosManoObra';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Costos: recetas de cocina, costo de cada producto que se vende y precios de insumos.
@@ -13,7 +14,7 @@ import CostosReceta from './costos/CostosReceta';
 // Precios en la tabla `costos_insumos` (sql/20261104_costos_insumos.sql).
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Vista = 'costos' | 'precios' | 'receta';
+type Vista = 'costos' | 'precios' | 'receta' | 'mano';
 
 export default function TabCostos() {
   const datos = useDatosCostos();
@@ -34,6 +35,7 @@ export default function TabCostos() {
             { id: 'receta',  label: '🧮 Recetas' },
             { id: 'costos',  label: '🍔 Costos' },
             { id: 'precios', label: '💲 Precios de insumos' },
+            { id: 'mano',    label: '👷 Mano de obra' },
           ]}
           value={vista} onChange={setVista} />
       </div>
@@ -52,6 +54,7 @@ export default function TabCostos() {
       {vista === 'costos'  && <CostosProductos datos={datos} irAPrecios={() => setVista('precios')} />}
       {vista === 'precios' && <CostosPrecios datos={datos} />}
       {vista === 'receta'  && <CostosReceta datos={datos} />}
+      {vista === 'mano'    && <CostosManoObra datos={datos} />}
     </div>
   );
 }

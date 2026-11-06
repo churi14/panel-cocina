@@ -28,11 +28,40 @@ export type ResultadoProducto = { lineas: LineaProducto[]; total: number; incomp
 export const CLAVE_VENTA = 'venta::';
 export const unidadBase = (u: string) => (u === 'g' || u === 'gr' ? 'kg' : u === 'ml' ? 'lt' : u === 'uds' ? 'u' : u);
 
+/** Mano de obra por medallón de hamburguesa (pesos), valor calculado por cocina. A futuro: medirlo día a día con tiempos reales. */
+export const MANO_OBRA_MEDALLON = 400;
+
+/** Medallón de hamburguesa: peso (kg) y parte de carne de la mezcla (el resto es grasa). */
+export const MEDALLON_KG = 0.12;
+export const MEDALLON_PCT_CARNE = 0.66;
+
+/** El agua de las recetas no tiene costo. */
+export const esAgua = (nombre: string) => /^agua( |$)/.test(norm(nombre));
+
+/**
+ * Insumos que las recetas piden con un nombre y que se compran con otro:
+ * la receta dice "Aceite" y el precio cargado es el del aceite de girasol.
+ * (clave pedida → clave del precio cargado; sirve solo si la pedida no tiene precio propio)
+ */
+export const ALIAS_PRECIO: Record<string, string> = {
+  'aceite': 'aceite girasol',
+  'aceite eloico': 'aceite alto oleico',
+  'pan kalis': 'pan kalis golden',   // es el mismo pan
+};
+export const precioCargado = (precios: Precios, ...claves: (string | undefined)[]) => {
+  for (const c of claves) {
+    if (!c) continue;
+    const p = precios[c] ?? precios[ALIAS_PRECIO[c] ?? ''];
+    if (p) return p;
+  }
+  return undefined;
+};
+
 /** Recetas de cocina que sirven para calcular el costo de un insumo elaborado. */
 export const RECETAS_CALCULABLES = INITIAL_RECIPES.filter(r =>
   r.ingredients.length > 0 && !['fraccion', 'verdura', 'fiambre', 'empanado'].includes(r.recipeType ?? ''));
 
-export function crearResolver(stockRows: StockRow[], precios: Precios) {
+export function crearResolver(stockRows: StockRow[], precios: Precios, manoObraMedallon: number = MANO_OBRA_MEDALLON) {
   const cache = new Map<string, CostoInfo>();
   const recetaPorNombre = new Map(RECETAS_CALCULABLES.map(r => [norm(r.name), r]));
   // Fiambres elaborados = el mismo kilo del fiambre crudo (1:1)
@@ -85,17 +114,33 @@ export function crearResolver(stockRows: StockRow[], precios: Precios) {
   };
 
   const calcular = (nombre: string, depth: number): CostoInfo => {
+    const base = calcularBase(nombre, depth);
+    // mano de obra: cada medallón suma su hora-hombre (~$45.000 la media jornada ÷ ~200 medallones)
+    if (norm(nombre) === 'medallones burger' && base.precio !== null && base.unidad === 'u')
+      return { ...base, precio: base.precio + manoObraMedallon, detalle: `${base.detalle ? base.detalle + ' · ' : ''}incluye $${manoObraMedallon} de mano de obra` };
+    return base;
+  };
+
+  const calcularBase = (nombre: string, depth: number): CostoInfo => {
     const k = norm(nombre);
     const row = matchStock(nombre, stockRows);
     // 1) precio cargado a mano (por el nombre o por el insumo de stock que coincide)
-    const m = precios[k] ?? (row ? precios[norm(row.nombre)] : undefined);
+    const m = precioCargado(precios, k, row ? norm(row.nombre) : undefined);
     if (m) return { precio: m.precio, unidad: m.unidad, fuente: 'manual', incompleto: false };
     // el agua de las recetas no tiene costo (si alguien carga un precio, manda ese)
-    if (/^agua( |$)/.test(k)) return { precio: 0, unidad: 'kg', fuente: 'crudo', incompleto: false, detalle: 'agua: sin costo' };
+    if (esAgua(nombre)) return { precio: 0, unidad: 'kg', fuente: 'crudo', incompleto: false, detalle: 'agua: sin costo' };
     if (depth > 4) return falta(row?.unidad ?? 'kg');
     // 2) elaborado con receta de cocina
     const rec = recetaPorNombre.get(k);
     if (rec) return costoDeReceta(rec, depth);
+    // el medallón se arma con su mezcla: 120 g, 66% carne (cuadril) y 34% grasa
+    if (k === 'medallones burger') {
+      const carne = resolver('cuadril', depth + 1), grasa = resolver('grasa', depth + 1);
+      const faltan = [carne.precio === null ? 'cuadril' : '', grasa.precio === null ? 'grasa' : ''].filter(Boolean);
+      if (faltan.length) return falta('u', `falta cargar: ${faltan.join(', ')}`, faltan);
+      const porKg = MEDALLON_PCT_CARNE * carne.precio! + (1 - MEDALLON_PCT_CARNE) * grasa.precio!;
+      return { precio: porKg * MEDALLON_KG, unidad: 'u', fuente: 'receta', incompleto: false, detalle: `${MEDALLON_KG * 1000} g · ${MEDALLON_PCT_CARNE * 100}% cuadril, ${Math.round((1 - MEDALLON_PCT_CARNE) * 100)}% grasa` };
+    }
     // 3) fiambre elaborado = crudo 1:1
     const crudo = crudoPorProducido.get(k);
     if (crudo) {

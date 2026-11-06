@@ -4,7 +4,7 @@ import { supabase } from '../../supabase';
 import type { StockRow } from '../../components/kitchenHelpers';
 import { parseNumero } from '../../components/stockNames';
 import { formatNumero, formatCantidad, formatPlata } from '../format';
-import type { Precios, RecetaFudoRow } from './engine';
+import { MANO_OBRA_MEDALLON, type Precios, type RecetaFudoRow } from './engine';
 
 export type Modo = 'cargando' | 'nube' | 'local';
 
@@ -47,9 +47,77 @@ export function usePrecios() {
   return { precios, modo, guardar };
 }
 
+/** Un valor de mano de obra por medallón, cargado un día. El vigente es el más reciente y queda fijo hasta cargar otro. */
+export type EntradaMO = { fecha: string; jornada: number | null; medallones: number | null; por_medallon: number; nota: string };
+
+export const hoyISO = () => {
+  const d = new Date(); const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+/**
+ * Historial de mano de obra por medallón: tabla `costos_mano_obra` (sql/20261106_costos_mano_obra.sql).
+ * Mientras la tabla no exista, queda en este navegador (localStorage).
+ */
+export function useManoObra() {
+  const LS = 'costos_mano_obra';
+  const [historial, setHistorial] = useState<EntradaMO[]>([]);
+  const [modo, setModo] = useState<Modo>('cargando');
+  const inicial = (): EntradaMO => ({ fecha: hoyISO(), jornada: null, medallones: null, por_medallon: MANO_OBRA_MEDALLON, nota: 'Valor inicial estimado por cocina' });
+  const ordenar = (l: EntradaMO[]) => [...l].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const fila = (r: any): EntradaMO => ({
+    fecha: r.fecha, jornada: r.jornada === null ? null : Number(r.jornada), medallones: r.medallones === null ? null : Number(r.medallones),
+    por_medallon: Number(r.por_medallon), nota: r.nota ?? '',
+  });
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from('costos_mano_obra').select('fecha, jornada, medallones, por_medallon, nota').order('fecha');
+      if (!error && data) {
+        if (data.length === 0) {
+          const ini = inicial();
+          await supabase.from('costos_mano_obra').upsert({ ...ini, updated_at: new Date().toISOString() }, { onConflict: 'fecha' });
+          setHistorial([ini]);
+        } else setHistorial(data.map(fila));
+        setModo('nube');
+        return;
+      }
+      let local: EntradaMO[] = [];
+      try { const raw = localStorage.getItem(LS); if (raw) local = JSON.parse(raw); } catch { /* sin localStorage */ }
+      setHistorial(local.length ? ordenar(local) : [inicial()]);
+      setModo('local');
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Guarda (o cambia) el valor de un día. `fechaVieja` si se corrigió la fecha de una carga. */
+  const guardar = async (e: EntradaMO, fechaVieja?: string) => {
+    const next = ordenar([...historial.filter(h => h.fecha !== e.fecha && h.fecha !== (fechaVieja ?? e.fecha)), e]);
+    setHistorial(next);
+    if (modo === 'nube') {
+      if (fechaVieja && fechaVieja !== e.fecha) await supabase.from('costos_mano_obra').delete().eq('fecha', fechaVieja);
+      await supabase.from('costos_mano_obra').upsert({ ...e, updated_at: new Date().toISOString() }, { onConflict: 'fecha' });
+    } else { try { localStorage.setItem(LS, JSON.stringify(next)); } catch { /* ignorar */ } }
+  };
+
+  const borrar = async (fecha: string) => {
+    if (historial.length <= 1) return;   // siempre tiene que quedar un valor vigente
+    const next = historial.filter(h => h.fecha !== fecha);
+    setHistorial(next);
+    if (modo === 'nube') await supabase.from('costos_mano_obra').delete().eq('fecha', fecha);
+    else { try { localStorage.setItem(LS, JSON.stringify(next)); } catch { /* ignorar */ } }
+  };
+
+  // vigente = la carga más reciente que ya llegó (una fecha futura espera a su día)
+  const hoy = hoyISO();
+  const vigenteEntrada = [...historial].reverse().find(h => h.fecha <= hoy) ?? historial[0];
+  return { historial, modo, guardar, borrar, vigente: vigenteEntrada?.por_medallon ?? MANO_OBRA_MEDALLON, vigenteEntrada };
+}
+
 /** Todo lo que necesitan las pantallas de costos, cargado una sola vez. */
 export function useDatosCostos() {
   const p = usePrecios();
+  const manoObra = useManoObra();
   const [stockRows, setStockRows] = useState<StockRow[]>([]);
   const [recetasFudo, setRecetasFudo] = useState<RecetaFudoRow[]>([]);
   const [cargado, setCargado] = useState(false);
@@ -65,7 +133,7 @@ export function useDatosCostos() {
     });
   }, []);
 
-  return { ...p, stockRows, recetasFudo, cargado };
+  return { ...p, manoObra, stockRows, recetasFudo, cargado };
 }
 
 export type DatosCostos = ReturnType<typeof useDatosCostos>;
