@@ -158,6 +158,30 @@ export function PrecioInput({ valor, onCommit, placeholder = '0', ancho = 'w-28'
   );
 }
 
+/** Ventana de aviso con dos botones. Se cierra con Escape o tocando afuera (= cancelar). */
+export function ModalConfirmar({ titulo, children, textoOk, textoCancelar = 'Cancelar', onOk, onCancelar }: {
+  titulo: string; children: React.ReactNode; textoOk: string; textoCancelar?: string; onOk: () => void; onCancelar: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancelar(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancelar]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 text-left" onClick={onCancelar}>
+      <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}
+        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4">
+        <h3 className="font-black text-white text-lg">{titulo}</h3>
+        <div className="text-sm text-slate-300 space-y-2">{children}</div>
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onCancelar} className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-xl text-sm">{textoCancelar}</button>
+          <button type="button" autoFocus onClick={onOk} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-sm">{textoOk}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Cantidad legible: 1500 g → "1,5 kg", 250 g → "250 g". */
 export function fmtQty(qty: number, unit: string): string {
   if (unit === 'g' || unit === 'gr') { const f = formatCantidad(qty / 1000, 'kg'); return `${f.num} ${f.unit}`; }

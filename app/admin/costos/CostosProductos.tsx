@@ -1,10 +1,10 @@
 "use client";
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, Search, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Search, AlertTriangle, Pencil } from 'lucide-react';
 import { parseNumero } from '../../components/stockNames';
 import { formatNumero, formatPlata } from '../format';
 import HopeSwitch from '../HopeSwitch';
-import { PrecioInput, PrecioConPieza, fmtQty, type DatosCostos } from './shared';
+import { PrecioInput, PrecioConPieza, ModalConfirmar, fmtQty, type DatosCostos } from './shared';
 import {
   CLAVE_VENTA, categoriaProducto, costoProducto, crearResolver, destinoPrecio, precioCargado, norm,
   type RecetaFudoRow, type ResultadoProducto,
@@ -23,7 +23,19 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<CatFiltro>('Lomitos');
   const [soloFaltan, setSoloFaltan] = useState(false);
-  const [abierto, setAbierto] = useState<string | null>(null);
+  const [abierto, setAbiertoRaw] = useState<string | null>(null);
+
+  // Edición de precios de una receta, con candado: aviso antes de empezar y antes de guardar.
+  type Cambio = { nombre: string; precio: number | null; unidad: string; antes: number | null };
+  const [editando, setEditando] = useState<string | null>(null);              // producto en edición
+  const [aviso, setAviso] = useState<null | { paso: 'empezar' | 'guardar'; producto: string }>(null);
+  const [borrador, setBorrador] = useState<Record<string, Cambio>>({});       // clave → cambio pendiente
+  const setAbierto = (v: string | null) => { setAbiertoRaw(v); setEditando(null); setBorrador({}); };
+  const cambios = Object.entries(borrador);
+  const guardarCambios = async () => {
+    for (const [clave, c] of cambios) await guardar(clave, c.nombre, c.precio, c.unidad);
+    setEditando(null); setBorrador({}); setAviso(null);
+  };
 
   const productos = useMemo(() => {
     const resolver = crearResolver(stockRows, precios, datos.manoObra.vigente);
@@ -49,6 +61,29 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
 
   return (
     <div className="space-y-5">
+      {aviso?.paso === 'empezar' && (
+        <ModalConfirmar titulo={`Editar precios de ${bonito(aviso.producto)}`} textoOk="Entendido, quiero editar"
+          onCancelar={() => setAviso(null)} onOk={() => { setEditando(aviso.producto); setBorrador({}); setAviso(null); }}>
+          <p>Estos precios salen de las <strong className="text-white">facturas de materias primas</strong>.</p>
+          <p>Si los cambiás acá, el precio queda cambiado en <strong className="text-white">todos los productos que usan ese insumo</strong>, no solo en este.</p>
+          <p className="text-amber-300">Después tenés que actualizar el precio también en la factura (sección Registro), para que no queden distintos.</p>
+        </ModalConfirmar>
+      )}
+      {aviso?.paso === 'guardar' && (
+        <ModalConfirmar titulo="¿Guardar los cambios de precio?" textoOk="Guardar" textoCancelar="Volver" onCancelar={() => setAviso(null)} onOk={guardarCambios}>
+          <ul className="rounded-xl bg-slate-800 px-4 py-3 space-y-1.5">
+            {cambios.map(([clave, c]) => (
+              <li key={clave} className="flex items-center justify-between gap-3">
+                <span className="font-bold text-white">{c.nombre}</span>
+                <span className="text-slate-300 whitespace-nowrap">
+                  {c.antes !== null ? formatNumero(c.antes, 2) : 'sin precio'} → <strong className="text-white">{c.precio !== null ? formatNumero(c.precio, 2) : 'sin precio'}</strong> $/{c.unidad}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-amber-300">Acordate: estos precios también tienen que actualizarse en la <strong>factura de materias primas</strong> (Registro). Si no, la próxima vez que se pase una factura a Costos, se pisan.</p>
+        </ModalConfirmar>
+      )}
       {/* Resumen */}
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
@@ -130,6 +165,24 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
 
                 {open && (
                   <div className="bg-slate-800/30 px-5 py-4 border-t border-slate-800">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <p className="text-xs text-slate-400">
+                        {editando === p.nombre ? 'Editando precios: tocá un precio para cambiarlo y después guardá.' : 'Receta y precio de cada insumo.'}
+                      </p>
+                      {editando === p.nombre ? (
+                        <span className="inline-flex items-center gap-2">
+                          <button type="button" onClick={() => { setEditando(null); setBorrador({}); }}
+                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold rounded-lg text-xs">Cancelar</button>
+                          <button type="button" disabled={cambios.length === 0} onClick={() => setAviso({ paso: 'guardar', producto: p.nombre })}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-lg text-xs disabled:opacity-40">
+                            Guardar cambios{cambios.length ? ` (${cambios.length})` : ''}
+                          </button>
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => setAviso({ paso: 'empezar', producto: p.nombre })} title="Editar los precios de esta receta"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 hp-glass font-black text-xs"><Pencil size={13} />Editar precios</button>
+                      )}
+                    </div>
                     <table className="w-full text-sm">
                       <thead className="text-slate-500 text-[11px] uppercase">
                         <tr>
@@ -153,13 +206,25 @@ export default function CostosProductos({ datos, irAPrecios }: { datos: DatosCos
                               </td>
                               <td className="py-2 text-right text-slate-300 whitespace-nowrap">{fmtQty(l.cantidad, l.unidad)}</td>
                               <td className="py-2 text-right whitespace-nowrap">
-                                <span className="inline-flex items-center gap-1.5">
-                                  <PrecioConPieza valor={manual} ancho="w-24" nombre={l.ingrediente}
-                                    unidad={l.info.fuente === 'falta' ? d.unidad : l.info.unidad}
-                                    placeholder={manual === null && l.info.precio !== null ? formatNumero(l.info.precio, 2) : '0'}
-                                    onCommit={v => guardar(d.clave, l.ingrediente, v, d.unidad)} />
-                                  <span className="text-[11px] text-slate-500">$/{l.info.fuente === 'falta' ? d.unidad : l.info.unidad}</span>
-                                </span>
+                                {editando === p.nombre ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <PrecioConPieza valor={d.clave in borrador ? borrador[d.clave].precio : manual} ancho="w-24" nombre={l.ingrediente}
+                                      unidad={l.info.fuente === 'falta' ? d.unidad : l.info.unidad}
+                                      placeholder={manual === null && l.info.precio !== null ? formatNumero(l.info.precio, 2) : '0'}
+                                      onCommit={v => setBorrador(b => {
+                                        const n = { ...b };
+                                        if (v === manual) delete n[d.clave]; else n[d.clave] = { nombre: l.ingrediente, precio: v, unidad: d.unidad, antes: manual };
+                                        return n;
+                                      })} />
+                                    <span className="text-[11px] text-slate-500">$/{l.info.fuente === 'falta' ? d.unidad : l.info.unidad}</span>
+                                    {d.clave in borrador && <span className="text-[10px] font-black text-amber-400">cambiado</span>}
+                                  </span>
+                                ) : (
+                                  <span className="text-white font-bold">
+                                    {l.info.precio !== null ? formatNumero(l.info.precio, 2) : <span className="text-slate-500">—</span>}
+                                    <span className="text-[11px] text-slate-500 font-normal"> $/{l.info.fuente === 'falta' ? d.unidad : l.info.unidad}</span>
+                                  </span>
+                                )}
                               </td>
                               <td className="py-2 pl-3 text-right font-black whitespace-nowrap">
                                 {l.costo !== null ? <span className="text-white">{formatPlata(l.costo)}</span>
