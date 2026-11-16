@@ -133,6 +133,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ total: recetas.length, conReceta: recetas.filter((r: any) => r.lineas.length).length, recetas, muestra, unidades });
     }
 
+    // ── LECTURA CRUDA de un recurso de Fudo (solo GET, lista cerrada) ─────────
+    if (action === 'raw') {
+      const path = req.nextUrl.searchParams.get('path') ?? '';
+      if (!['proportions', 'recipeCards', 'ingredients', 'units', 'products'].includes(path)) {
+        return NextResponse.json({ error: 'path no permitido' }, { status: 400 });
+      }
+      const params: Record<string, string> = { 'page[size]': req.nextUrl.searchParams.get('size') ?? '3' };
+      const include = req.nextUrl.searchParams.get('include');
+      if (include) params.include = include;
+      return NextResponse.json(await fudoFetch(`/${path}`, params));
+    }
+
     // ── LISTAR PRODUCTOS del catálogo ────────────────────────────────────────
     if (action === 'products') {
       const { data } = await fudoGetAll('/products');
