@@ -101,6 +101,38 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // ── RECETAS COMPLETAS (solo lectura): cada producto con sus ingredientes y cantidades ──
+    // Fudo guarda la receta como "proportions" (producto → ingrediente + cantidad + unidad).
+    if (action === 'recipes_full') {
+      const { data: products, included } = await fudoGetAll('/products', { include: 'proportions.ingredient.unit' });
+      const inc = new Map<string, any>();
+      for (const i of included) inc.set(`${i.type}:${i.id}`, i);
+      const ref = (r: any) => (r?.data ? inc.get(`${r.data.type}:${r.data.id}`) : undefined);
+
+      const recetas = products
+        .map((p: any) => {
+          const refs: any[] = p.relationships?.proportions?.data ?? [];
+          const lineas = refs.map(r => {
+            const prop = inc.get(`${r.type}:${r.id}`);
+            const ing  = ref(prop?.relationships?.ingredient);
+            const uni  = ref(ing?.relationships?.unit) ?? ref(prop?.relationships?.unit);
+            return {
+              ingrediente: ing?.attributes?.name ?? null,
+              cantidad:    prop?.attributes?.quantity ?? prop?.attributes?.proportion ?? prop?.attributes ?? null,
+              unidad:      uni?.attributes?.name ?? uni?.attributes?.symbol ?? uni?.attributes?.abbreviation ?? null,
+            };
+          });
+          return { producto: p.attributes?.name ?? '', activo: p.attributes?.enabled ?? p.attributes?.active ?? true, lineas };
+        })
+        .filter((r: any) => r.producto.trim() !== '')
+        .sort((a: any, b: any) => a.producto.localeCompare(b.producto));
+
+      // muestra cruda para poder ajustar nombres de campos si hace falta
+      const muestra = included.filter((i: any) => i.type === 'Proportion').slice(0, 2);
+      const unidades = included.filter((i: any) => /unit/i.test(i.type)).slice(0, 2);
+      return NextResponse.json({ total: recetas.length, conReceta: recetas.filter((r: any) => r.lineas.length).length, recetas, muestra, unidades });
+    }
+
     // ── LISTAR PRODUCTOS del catálogo ────────────────────────────────────────
     if (action === 'products') {
       const { data } = await fudoGetAll('/products');
