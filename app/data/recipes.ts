@@ -7,17 +7,16 @@ export const INITIAL_RECIPES: Recipe[] = [
   // ── PANIFICADOS ──────────────────────────────────────────────────────────
   {
     id: 'pan_lomito', name: 'Pan de Lomito', category: 'Panificados',
-    // Prueba NUEVO PAN #10 (30/10/2026): 8,5 kg de harina (30% 000 / 70% 0000), pan de 200 g → ~70 panes
-    baseYield: 70, unit: 'u',
+    // Receta usada actualmente (hoja de trabajo): 16 kg de harina 0000, masa de ~27,6 kg, pan de 200 g → ~138 panes
+    baseYield: 138, unit: 'u',
     ingredients: [
-      { name: 'Harina 000',        qty: 2550,  unit: 'g' },
-      { name: 'Harina 0000',       qty: 5950,  unit: 'g' },
-      { name: 'Agua tibia',        qty: 4250,  unit: 'g' },
-      { name: 'Levadura',          qty: 85,    unit: 'g' },
-      { name: 'Mejormiga',         qty: 102,   unit: 'g' },
-      { name: 'Sal',               qty: 106,   unit: 'g' },
-      { name: 'Azúcar',            qty: 170,   unit: 'g' },
-      { name: 'Aceite',            qty: 850,   unit: 'g' },
+      { name: 'Harina 0000',       qty: 16000, unit: 'g' },
+      { name: 'Agua fría',         qty: 8480,  unit: 'g' },
+      { name: 'Levadura',          qty: 160,   unit: 'g' },
+      { name: 'Mejormiga',         qty: 80,    unit: 'g' },
+      { name: 'Sal',               qty: 200,   unit: 'g' },
+      { name: 'Azúcar',            qty: 320,   unit: 'g' },
+      { name: 'Aceite',            qty: 2400,  unit: 'g' },
     ]
   },
   // ── SALSAS DE PACK — Fraccionar en potes ────────────────────────────────
@@ -279,16 +278,15 @@ export const INITIAL_RECIPES: Recipe[] = [
     ]},
 
   // ── PANADERÍA ─────────────────────────────────────────────────────────────
-  { id: 'pan_sanguchero', name: 'Pan Sanguchero', category: 'Panificados', baseYield: 30, unit: 'u',
+  { id: 'pan_sanguchero', name: 'Pan Sanguchero', category: 'Panificados', baseYield: 55, unit: 'u',
+    // Receta usada actualmente (hoja de trabajo): 5,6 kg de harina 0000, masa de ~9,4 kg, pan de ~170 g → ~55 panes
     ingredients: [
-      { name: 'Harina 000',        qty: 1570,  unit: 'g' },
-      { name: 'Harina 0000',       qty: 1570,  unit: 'g' },
-      { name: 'Agua tibia',        qty: 1570,  unit: 'g' },
-      { name: 'Levadura',          qty: 31.4,  unit: 'g' },
-      { name: 'Mejorador concentrado', qty: 1.57, unit: 'g' },
-      { name: 'Mejormiga',         qty: 37.68, unit: 'g' },
-      { name: 'Sal',               qty: 62.80, unit: 'g' },
-      { name: 'Azúcar',            qty: 62.80, unit: 'g' },
-      { name: 'Aceite',            qty: 219.8, unit: 'g' },
+      { name: 'Harina 0000',       qty: 5600,  unit: 'g' },
+      { name: 'Agua fría',         qty: 3360,  unit: 'g' },
+      { name: 'Levadura',          qty: 56,    unit: 'g' },
+      { name: 'Mejormiga',         qty: 56,    unit: 'g' },
+      { name: 'Sal',               qty: 112,   unit: 'g' },
+      { name: 'Azúcar',            qty: 112,   unit: 'g' },
+      { name: 'Grasa vacuna',      qty: 112,   unit: 'g' },
     ]},
 ];
