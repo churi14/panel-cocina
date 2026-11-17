@@ -57,7 +57,19 @@ export const ALIAS_PRECIO: Record<string, string> = {
 export const PESO_POR_UNIDAD: Record<string, { clave: string; kg: number }> = {
   'queso chedar': { clave: 'cheddar en feta', kg: 1.66 / 140 },
 };
-export const precioCargado =(precios: Precios, ...claves: (string | undefined)[]) => {
+/**
+ * Verduras procesadas en cocina: precio del kilo crudo y rendimiento (kg útiles por kg crudo).
+ * Medido (producciones de cocina, bruto vs desperdicio): lechuga 85%, tomate 92%.
+ * Estimado (sin medición confiable): cebolla brunoise 90%, morrón 80%, cebolla caramelizada 40% (se reduce al cocinarse).
+ */
+export const RENDIMIENTO_VERDURA: Record<string, { clave: string; rinde: number; origen: 'medido' | 'estimado' }> = {
+  'lechuga preparada':    { clave: 'lechuga',         rinde: 0.85, origen: 'medido' },
+  'tomate producido':     { clave: 'tomate de cajon', rinde: 0.92, origen: 'medido' },
+  'cebolla brunoise':     { clave: 'cebolla',         rinde: 0.90, origen: 'estimado' },
+  'cebolla caramelizada': { clave: 'cebolla',         rinde: 0.40, origen: 'estimado' },
+  'morron preparado':     { clave: 'morron',          rinde: 0.80, origen: 'estimado' },
+};
+export const precioCargado = (precios: Precios, ...claves: (string | undefined)[]) => {
   for (const c of claves) {
     if (!c) continue;
     const p = precios[c] ?? precios[ALIAS_PRECIO[c] ?? ''];
@@ -136,6 +148,12 @@ export function crearResolver(stockRows: StockRow[], precios: Precios, manoObraM
     // 1) precio cargado a mano (por el nombre o por el insumo de stock que coincide)
     const m = precioCargado(precios, k, row ? norm(row.nombre) : undefined);
     if (m) return { precio: m.precio, unidad: m.unidad, fuente: 'manual', incompleto: false };
+    // verdura procesada = precio del crudo ÷ rendimiento
+    const verd = RENDIMIENTO_VERDURA[k];
+    if (verd) {
+      const pk = precioCargado(precios, verd.clave);
+      if (pk && unidadBase(pk.unidad) === 'kg') return { precio: pk.precio / verd.rinde, unidad: 'kg', fuente: 'crudo', incompleto: false, detalle: `${verd.clave} ÷ rinde ${Math.round(verd.rinde * 100)}% (${verd.origen})` };
+    }
     // insumo que la receta cuenta por unidad y se compra por kilo (ej. feta de cheddar)
     const porU = PESO_POR_UNIDAD[k];
     if (porU) {
