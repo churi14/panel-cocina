@@ -48,7 +48,14 @@ export const ALIAS_PRECIO: Record<string, string> = {
   'aceite eloico': 'aceite alto oleico',
   'pan kalis': 'pan kalis golden',   // es el mismo pan
 };
-export const precioCargado = (precios: Precios, ...claves: (string | undefined)[]) => {
+/**
+ * Insumos que Fudo cuenta por unidad pero se compran por kilo: clave del precio cargado y peso de cada unidad (kg).
+ * Feta de cheddar: 140 fetas = 1,66 kg (remito Tonadita) → ~11,9 g.
+ */
+export const PESO_POR_UNIDAD: Record<string, { clave: string; kg: number }> = {
+  'queso chedar': { clave: 'cheddar en feta', kg: 1.66 / 140 },
+};
+export const precioCargado =(precios: Precios, ...claves: (string | undefined)[]) => {
   for (const c of claves) {
     if (!c) continue;
     const p = precios[c] ?? precios[ALIAS_PRECIO[c] ?? ''];
@@ -127,6 +134,12 @@ export function crearResolver(stockRows: StockRow[], precios: Precios, manoObraM
     // 1) precio cargado a mano (por el nombre o por el insumo de stock que coincide)
     const m = precioCargado(precios, k, row ? norm(row.nombre) : undefined);
     if (m) return { precio: m.precio, unidad: m.unidad, fuente: 'manual', incompleto: false };
+    // insumo que la receta cuenta por unidad y se compra por kilo (ej. feta de cheddar)
+    const porU = PESO_POR_UNIDAD[k];
+    if (porU) {
+      const pk = precioCargado(precios, porU.clave);
+      if (pk && unidadBase(pk.unidad) === 'kg') return { precio: pk.precio * porU.kg, unidad: 'u', fuente: 'manual', incompleto: false, detalle: `${Math.round(porU.kg * 1000 * 10) / 10} g por unidad · ${porU.clave}` };
+    }
     // el agua de las recetas no tiene costo (si alguien carga un precio, manda ese)
     if (esAgua(nombre)) return { precio: 0, unidad: 'kg', fuente: 'crudo', incompleto: false, detalle: 'agua: sin costo' };
     if (depth > 4) return falta(row?.unidad ?? 'kg');
