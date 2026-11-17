@@ -47,6 +47,8 @@ export const ALIAS_PRECIO: Record<string, string> = {
   'aceite': 'aceite girasol',
   'aceite eloico': 'aceite alto oleico',
   'pan kalis': 'pan kalis golden',   // es el mismo pan
+  'mostaza': 'savora',               // la mostaza que se compra es Savora
+  'nalga bife': 'nalga',             // el bife se corta de la nalga
 };
 /**
  * Insumos que Fudo cuenta por unidad pero se compran por kilo: clave del precio cargado y peso de cada unidad (kg).
