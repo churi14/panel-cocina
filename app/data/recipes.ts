@@ -279,15 +279,17 @@ export const INITIAL_RECIPES: Recipe[] = [
     ]},
 
   // ── PANADERÍA ─────────────────────────────────────────────────────────────
-  { id: 'pan_sanguchero', name: 'Pan Sanguchero', category: 'Panificados', baseYield: 55, unit: 'u',
-    // Receta usada actualmente (hoja de trabajo): 5,6 kg de harina 0000, masa de ~9,4 kg, pan de ~170 g → ~55 panes
+  { id: 'pan_sanguchero', name: 'Pan Sanguchero', category: 'Panificados', baseYield: 77, unit: 'u',
+    // Hoja de trabajo MILANESA, 30/10/2026 Juliana #10: 8 kg de harina (50% 000 / 50% 0000), masa 13.060 g, pan de 170 g → 76,8 panes
     ingredients: [
-      { name: 'Harina 0000',       qty: 5600,  unit: 'g' },
-      { name: 'Agua fría',         qty: 3360,  unit: 'g' },
-      { name: 'Levadura',          qty: 56,    unit: 'g' },
-      { name: 'Mejormiga',         qty: 56,    unit: 'g' },
-      { name: 'Sal',               qty: 112,   unit: 'g' },
-      { name: 'Azúcar',            qty: 112,   unit: 'g' },
-      { name: 'Grasa vacuna',      qty: 112,   unit: 'g' },
+      { name: 'Harina 000',        qty: 4000,  unit: 'g' },
+      { name: 'Harina 0000',       qty: 4000,  unit: 'g' },
+      { name: 'Agua tibia',        qty: 4000,  unit: 'g' },
+      { name: 'Levadura',          qty: 80,    unit: 'g' },
+      { name: 'Mejormiga',         qty: 96,    unit: 'g' },
+      { name: 'Mejorador concentrado', qty: 4, unit: 'g' },
+      { name: 'Sal',               qty: 160,   unit: 'g' },
+      { name: 'Azúcar',            qty: 160,   unit: 'g' },
+      { name: 'Aceite',            qty: 560,   unit: 'g' },
     ]},
 ];
