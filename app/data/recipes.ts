@@ -7,16 +7,17 @@ export const INITIAL_RECIPES: Recipe[] = [
   // ── PANIFICADOS ──────────────────────────────────────────────────────────
   {
     id: 'pan_lomito', name: 'Pan de Lomito', category: 'Panificados',
-    // Receta usada actualmente (hoja de trabajo): 16 kg de harina 0000, masa de ~27,6 kg, pan de 200 g → ~138 panes
-    baseYield: 138, unit: 'u',
+    // Hoja de trabajo "LOMITO" (prueba NUEVO PAN #10): 8,5 kg de harina (30% 000 / 70% 0000), masa 14.063 g, pan de 200 g → 70,31 panes
+    baseYield: 70, unit: 'u',
     ingredients: [
-      { name: 'Harina 0000',       qty: 16000, unit: 'g' },
-      { name: 'Agua fría',         qty: 8480,  unit: 'g' },
-      { name: 'Levadura',          qty: 160,   unit: 'g' },
-      { name: 'Mejormiga',         qty: 80,    unit: 'g' },
-      { name: 'Sal',               qty: 200,   unit: 'g' },
-      { name: 'Azúcar',            qty: 320,   unit: 'g' },
-      { name: 'Aceite',            qty: 2400,  unit: 'g' },
+      { name: 'Harina 000',        qty: 2550,  unit: 'g' },
+      { name: 'Harina 0000',       qty: 5950,  unit: 'g' },
+      { name: 'Agua tibia',        qty: 4250,  unit: 'g' },
+      { name: 'Levadura',          qty: 85,    unit: 'g' },
+      { name: 'Mejormiga',         qty: 102,   unit: 'g' },
+      { name: 'Sal',               qty: 106,   unit: 'g' },
+      { name: 'Azúcar',            qty: 170,   unit: 'g' },
+      { name: 'Aceite',            qty: 850,   unit: 'g' },
     ]
   },
   // ── SALSAS DE PACK — Fraccionar en potes ────────────────────────────────
