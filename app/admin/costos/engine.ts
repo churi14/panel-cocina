@@ -56,6 +56,9 @@ export const ALIAS_PRECIO: Record<string, string> = {
  */
 export const PESO_POR_UNIDAD: Record<string, { clave: string; kg: number }> = {
   'queso chedar': { clave: 'cheddar en feta', kg: 1.66 / 140 },
+  // ESTIMADOS (no se pesaron): lámina Folex 25x37 ≈ 1 g (~1.000 por kg); hoja de aluminio térmico ≈ 1,5 g
+  'folex': { clave: 'folex', kg: 0.001 },
+  'papel termico aluminio': { clave: 'aluminio', kg: 0.0015 },
 };
 /**
  * Verduras procesadas en cocina: precio del kilo crudo y rendimiento (kg útiles por kg crudo).
